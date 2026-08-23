@@ -28,17 +28,23 @@ composer install --no-dev --classmap-authoritative
 cp .env.example .env
 ```
 
-Set a long random `APP_KEY`, production URL, and database credentials in
+Set the production URL, `APP_DEMO_MODE=false`, and database credentials in
 `.env`. Use a dedicated database account with access only to the nStructure
 database.
 
 ```bash
 php bin/migrate.php
-php bin/seed.php
+php bin/create-user.php you@example.com "Your Name" "a-strong-password"
 ```
 
-The seed step installs demonstration data and should be skipped for an empty
-production database.
+`php bin/migrate.php` applies every pending migration in
+`database/migrations/` in order and is safe to re-run. There is no
+self-service registration, so the first login account must be created with
+`bin/create-user.php`; anyone already logged in can create further accounts
+from the **Account** page afterwards.
+
+Only run `php bin/seed.php` if you want demonstration data — skip it for an
+empty production database.
 
 ## Nginx and PHP-FPM
 
@@ -56,10 +62,11 @@ project root must never be exposed directly.
 
 ## File permissions
 
-The application currently stores sessions using PHP's configured session
-handler and does not require writable project directories. Keep source files
-read-only for the web-server user. Ensure PHP's session directory is writable
-by the PHP-FPM service account.
+Sessions use PHP's configured session handler, so source files can stay
+read-only for the web-server user. The exception is `storage/uploads/`,
+which must be writable by the PHP-FPM service account — location, server
+room, rack, panel, and cable photos are saved there. Ensure PHP's session
+directory is writable by the PHP-FPM service account as well.
 
 ## TLS
 
@@ -70,8 +77,11 @@ with the organization's reverse proxy or Certbot. After TLS is enabled, set:
 APP_ENV=production
 APP_DEBUG=false
 APP_URL=https://nstructure.example.com
-SESSION_SECURE=true
 ```
+
+The session cookie is marked `Secure` automatically whenever the request
+arrives over HTTPS (directly, or via `X-Forwarded-Proto` behind a reverse
+proxy) — no separate setting is needed.
 
 ## Updating
 
