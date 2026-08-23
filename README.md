@@ -38,3 +38,4 @@ Source code, identifiers, database objects, and comments are English-only. Human
 ## License
 
 Released under the [MIT License](LICENSE).
+<img width="1910" height="899" alt="Zrzut ekranu 2026-08-23 172005" src="https://github.com/user-attachments/assets/9a2ec43e-392b-4699-a614-0eba55626497" />
