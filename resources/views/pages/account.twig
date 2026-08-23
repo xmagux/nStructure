@@ -1,0 +1,96 @@
+{% extends 'layouts/app.twig' %}
+{% import 'components/icons.twig' as icons %}
+
+{% block content %}
+<section class="page-hero compact-hero">
+    <div><span class="eyebrow">{{ t('nav.settings') }}</span><h1>{{ t('account.title') }}</h1><p>{{ t('account.subtitle') }}</p></div>
+    <div class="hero-actions"><button class="button button-primary" type="button" data-user-modal-open>{{ icons.icon('plus') }}{{ t('account.add_user') }}</button></div>
+</section>
+
+<section class="asset-hero tone-violet">
+    <div class="asset-title"><span class="location-symbol xl">{{ icons.icon('user', 30) }}</span><div><span class="code-label">{{ t('account.signed_in_as') }}</span><h1>{{ current_user.name }}</h1><p>{{ current_user.email }}</p></div></div>
+    <div class="asset-hero-actions"><button class="button button-quiet button-small" type="button" data-profile-modal-open>{{ icons.icon('edit', 15) }}{{ t('account.edit_profile') }}</button><button class="button button-quiet button-small" type="button" data-password-modal-open>{{ icons.icon('shield', 15) }}{{ t('account.change_password') }}</button></div>
+    <div class="asset-glow"></div>
+</section>
+
+<section class="section-block">
+    <div class="section-heading"><div><h2>{{ t('account.users_title') }}</h2><p>{{ t('account.users_subtitle') }}</p></div></div>
+    <div class="port-table-shell">
+        <table class="port-management-table">
+            <thead><tr><th>{{ t('account.name') }}</th><th>{{ t('account.email') }}</th><th>{{ t('account.last_login') }}</th><th>{{ t('common.details') }}</th></tr></thead>
+            <tbody>
+            {% for user in users %}
+                <tr>
+                    <td><strong class="port-primary-value">{{ user.name }}</strong></td>
+                    <td><span class="port-secondary-value">{{ user.email }}</span></td>
+                    <td><span class="port-secondary-value">{{ user.last_login_at ?: t('account.never_logged_in') }}</span></td>
+                    <td>
+                        <div class="port-row-actions">
+                            {% if user.id != current_user.id %}
+                            <button class="button button-danger-subtle button-small" type="button" data-delete-open data-delete-url="/api/v1/users/{{ user.id }}" data-delete-name="{{ user.name }} · {{ user.email }}">{{ icons.icon('trash', 15) }}{{ t('account.remove_user') }}</button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="section-block">
+    <div class="section-heading"><div><h2>{{ t('account.activity_title') }}</h2><p>{{ t('account.activity_subtitle') }}</p></div></div>
+    <div class="port-table-shell">
+        <table class="port-management-table">
+            <thead><tr><th>{{ t('account.activity_who') }}</th><th>{{ t('account.activity_action') }}</th><th>{{ t('account.activity_entity') }}</th><th>{{ t('account.activity_when') }}</th></tr></thead>
+            <tbody>
+            {% for event in audit_log %}
+                <tr>
+                    <td><span class="port-secondary-value">{{ event.user_name ?: t('account.activity_unknown_user') }}</span></td>
+                    <td><span class="status-badge status-healthy"><i></i>{{ t('account.action_' ~ event.action|lower) }}</span></td>
+                    <td><span class="port-secondary-value">{{ t('account.entity_' ~ event.entity_type|lower) }}{% if event.entity_label %} · {{ event.entity_label }}{% endif %}</span></td>
+                    <td><span class="port-secondary-value">{{ event.created_at }}</span></td>
+                </tr>
+            {% else %}<tr><td colspan="4"><div class="inline-empty">{{ t('account.activity_empty') }}</div></td></tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<dialog class="modal entity-modal" id="profile-modal">
+    <form class="modal-card" data-profile-form>
+        <div class="modal-head"><div><span class="eyebrow">{{ t('account.edit_profile') }}</span><h2>{{ t('account.edit_profile') }}</h2></div><button class="icon-button" type="button" data-profile-modal-close aria-label="{{ t('action.close') }}">{{ icons.icon('close') }}</button></div>
+        <div class="form-grid">
+            <label class="field field-wide"><span>{{ t('account.name') }}</span><input name="name" maxlength="160" value="{{ current_user.name }}" required></label>
+            <label class="field field-wide"><span>{{ t('account.email') }}</span><input type="email" name="email" maxlength="190" value="{{ current_user.email }}" required></label>
+        </div>
+        <p class="form-error" data-form-error hidden></p>
+        <div class="modal-actions"><button class="button button-ghost" type="button" data-profile-modal-close>{{ t('action.cancel') }}</button><button class="button button-primary" type="submit">{{ icons.icon('save') }}{{ t('action.save') }}</button></div>
+    </form>
+</dialog>
+
+<dialog class="modal entity-modal" id="password-modal">
+    <form class="modal-card" data-password-form>
+        <div class="modal-head"><div><span class="eyebrow">{{ t('account.change_password') }}</span><h2>{{ t('account.change_password') }}</h2></div><button class="icon-button" type="button" data-password-modal-close aria-label="{{ t('action.close') }}">{{ icons.icon('close') }}</button></div>
+        <div class="form-grid">
+            <label class="field field-wide"><span>{{ t('account.current_password') }}</span><input type="password" name="current_password" maxlength="200" required autocomplete="current-password"></label>
+            <label class="field field-wide"><span>{{ t('account.new_password') }}</span><input type="password" name="new_password" maxlength="200" minlength="8" required autocomplete="new-password"><small>{{ t('account.password_hint') }}</small></label>
+        </div>
+        <p class="form-error" data-form-error hidden></p>
+        <div class="modal-actions"><button class="button button-ghost" type="button" data-password-modal-close>{{ t('action.cancel') }}</button><button class="button button-primary" type="submit">{{ icons.icon('save') }}{{ t('account.change_password') }}</button></div>
+    </form>
+</dialog>
+
+<dialog class="modal entity-modal" id="user-modal">
+    <form class="modal-card" data-user-form>
+        <div class="modal-head"><div><span class="eyebrow">{{ t('account.add_user') }}</span><h2>{{ t('account.add_user') }}</h2></div><button class="icon-button" type="button" data-user-modal-close aria-label="{{ t('action.close') }}">{{ icons.icon('close') }}</button></div>
+        <div class="form-grid">
+            <label class="field field-wide"><span>{{ t('account.name') }}</span><input name="name" maxlength="160" required></label>
+            <label class="field field-wide"><span>{{ t('account.email') }}</span><input type="email" name="email" maxlength="190" required></label>
+            <label class="field field-wide"><span>{{ t('account.password') }}</span><input type="password" name="password" maxlength="200" minlength="8" required><small>{{ t('account.password_hint') }}</small></label>
+        </div>
+        <p class="form-error" data-form-error hidden></p>
+        <div class="modal-actions"><button class="button button-ghost" type="button" data-user-modal-close>{{ t('action.cancel') }}</button><button class="button button-primary" type="submit">{{ icons.icon('plus') }}{{ t('account.add_user') }}</button></div>
+    </form>
+</dialog>
+{% endblock %}

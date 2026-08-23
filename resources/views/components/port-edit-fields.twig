@@ -1,0 +1,46 @@
+<input type="hidden" name="port_id">
+<section class="port-form-section">
+    <div class="port-form-section-head"><span class="connection-side-icon neutral">{{ icons.icon('settings', 17) }}</span><div><strong>{{ t('form.port_identity') }}</strong><small>{{ t('form.port_identity_hint') }}</small></div></div>
+    <div class="form-grid">
+        <label class="field"><span>{{ t('form.connector_type') }}</span><select name="connector_type_id" required>{% for connector in connector_types %}<option value="{{ connector.id }}">{{ connector.code }}</option>{% endfor %}</select></label>
+        <label class="field"><span>{{ t('form.port_status') }}</span><select name="administrative_status"><option value="AVAILABLE">{{ t('common.available') }}</option><option value="RESERVED">{{ t('common.reserved') }}</option><option value="BLOCKED">{{ t('common.blocked') }}</option><option value="DAMAGED">{{ t('common.damaged') }}</option></select></label>
+        <label class="field field-wide"><span>{{ t('form.port_label') }}</span><input name="label" maxlength="120" placeholder="{{ t('form.port_label_hint') }}"></label>
+        <label class="field field-wide"><span>{{ t('form.notes') }}</span><textarea name="notes" maxlength="2000" rows="3" placeholder="{{ t('form.port_notes_hint') }}"></textarea></label>
+    </div>
+</section>
+
+<section class="port-form-section connection-side-card rear-side">
+    <div class="port-form-section-head"><span class="connection-side-icon rear">{{ icons.icon('cable', 18) }}</span><div><strong>{{ t('panel.rear_side') }}</strong><small>{{ t('panel.rear_side_hint') }}</small></div></div>
+    <label class="field"><span>{{ t('panel.rear_endpoint') }}</span><input name="remote_endpoint_label" maxlength="255" placeholder="{{ t('form.remote_endpoint_hint') }}"><small>{{ t('form.remote_endpoint_note') }}</small></label>
+</section>
+
+<section class="port-form-section connection-side-card front-side">
+    <div class="port-form-section-head"><span class="connection-side-icon front">{{ icons.icon('router', 18) }}</span><div><strong>{{ t('panel.front_side') }}</strong><small>{{ t('panel.front_side_hint') }}</small></div></div>
+    <div class="form-grid">
+        <label class="field field-wide"><span>{{ t('form.front_connection') }}</span><select name="front_connection_mode" data-front-connection-mode><option value="NONE">{{ t('form.front_connection_none') }}</option><option value="DEVICE">{{ t('form.front_connection_device') }}</option></select></label>
+    </div>
+    <div data-front-connection-fields hidden>
+        <div class="form-grid">
+            <label class="field field-wide"><span>{{ t('form.active_device') }}</span><select name="active_device_id" data-active-device-select><option value="">{{ t('form.active_device_new') }}</option>{% for device in active_device_options.devices %}<option value="{{ device.id }}">{{ device.label }}</option>{% endfor %}</select><small>{{ t('form.active_device_hint') }}</small></label>
+        </div>
+        <div class="new-device-fields" data-new-active-device-fields>
+            <div class="form-grid">
+                <label class="field field-wide"><span>{{ t('form.device_rack') }}</span><select name="active_device_rack_id" data-active-device-rack><option value="">{{ t('form.select_rack') }}</option>{% for rack_option in active_device_options.racks %}<option value="{{ rack_option.id }}" {{ rack_option.id == panel.rack_id ? 'selected' : '' }}>{{ rack_option.label }}</option>{% endfor %}</select></label>
+                <label class="field"><span>{{ t('form.device_type') }}</span><select name="active_device_type"><option value="SWITCH">{{ t('device.switch') }}</option><option value="ROUTER">{{ t('device.router') }}</option><option value="FIREWALL">{{ t('device.firewall') }}</option><option value="TRANSPORT">{{ t('device.transport') }}</option><option value="SERVER">{{ t('device.server') }}</option><option value="OTHER">{{ t('device.other') }}</option></select></label>
+                <label class="field"><span>{{ t('form.device_vendor') }}</span><input name="active_device_vendor" maxlength="120" list="{{ form_scope }}-device-vendors" placeholder="Juniper"><datalist id="{{ form_scope }}-device-vendors"><option value="Juniper"><option value="Palo Alto Networks"><option value="Fortinet"><option value="Cisco"><option value="Arista Networks"></datalist></label>
+                <label class="field"><span>{{ t('form.device_name') }}</span><input name="active_device_name" maxlength="160" placeholder="{{ t('form.device_name_hint') }}"></label>
+                <label class="field"><span>{{ t('form.device_model') }}</span><input name="active_device_model" maxlength="120" placeholder="EX4650 / PA-3410 / FortiGate 200F"></label>
+            </div>
+        </div>
+        <div class="interface-fields">
+            <span class="form-subheading">{{ t('form.device_interface') }}</span>
+            <div class="form-grid">
+                <label class="field"><span>{{ t('form.interface_name') }}</span><input name="active_interface_name" maxlength="120" placeholder="xe-0/0/0" data-device-interface-name></label>
+                <label class="field"><span>{{ t('form.interface_type') }}</span><select name="active_interface_type"><option value="SFP">SFP</option><option value="SFP_PLUS">SFP+</option><option value="SFP28">SFP28</option><option value="QSFP_PLUS">QSFP+</option><option value="QSFP28">QSFP28</option><option value="RJ45">RJ45</option><option value="OTHER">{{ t('device.other') }}</option></select></label>
+                <label class="field"><span>{{ t('form.interface_speed') }}</span><input name="active_interface_speed" maxlength="40" placeholder="10G / 25G / 100G"></label>
+                <label class="field"><span>{{ t('form.patch_cord_label') }}</span><input name="front_patch_cord_label" maxlength="120" placeholder="PC-LC-001"></label>
+                <label class="field field-wide"><span>{{ t('form.front_connection_notes') }}</span><textarea name="front_connection_notes" maxlength="2000" rows="2" placeholder="{{ t('form.front_connection_notes_hint') }}"></textarea></label>
+            </div>
+        </div>
+    </div>
+</section>

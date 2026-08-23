@@ -1,0 +1,72 @@
+{% extends 'layouts/app.twig' %}
+{% import 'components/icons.twig' as icons %}
+
+{% block content %}
+<nav class="breadcrumbs"><a href="/locations">{{ t('nav.locations') }}</a><span>›</span><a href="/locations/{{ rack.location_id }}">{{ rack.location }}</a><span>›</span><strong>{{ rack.code }}</strong></nav>
+<section class="page-hero compact-hero rack-hero">
+    <div><span class="eyebrow">{{ t('rack.eyebrow') }}</span><h1>{{ rack.code }} · {{ rack.name }}</h1><p>{{ rack.location }} · {{ rack.room }}</p></div>
+    <div class="hero-actions"><button class="button button-ghost" type="button" data-rack-edit-open>{{ icons.icon('edit') }}{{ t('action.edit_rack') }}</button><button class="button button-danger-subtle" type="button" data-delete-open data-delete-url="/api/v1/racks/{{ rack.id }}" data-delete-name="{{ rack.code }} · {{ rack.name }}" data-delete-redirect="/locations/{{ rack.location_id }}">{{ icons.icon('trash') }}{{ t('action.delete') }}</button><button class="button button-primary" type="button" data-panel-modal-open>{{ icons.icon('plus') }}{{ t('action.add_panel') }}</button></div>
+</section>
+
+<section class="rack-layout cad-layout">
+    <div class="rack-stage-card cad-workspace" data-konva-workspace>
+        <div class="visualization-toolbar">
+            <div class="toolbar-title"><span class="toolbar-kicker">{{ t('rack.canvas_kicker') }}</span><strong>{{ t('rack.title') }}</strong><span class="canvas-status"><i></i> {{ rack.total_units }}U CAD</span></div>
+            <div class="toolbar-tools">
+                <span class="interaction-hint">{{ icons.icon('move') }}{{ t('visual.canvas_hint') }}</span>
+                <div class="tool-cluster">
+                    <button class="cad-tool" type="button" data-canvas-rotate-left aria-label="{{ t('action.rotate_left') }}">{{ icons.icon('rotate-left') }}</button>
+                    <button class="cad-tool" type="button" data-canvas-rotate-right aria-label="{{ t('action.rotate_right') }}">{{ icons.icon('rotate-right') }}</button>
+                    <span class="tool-divider"></span>
+                    <button class="cad-tool" type="button" data-canvas-zoom-out aria-label="{{ t('action.zoom_out') }}">{{ icons.icon('zoom-out') }}</button>
+                    <button class="cad-tool" type="button" data-canvas-zoom-in aria-label="{{ t('action.zoom_in') }}">{{ icons.icon('zoom-in') }}</button>
+                    <button class="cad-tool" type="button" data-canvas-fit aria-label="{{ t('action.fit_view') }}">{{ icons.icon('crosshair') }}</button>
+                </div>
+            </div>
+        </div>
+        <div class="konva-shell rack-konva-shell"><div class="canvas-grid"></div><div class="konva-stage" data-rack-canvas data-port-label="{{ t('panel.port') }}" data-rear-side-label="{{ t('panel.rear_side') }}" data-front-side-label="{{ t('panel.front_side') }}" data-status-occupied="{{ t('common.occupied') }}" data-status-available="{{ t('common.available') }}" data-status-reserved="{{ t('common.reserved') }}" data-status-blocked="{{ t('common.blocked') }}" data-status-damaged="{{ t('common.damaged') }}" data-no-destination="{{ t('rack.port_destination_unknown') }}" role="img" aria-label="{{ t('rack.title') }}"></div><div class="zoom-readout" data-zoom-readout>100%</div></div>
+        <script type="application/json" class="rack-data">{{ rack|json_encode|raw }}</script>
+    </div>
+    <aside class="rack-sidebar">
+        <article class="card rack-summary-card"><div class="inspector-card-head"><span class="eyebrow">{{ t('location.capacity_overview') }}</span>{{ icons.icon('activity') }}</div><div class="rack-big-stat"><strong>{{ rack.utilization }}%</strong><span>{{ t('common.utilization') }}</span></div><div class="progress large"><i style="width: {{ rack.utilization }}%"></i></div><dl><div><dt>{{ t('rack.units') }}</dt><dd>{{ rack.total_units }}U</dd></div><div><dt>{{ t('rack.power') }}</dt><dd>{{ rack.power }}</dd></div><div><dt>{{ t('rack.temperature') }}</dt><dd>{{ rack.temperature }}</dd></div></dl></article>
+        <article class="card rack-panel-list"><h3>{{ t('rack.mounted_panels') }}</h3>{% for device in rack.devices %}{% if device.type == 'patch_panel' %}<a href="/patch-panels/{{ device.id }}"><span><strong>{{ device.code }}</strong><small>U{{ device.start - device.height + 1 }}–U{{ device.start }} · {{ device.name }}</small></span><span class="panel-port-count"><strong>{{ device.occupied }}/{{ device.ports }}</strong><small>{{ t('rack.connected_ports') }}</small></span></a>{% endif %}{% else %}<div class="inline-empty">{{ t('rack.no_panels') }}</div>{% endfor %}</article>
+        <article class="card rack-legend"><h3>{{ t('rack.legend') }}</h3><span><i class="legend-box violet"></i>{{ t('rack.patch_panel') }}</span><span><i class="legend-box cyan"></i>{{ t('rack.network_device') }}</span><span><i class="legend-box slate"></i>{{ t('rack.organizer') }}</span><div class="rack-legend-divider"></div><span><i class="legend-port occupied"></i>{{ t('common.occupied') }}</span><span><i class="legend-port available"></i>{{ t('common.available') }}</span></article>
+    </aside>
+</section>
+
+{% include 'components/asset-gallery.twig' with {
+    images: rack.images,
+    upload_url: '/api/v1/racks/' ~ rack.id ~ '/images',
+    input_id: 'rack-image-upload',
+    entity_code: rack.code,
+    title: t('photos.rack_title'),
+    subtitle: t('photos.rack_subtitle')
+} %}
+
+<dialog class="modal entity-modal" id="rack-edit-modal">
+    <form class="modal-card" data-rack-edit-form data-rack-id="{{ rack.id }}">
+        <div class="modal-head"><div><span class="eyebrow">{{ t('action.edit_rack') }}</span><h2>{{ t('modal.rack_edit_title') }}</h2><p>{{ rack.location }} · {{ rack.room }}</p></div><button class="icon-button" type="button" data-rack-edit-close aria-label="{{ t('action.close') }}">{{ icons.icon('close') }}</button></div>
+        <div class="form-grid"><label class="field"><span>{{ t('form.rack_code') }}</span><input name="code" maxlength="40" value="{{ rack.code }}" required></label><label class="field"><span>{{ t('form.rack_name') }}</span><input name="name" maxlength="160" value="{{ rack.name }}" required></label><label class="field"><span>{{ t('form.rack_units') }}</span><input name="total_units" type="number" min="1" max="60" value="{{ rack.total_units }}" required></label><label class="field"><span>{{ t('form.row_label') }}</span><input name="row_label" maxlength="40" value="{{ rack.row_label }}"></label></div>
+        <p class="form-error" data-form-error hidden></p><div class="modal-actions"><button class="button button-ghost" type="button" data-rack-edit-close>{{ t('action.cancel') }}</button><button class="button button-primary" type="submit">{{ icons.icon('save') }}{{ t('action.save') }}</button></div>
+    </form>
+</dialog>
+
+<dialog class="modal hs-overlay" id="panel-modal">
+    <form class="modal-card modal-card-wide" data-panel-form data-rack-id="{{ rack.id }}">
+        <div class="modal-head"><div><span class="eyebrow">{{ t('action.add_panel') }}</span><h2>{{ t('modal.panel_title') }}</h2><p>{{ t('modal.panel_subtitle') }}</p></div><button class="icon-button" type="button" data-panel-modal-close aria-label="{{ t('action.close') }}">{{ icons.icon('close') }}</button></div>
+        <div class="form-grid">
+            <label class="field field-wide"><span>{{ t('form.panel_name') }}</span><input name="name" maxlength="160" placeholder="{{ t('form.panel_name_hint') }}" required></label>
+            <label class="field"><span>{{ t('form.rack_unit_start') }}</span><input name="rack_unit_start" type="number" min="1" max="{{ rack.total_units }}" value="{{ rack.total_units }}" required></label>
+            <label class="field"><span>{{ t('form.panel_height') }}</span><select name="rack_unit_height" required><option value="1">1U</option><option value="2">2U</option><option value="3">3U</option><option value="4">4U</option><option value="5">5U</option><option value="6">6U</option></select></label>
+            <label class="field"><span>{{ t('form.port_count') }}</span><input name="port_count" type="number" min="1" max="288" value="24" required></label>
+            <label class="field"><span>{{ t('form.layout_rows') }}</span><input name="layout_rows" type="number" min="1" max="12" value="1" required><small>{{ t('form.layout_rows_hint') }}</small></label>
+            <label class="field"><span>{{ t('form.connector_type') }}</span><select name="connector_type_id" required>{% for connector in connector_types %}<option value="{{ connector.id }}" {{ connector.code == 'SC-PC' ? 'selected' : '' }}>{{ connector.code }}</option>{% endfor %}</select></label>
+            <label class="field"><span>{{ t('form.manufacturer') }}</span><input name="manufacturer" maxlength="120"></label>
+            <label class="field"><span>{{ t('form.model') }}</span><input name="model" maxlength="120"></label>
+        </div>
+        <div class="form-note">{{ icons.icon('info', 16) }}<span>{{ t('form.panel_code_hint') }}</span></div>
+        <p class="form-error" data-form-error hidden></p>
+        <div class="modal-actions"><button class="button button-ghost" type="button" data-panel-modal-close>{{ t('action.cancel') }}</button><button class="button button-primary" type="submit">{{ icons.icon('panel') }}{{ t('action.create_panel') }}</button></div>
+    </form>
+</dialog>
+{% endblock %}

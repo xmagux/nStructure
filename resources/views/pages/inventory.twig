@@ -1,0 +1,61 @@
+{% extends 'layouts/app.twig' %}
+{% import 'components/icons.twig' as icons %}
+
+{% block content %}
+<section class="page-hero compact-hero inventory-hero">
+    <div><span class="eyebrow">{{ t('inventory.eyebrow') }}</span><h1>{{ t('inventory.title') }}</h1><p>{{ t('inventory.subtitle') }}</p></div>
+    <div class="hero-actions"><a class="button button-ghost" href="/locations">{{ icons.icon('building') }}{{ t('nav.locations') }}</a></div>
+</section>
+
+<section class="topology-summary inventory-summary">
+    <div><span>{{ t('inventory.locations') }}</span><strong>{{ inventory.summary.locations }}</strong></div>
+    <div><span>{{ t('inventory.rooms') }}</span><strong>{{ inventory.summary.rooms }}</strong></div>
+    <div><span>{{ t('inventory.racks') }}</span><strong>{{ inventory.summary.racks }}</strong></div>
+    <div><span>{{ t('inventory.panels') }}</span><strong>{{ inventory.summary.panels }}</strong></div>
+</section>
+
+<section class="topology-workspace cytoscape-workspace inventory-workspace"
+    data-label-location="{{ t('inventory.location') }}"
+    data-label-room="{{ t('inventory.room') }}"
+    data-label-rack="{{ t('inventory.rack') }}"
+    data-label-panel="{{ t('inventory.panel') }}"
+    data-label-code="{{ t('common.code') }}"
+    data-label-type="{{ t('common.type') }}"
+    data-label-details="{{ t('common.details') }}"
+    data-label-rooms="{{ t('common.rooms') }}"
+    data-label-racks="{{ t('common.racks') }}"
+    data-label-panels="{{ t('common.panels') }}"
+    data-label-ports="{{ t('common.ports') }}"
+    data-label-occupied="{{ t('common.occupied') }}"
+    data-label-floor="{{ t('inventory.floor') }}"
+    data-label-aggregate="{{ t('inventory.aggregate_panels') }}"
+    data-label-open="{{ t('inventory.open_asset') }}">
+    <div class="visualization-toolbar">
+        <div class="toolbar-title"><span class="toolbar-kicker">PHYSICAL HIERARCHY</span><strong>{{ t('inventory.model_title') }}</strong><span class="canvas-status"><i></i> Live inventory</span></div>
+        <div class="toolbar-tools">
+            <span class="interaction-hint">{{ icons.icon('move') }}{{ t('visual.pan_zoom_hint') }}</span>
+            <div class="tool-cluster">
+                <button class="cad-tool" type="button" data-graph-zoom-out aria-label="{{ t('action.zoom_out') }}">{{ icons.icon('zoom-out') }}</button>
+                <button class="cad-tool" type="button" data-graph-zoom-in aria-label="{{ t('action.zoom_in') }}">{{ icons.icon('zoom-in') }}</button>
+                <button class="cad-tool" type="button" data-graph-fit aria-label="{{ t('action.fit_view') }}">{{ icons.icon('maximize') }}</button>
+            </div>
+        </div>
+    </div>
+    <div class="topology-main inventory-main">
+        <div class="network-canvas cytoscape-shell inventory-canvas">
+            <div class="canvas-grid"></div>
+            <div class="cytoscape-canvas" data-cytoscape data-graph-mode="inventory"></div>
+            <div class="map-legend inventory-legend">
+                <span>{{ icons.icon('building', 15) }}{{ t('inventory.location') }}</span>
+                <span>{{ icons.icon('room', 15) }}{{ t('inventory.room') }}</span>
+                <span>{{ icons.icon('rack', 15) }}{{ t('inventory.rack') }}</span>
+                <span>{{ icons.icon('patch-panel', 15) }}{{ t('inventory.panel') }}</span>
+            </div>
+        </div>
+        <aside class="route-inspector inventory-inspector" data-inventory-inspector>
+            <div class="inspector-empty"><span class="empty-icon">{{ icons.icon('crosshair', 26) }}</span><h3>{{ t('inventory.inspector') }}</h3><p>{{ t('inventory.select_hint') }}</p></div>
+        </aside>
+    </div>
+    <script type="application/json" class="topology-data">{{ inventory|json_encode|raw }}</script>
+</section>
+{% endblock %}

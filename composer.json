@@ -1,0 +1,48 @@
+{
+  "name": "nstructure/nstructure",
+  "description": "Fiber infrastructure management and visualization platform",
+  "type": "project",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Marcin Grunt",
+      "email": "magu@magu.pl"
+    }
+  ],
+  "require": {
+    "php": "^8.3",
+    "ext-json": "*",
+    "ext-pdo": "*",
+    "ext-pdo_mysql": "*",
+    "slim/psr7": "^1.7",
+    "slim/slim": "^4.15",
+    "slim/twig-view": "^3.4",
+    "symfony/dotenv": "^7.3"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^12.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "NStructure\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "NStructure\\Tests\\": "tests/"
+    }
+  },
+  "scripts": {
+    "serve": "php -S 127.0.0.1:8080 -t public public/index.php",
+    "test": "phpunit",
+    "check": [
+      "@php -l public/index.php",
+      "@php -l bootstrap/app.php",
+      "@php -l bin/migrate.php"
+    ]
+  },
+  "config": {
+    "optimize-autoloader": true,
+    "sort-packages": true
+  }
+}

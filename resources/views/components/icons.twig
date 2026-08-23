@@ -1,0 +1,27 @@
+{% macro icon(name, size = 18) %}
+{% set lucide = {
+    'grid': 'layout-dashboard', 'topology': 'network', 'building': 'house',
+    'cable': 'cable', 'box': 'package', 'inventory': 'boxes', 'room': 'server-cog',
+    'rack': 'server', 'patch-panel': 'panel-top', 'splice': 'waypoints',
+    'settings': 'settings-2', 'search': 'search',
+    'plus': 'plus', 'sun': 'sun', 'menu': 'menu', 'chevron': 'chevron-right',
+    'arrow': 'arrow-right', 'activity': 'activity', 'alert': 'triangle-alert',
+    'server': 'server', 'panel': 'panels-top-left', 'filter': 'list-filter',
+    'download': 'download', 'maximize': 'maximize-2', 'zoom-in': 'zoom-in',
+    'zoom-out': 'zoom-out', 'close': 'x', 'layers': 'layers-3',
+    'rotate-left': 'rotate-ccw', 'rotate-right': 'rotate-cw', 'move': 'move',
+    'crosshair': 'crosshair', 'moon': 'moon', 'command': 'command', 'sparkles': 'sparkles',
+    'link': 'link-2', 'unlink': 'unlink-2', 'route': 'route', 'edit': 'square-pen', 'save': 'save', 'info': 'info',
+    'camera': 'camera', 'image': 'image', 'upload': 'upload', 'upload-cloud': 'cloud-upload',
+    'collapse': 'panel-left-close', 'expand': 'panel-left-open', 'trash': 'trash-2',
+    'ups': 'battery-charging', 'battery': 'battery-medium', 'power': 'gauge',
+    'network': 'ethernet-port', 'external-link': 'external-link',
+    'loc-office': 'building-2', 'loc-datacenter': 'server-cog', 'loc-server-room': 'server',
+    'loc-tower': 'radio-tower', 'loc-warehouse': 'warehouse', 'loc-campus': 'landmark',
+    'loc-cloud': 'cloud', 'loc-satellite': 'satellite-dish', 'loc-factory': 'factory',
+    'loc-globe': 'globe',
+    'user': 'circle-user', 'users': 'users', 'logout': 'log-out', 'shield': 'shield-check',
+    'chevron-down': 'chevron-down', 'photos': 'images'
+} %}
+<i class="icon icon-{{ name }}" data-lucide="{{ lucide[name]|default('circle') }}" style="width:{{ size }}px;height:{{ size }}px" aria-hidden="true"></i>
+{% endmacro %}

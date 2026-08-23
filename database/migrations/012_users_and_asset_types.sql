@@ -1,0 +1,15 @@
+CREATE TABLE users (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(190) NOT NULL,
+    name VARCHAR(160) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    archived_at TIMESTAMP NULL,
+    last_login_at TIMESTAMP NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT uq_users_email UNIQUE (email)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+ALTER TABLE asset_images
+    DROP CHECK chk_asset_images_entity_type,
+    ADD CONSTRAINT chk_asset_images_entity_type CHECK (entity_type IN ('RACK', 'PATCH_PANEL', 'LOCATION', 'SERVER_ROOM', 'CABLE'));

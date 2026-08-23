@@ -1,0 +1,110 @@
+{% import 'components/icons.twig' as icons %}
+<!doctype html>
+<html lang="{{ locale }}" data-theme="light" class="scroll-smooth">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#070b14">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <meta name="description" content="Fiber infrastructure management and visualization platform">
+    <title>{{ page_title }} · {{ app_name }}</title>
+    <link rel="stylesheet" href="/assets/tailwind.css?v=20260822p">
+    <link rel="stylesheet" href="/assets/app.css?v=20260823d">
+    <script src="/assets/vendor/preline.js?v=20260822p" defer></script>
+    <script src="/assets/vendor/lucide.min.js?v=20260822p" defer></script>
+    <script src="/assets/vendor/cytoscape.min.js?v=20260822p" defer></script>
+    <script src="/assets/vendor/konva.min.js?v=20260822p" defer></script>
+    <script src="/assets/app.js?v=20260823f" defer></script>
+</head>
+<body data-toast-created="{{ t('toast.created') }}" data-toast-saved="{{ t('toast.saved') }}" data-toast-deleted="{{ t('toast.deleted') }}" data-toast-error="{{ t('toast.error') }}" data-toast-image-uploaded="{{ t('toast.image_uploaded') }}" data-image-error-type="{{ t('photos.error_type') }}" data-image-error-size="{{ t('photos.error_size') }}" data-action-close="{{ t('action.close') }}" data-inspector-hint="{{ t('topology.select_hint') }}" data-searching="{{ t('search.searching') }}" data-search-empty="{{ t('search.empty') }}" data-target-empty="{{ t('form.destination_empty') }}" data-route-empty="{{ t('form.route_empty') }}" data-route-unavailable="{{ t('form.route_unavailable') }}" data-route-free-label="{{ t('form.route_free') }}" data-route-full-label="{{ t('form.route_full') }}" data-route-planned-label="{{ t('form.route_planned') }}" data-route-maintenance-label="{{ t('form.route_maintenance') }}" data-route-damaged-label="{{ t('form.route_damaged') }}" data-route-mixed-label="{{ t('form.route_mixed_medium') }}" data-route-select-label="{{ t('form.route_select') }}" data-confirm-disconnect-rear="{{ t('confirm.disconnect_rear_route') }}">
+<div class="ambient ambient-one"></div>
+<div class="ambient ambient-two"></div>
+<div class="mobile-overlay" data-sidebar-close></div>
+<div class="app-shell">
+    <aside class="sidebar" id="app-sidebar">
+        <div class="brand-row">
+            <a class="brand" href="/" aria-label="nStructure home">
+                <span class="brand-emblem"><span></span><span></span><span></span></span>
+                <span class="brand-copy"><strong>nStructure</strong><small>Fiber intelligence</small></span>
+            </a>
+            <button class="icon-button sidebar-toggle" type="button" data-sidebar-toggle data-collapse-label="{{ t('action.collapse_navigation') }}" data-expand-label="{{ t('action.expand_navigation') }}" aria-label="{{ t('action.collapse_navigation') }}" title="{{ t('action.collapse_navigation') }}">{{ icons.icon('collapse') }}</button>
+            <button class="icon-button sidebar-close" type="button" data-sidebar-close aria-label="{{ t('action.close') }}">{{ icons.icon('close') }}</button>
+        </div>
+        <div class="workspace-card hs-dropdown">
+            <button class="workspace-button hs-dropdown-toggle" type="button" aria-label="{{ t('nav.workspace') }}">
+                <span class="workspace-avatar">NO</span><span><small>{{ t('nav.workspace') }}</small><strong>Network Operations</strong></span><i data-lucide="chevrons-up-down" aria-hidden="true"></i>
+            </button>
+            <div class="hs-dropdown-menu workspace-menu hidden" role="menu"><span>Production workspace</span><small>Warsaw metro network</small></div>
+        </div>
+        <nav class="navigation" aria-label="Primary navigation">
+            <span class="nav-label">{{ t('nav.operations') }}</span>
+            <a class="nav-item {{ section == 'dashboard' ? 'active' : '' }}" href="/" data-nav-label="{{ t('nav.overview') }}" aria-label="{{ t('nav.overview') }}">{{ icons.icon('grid') }}<span>{{ t('nav.overview') }}</span></a>
+            <a class="nav-item {{ section == 'topology' ? 'active' : '' }}" href="/topology" data-nav-label="{{ t('nav.topology') }}" aria-label="{{ t('nav.topology') }}">{{ icons.icon('topology') }}<span>{{ t('nav.topology') }}</span><span class="nav-live"></span></a>
+            <span class="nav-label nav-label-spaced">{{ t('nav.inventory') }}</span>
+            <a class="nav-item {{ section == 'locations' ? 'active' : '' }}" href="/locations" data-nav-label="{{ t('nav.locations') }}" aria-label="{{ t('nav.locations') }}">{{ icons.icon('building') }}<span>{{ t('nav.locations') }}</span></a>
+            <a class="nav-item {{ section == 'cables' ? 'active' : '' }}" href="/cables" data-nav-label="{{ t('nav.cables') }}" aria-label="{{ t('nav.cables') }}">{{ icons.icon('cable') }}<span>{{ t('nav.cables') }}</span></a>
+            <a class="nav-item {{ section == 'inventory' ? 'active' : '' }}" href="/inventory" data-nav-label="{{ t('nav.inventory') }}" aria-label="{{ t('nav.inventory') }}">{{ icons.icon('inventory') }}<span>{{ t('nav.inventory') }}</span><span class="nav-live"></span></a>
+        </nav>
+        <div class="sidebar-bottom">
+            {% if demo_mode %}<div class="demo-pill"><span></span>{{ t('demo.label') }}</div>{% endif %}
+            {% if not demo_mode %}<a class="nav-item {{ section == 'account' ? 'active' : '' }}" href="/account" data-nav-label="{{ t('nav.settings') }}" aria-label="{{ t('nav.settings') }}">{{ icons.icon('user') }}<span>{{ t('nav.settings') }}</span></a>{% endif %}
+            <div class="user-row"><span class="user-avatar">{{ (current_user.name ?? 'Demo user')|slice(0, 2)|upper }}</span><span><strong>{{ current_user.name ?? 'Demo user' }}</strong><small>{{ current_user.email ?? t('demo.label') }}</small></span>{% if current_user %}<form class="user-logout" method="post" action="/logout"><input type="hidden" name="_token" value="{{ csrf_token }}"><button class="icon-button" type="submit" aria-label="{{ t('auth.logout') }}" title="{{ t('auth.logout') }}">{{ icons.icon('logout', 15) }}</button></form>{% endif %}</div>
+        </div>
+    </aside>
+    <div class="main-column">
+        <header class="topbar app-header">
+            <button class="icon-button mobile-menu" type="button" data-sidebar-open aria-label="{{ t('action.open_navigation') }}">{{ icons.icon('menu') }}</button>
+            <div class="header-context"><span>{{ app_name }}</span><strong>{{ page_title }}</strong></div>
+            <button class="search-trigger" type="button" data-command-open>{{ icons.icon('search') }}<span>{{ t('action.search') }}</span><kbd>⌘ K</kbd></button>
+            <div class="topbar-actions">
+                <a class="language-switch" href="{{ current_path }}?lang={{ locale == 'en' ? 'pl' : 'en' }}">{{ locale == 'en' ? 'PL' : 'EN' }}</a>
+                <button class="icon-button" type="button" data-theme-toggle aria-label="{{ t('action.toggle_theme') }}">{{ icons.icon('sun') }}</button>
+            </div>
+        </header>
+        <main class="page-content">{% block content %}{% endblock %}</main>
+    </div>
+</div>
+<dialog class="modal hs-overlay" id="location-modal">
+    <form class="modal-card" data-location-form>
+        <div class="modal-head"><div><span class="eyebrow">{{ t('action.add_location') }}</span><h2>{{ t('modal.location_title') }}</h2><p>{{ t('modal.location_subtitle') }}</p></div><button class="icon-button" type="button" data-location-modal-close aria-label="{{ t('action.close') }}">{{ icons.icon('close') }}</button></div>
+        <div class="form-grid"><label class="field"><span>{{ t('form.location_code') }}</span><input name="code" maxlength="40" placeholder="{{ t('form.location_code_hint') }}" required></label><label class="field"><span>{{ t('form.location_name') }}</span><input name="name" maxlength="160" placeholder="{{ t('form.location_name_hint') }}" required></label><label class="field field-wide"><span>{{ t('form.address') }}</span><input name="address" maxlength="255" placeholder="{{ t('form.address_hint') }}"></label></div>
+        <div class="field field-wide"><span>{{ t('form.location_icon') }}</span>{% include 'components/location-icon-picker.twig' %}</div>
+        <p class="form-error" data-form-error hidden></p>
+        <div class="modal-actions"><button class="button button-ghost" type="button" data-location-modal-close>{{ t('action.cancel') }}</button><button class="button button-primary" type="submit">{{ icons.icon('plus') }}{{ t('action.create') }}</button></div>
+    </form>
+</dialog>
+<dialog class="command-modal" id="command-modal">
+    <div class="command-card">
+        <div class="command-search">{{ icons.icon('search', 20) }}<input type="search" placeholder="{{ t('action.search') }}" data-command-input><kbd>ESC</kbd></div>
+        <div class="command-results" data-command-default><small>{{ t('nav.operations') }}</small><a href="/topology">{{ icons.icon('topology') }}<span><strong>{{ t('nav.topology') }}</strong><em>{{ t('topology.subtitle') }}</em></span><kbd>↵</kbd></a><a href="/inventory">{{ icons.icon('inventory') }}<span><strong>{{ t('nav.inventory') }}</strong><em>{{ t('inventory.subtitle') }}</em></span></a><a href="/locations">{{ icons.icon('building') }}<span><strong>{{ t('nav.locations') }}</strong><em>{{ t('locations.subtitle') }}</em></span></a><a href="/cables">{{ icons.icon('cable') }}<span><strong>{{ t('nav.cables') }}</strong><em>{{ t('cables.subtitle') }}</em></span></a></div>
+        <div class="command-results command-dynamic-results" data-command-results hidden></div>
+    </div>
+</dialog>
+<dialog class="modal hs-overlay delete-confirm-modal" id="delete-confirm-modal">
+    <div class="modal-card delete-confirm-card">
+        <div class="delete-confirm-icon">{{ icons.icon('trash', 26) }}</div>
+        <div class="delete-confirm-copy"><span class="eyebrow">{{ t('action.confirm_delete') }}</span><h2>{{ t('delete.title') }}</h2><p>{{ t('delete.warning') }}</p></div>
+        <div class="delete-target"><small>{{ t('delete.element') }}</small><strong data-delete-name>—</strong></div>
+        <p class="form-error delete-error" data-delete-error hidden></p>
+        <div class="modal-actions"><button class="button button-ghost" type="button" data-delete-close>{{ t('action.cancel') }}</button><button class="button button-danger" type="button" data-delete-confirm>{{ icons.icon('trash') }}{{ t('action.confirm_delete') }}</button></div>
+    </div>
+</dialog>
+<script type="application/json" id="delete-reason-messages">{{ {
+    'location_has_rooms': t('delete.location_has_rooms'),
+    'location_has_fiber_nodes': t('delete.location_has_fiber_nodes'),
+    'location_used_by_cable': t('delete.location_used_by_cable'),
+    'room_has_racks': t('delete.room_has_racks'),
+    'room_has_ups': t('delete.room_has_ups'),
+    'room_has_fiber_nodes': t('delete.room_has_fiber_nodes'),
+    'room_used_by_cable': t('delete.room_used_by_cable'),
+    'rack_has_panels': t('delete.rack_has_panels'),
+    'rack_has_devices': t('delete.rack_has_devices'),
+    'rack_used_by_cable': t('delete.rack_used_by_cable'),
+    'panel_has_used_ports': t('delete.panel_has_used_ports'),
+    'panel_used_by_fiber_route': t('delete.panel_used_by_fiber_route'),
+    'cable_has_used_fibers': t('delete.cable_has_used_fibers'),
+    'last_active_user': t('delete.last_active_user')
+}|json_encode|raw }}</script>
+<div class="toast" role="status" aria-live="polite" data-toast></div>
+</body>
+</html>

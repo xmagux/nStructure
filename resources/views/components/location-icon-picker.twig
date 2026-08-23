@@ -1,0 +1,9 @@
+{% import 'components/icons.twig' as icons %}
+{% set icon_picker_options = ['loc-office', 'loc-datacenter', 'loc-server-room', 'loc-tower', 'loc-warehouse', 'loc-campus', 'loc-cloud', 'loc-satellite', 'loc-factory', 'loc-globe'] %}
+{% set icon_picker_current = selected|default('loc-office') %}
+<div class="icon-picker" data-icon-picker>
+    <input type="hidden" name="icon_key" value="{{ icon_picker_current }}">
+    {% for opt in icon_picker_options %}
+    <button class="icon-picker-option{{ icon_picker_current == opt ? ' selected' : '' }}" type="button" data-icon-value="{{ opt }}" title="{{ t('location_icon.' ~ opt) }}" aria-label="{{ t('location_icon.' ~ opt) }}">{{ icons.icon(opt, 22) }}</button>
+    {% endfor %}
+</div>

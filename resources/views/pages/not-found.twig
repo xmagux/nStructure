@@ -1,0 +1,6 @@
+{% extends 'layouts/app.twig' %}
+{% import 'components/icons.twig' as icons %}
+
+{% block content %}
+<section class="not-found"><span class="not-found-code">404</span><span class="empty-icon">{{ icons.icon('topology', 32) }}</span><h1>{{ t('not_found.title') }}</h1><p>{{ t('not_found.subtitle') }}</p><a class="button button-primary" href="/">{{ icons.icon('arrow') }}{{ t('not_found.back') }}</a></section>
+{% endblock %}

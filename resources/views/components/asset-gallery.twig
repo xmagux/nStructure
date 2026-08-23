@@ -1,0 +1,40 @@
+<section class="asset-gallery-card card" data-asset-gallery>
+    <button class="asset-gallery-head" type="button" data-asset-gallery-toggle aria-expanded="false">
+        <div class="asset-gallery-heading">
+            <span class="asset-gallery-icon">{{ icons.icon('camera', 22) }}</span>
+            <div><span class="eyebrow">{{ t('photos.eyebrow') }}</span><h2>{{ title }}</h2><p>{{ subtitle }}</p></div>
+        </div>
+        <span class="asset-image-count">{{ icons.icon('image', 15) }}{{ images|length }} {{ t('photos.files') }}</span>
+        <span class="asset-gallery-chevron">{{ icons.icon('chevron-down', 18) }}</span>
+    </button>
+    <div class="asset-gallery-body" data-asset-gallery-body hidden>
+        <form class="asset-upload-form" action="{{ upload_url }}" method="post" enctype="multipart/form-data" data-asset-image-form>
+            <input class="asset-file-input" id="{{ input_id }}" name="image" type="file" accept="image/jpeg,image/png,image/webp" data-asset-image-input>
+            <label class="asset-dropzone" for="{{ input_id }}" data-asset-dropzone>
+                <span class="asset-dropzone-icon">{{ icons.icon('upload-cloud', 25) }}</span>
+                <span class="asset-dropzone-copy"><strong>{{ t('photos.drop_title') }}</strong><small>{{ t('photos.drop_hint') }}</small></span>
+                <span class="button button-ghost asset-browse-button">{{ t('photos.browse') }}</span>
+            </label>
+            <div class="asset-upload-selection" data-asset-upload-selection hidden>
+                <img alt="" data-asset-upload-preview>
+                <span><strong data-asset-upload-name>—</strong><small data-asset-upload-size>—</small></span>
+                <button class="button button-primary" type="submit" data-asset-upload-submit>{{ icons.icon('upload', 16) }}{{ t('photos.upload') }}</button>
+            </div>
+            <p class="form-error" data-form-error hidden></p>
+        </form>
+
+        {% if images %}
+            <div class="asset-photo-grid">
+                {% for image in images %}
+                    <button class="asset-photo" type="button" data-asset-lightbox-open data-image-src="{{ image.url }}" data-image-alt="{{ entity_code }} · {{ image.original_name }}">
+                        <img src="{{ image.url }}" alt="{{ entity_code }} · {{ image.original_name }}" loading="lazy" width="{{ image.width_px }}" height="{{ image.height_px }}">
+                        <span class="asset-photo-overlay">{{ icons.icon('maximize', 19) }}<strong>{{ t('photos.open') }}</strong></span>
+                        <span class="asset-photo-meta"><strong>{{ image.original_name }}</strong><small>{{ (image.size_bytes / 1048576)|number_format(1) }} MB · {{ image.width_px }}×{{ image.height_px }}</small></span>
+                    </button>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="asset-gallery-empty">{{ icons.icon('image', 26) }}<span><strong>{{ t('photos.empty_title') }}</strong><small>{{ t('photos.empty_hint') }}</small></span></div>
+        {% endif %}
+    </div>
+</section>

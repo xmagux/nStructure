@@ -1,0 +1,209 @@
+{% extends 'layouts/app.twig' %}
+{% import 'components/icons.twig' as icons %}
+
+{% block content %}
+{% set port_edit_fields %}
+<input type="hidden" name="port_id">
+<section class="port-form-section">
+    <div class="port-form-section-head"><span class="connection-side-icon neutral">{{ icons.icon('settings', 17) }}</span><div><strong>{{ t('form.port_identity') }}</strong><small>{{ t('form.port_identity_hint') }}</small></div></div>
+    <div class="form-grid">
+        <label class="field"><span>{{ t('form.connector_type') }}</span><select name="connector_type_id" required>{% for connector in connector_types %}<option value="{{ connector.id }}">{{ connector.code }}</option>{% endfor %}</select></label>
+        <label class="field"><span>{{ t('form.port_status') }}</span><select name="administrative_status"><option value="AVAILABLE">{{ t('common.available') }}</option><option value="RESERVED">{{ t('common.reserved') }}</option><option value="BLOCKED">{{ t('common.blocked') }}</option><option value="DAMAGED">{{ t('common.damaged') }}</option></select></label>
+        <label class="field field-wide"><span>{{ t('form.port_label') }}</span><input name="label" maxlength="120" placeholder="{{ t('form.port_label_hint') }}"></label>
+        <label class="field field-wide"><span>{{ t('form.notes') }}</span><textarea name="notes" maxlength="2000" rows="3" placeholder="{{ t('form.port_notes_hint') }}"></textarea></label>
+    </div>
+</section>
+<section class="port-form-section connection-side-card rear-side">
+    <div class="port-form-section-head"><span class="connection-side-icon rear">{{ icons.icon('cable', 18) }}</span><div><strong>{{ t('panel.rear_side') }}</strong><small>{{ t('panel.rear_side_hint') }}</small></div></div>
+    <div class="documented-connection-card"><span class="documented-connection-icon">{{ icons.icon('topology', 18) }}</span><div><small>{{ t('form.current_rear_route') }}</small><strong data-port-form-rear-destination>—</strong><em>{{ t('form.rear_route_list_only') }}</em></div></div>
+    <input type="hidden" name="rear_connection_mode" value="UNCHANGED">
+    <div class="rear-side-actions">
+        <button class="button button-ghost button-block" type="button" data-port-connect-open data-port-route-picker>{{ icons.icon('route', 16) }}{{ t('action.select_rear_route') }}</button>
+        <button class="button button-danger-subtle button-block" type="button" data-rear-disconnect hidden>{{ icons.icon('unlink', 16) }}{{ t('action.disconnect_rear_route') }}</button>
+    </div>
+</section>
+<section class="port-form-section connection-side-card front-side">
+    <div class="port-form-section-head"><span class="connection-side-icon front">{{ icons.icon('router', 18) }}</span><div><strong>{{ t('panel.front_side') }}</strong><small>{{ t('panel.front_side_hint') }}</small></div></div>
+    <div class="form-grid"><label class="field field-wide"><span>{{ t('form.front_connection') }}</span><select name="front_connection_mode" data-front-connection-mode><option value="NONE">{{ t('form.front_connection_none') }}</option><option value="DEVICE">{{ t('form.front_connection_device') }}</option><option value="PORT">{{ t('form.front_connection_rack') }}</option></select></label></div>
+    <div data-front-device-fields hidden>
+        <div class="form-grid"><label class="field field-wide"><span>{{ t('form.active_device') }}</span><select name="active_device_id" data-active-device-select><option value="">{{ t('form.active_device_new') }}</option>{% for device in active_device_options.devices %}<option value="{{ device.id }}">{{ device.label }}</option>{% endfor %}</select><small>{{ t('form.active_device_hint') }}</small></label></div>
+        <div class="new-device-fields" data-new-active-device-fields>
+            <div class="form-grid">
+                <label class="field field-wide"><span>{{ t('form.device_rack') }}</span><select name="active_device_rack_id" data-active-device-rack><option value="">{{ t('form.select_rack') }}</option>{% for rack_option in active_device_options.racks %}<option value="{{ rack_option.id }}" {{ rack_option.id == panel.rack_id ? 'selected' : '' }}>{{ rack_option.label }}</option>{% endfor %}</select></label>
+                <label class="field"><span>{{ t('form.device_type') }}</span><select name="active_device_type"><option value="SWITCH">{{ t('device.switch') }}</option><option value="ROUTER">{{ t('device.router') }}</option><option value="FIREWALL">{{ t('device.firewall') }}</option><option value="TRANSPORT">{{ t('device.transport') }}</option><option value="SERVER">{{ t('device.server') }}</option><option value="OTHER">{{ t('device.other') }}</option></select></label>
+                <label class="field"><span>{{ t('form.device_vendor') }}</span><input name="active_device_vendor" maxlength="120" list="active-device-vendors" placeholder="Juniper"></label>
+                <label class="field"><span>{{ t('form.device_name') }}</span><input name="active_device_name" maxlength="160" placeholder="{{ t('form.device_name_hint') }}"></label>
+                <label class="field"><span>{{ t('form.device_model') }}</span><input name="active_device_model" maxlength="120" placeholder="EX4650 / PA-3410 / FortiGate 200F"></label>
+            </div>
+        </div>
+        <div class="interface-fields">
+            <span class="form-subheading">{{ t('form.device_interface') }}</span>
+            <div class="form-grid">
+                <label class="field"><span>{{ t('form.interface_name') }}</span><input name="active_interface_name" maxlength="120" placeholder="xe-0/0/0" data-device-interface-name></label>
+                <label class="field"><span>{{ t('form.interface_type') }}</span><select name="active_interface_type"><option value="SFP">SFP</option><option value="SFP_PLUS">SFP+</option><option value="SFP28">SFP28</option><option value="QSFP_PLUS">QSFP+</option><option value="QSFP28">QSFP28</option><option value="RJ45">RJ45</option><option value="OTHER">{{ t('device.other') }}</option></select></label>
+                <label class="field"><span>{{ t('form.interface_speed') }}</span><input name="active_interface_speed" maxlength="40" placeholder="10G / 25G / 100G"></label>
+            </div>
+        </div>
+    </div>
+    <div class="front-port-fields" data-front-port-fields hidden>
+        <div class="form-grid">
+            <label class="field field-wide"><span>{{ t('form.find_front_rack_port') }}</span><div class="field-search">{{ icons.icon('search', 17) }}<input type="search" data-front-target-search placeholder="{{ t('form.front_target_hint') }}"></div></label>
+            <label class="field field-wide"><span>{{ t('form.front_destination_port') }}</span><select name="front_destination_port_id" size="7" data-front-target-select></select><small data-front-target-status data-count-label="{{ t('form.front_target_count') }}" data-empty-label="{{ t('form.front_target_empty') }}">{{ t('form.front_target_start_hint') }}</small></label>
+        </div>
+    </div>
+    <div class="front-common-fields" data-front-common-fields hidden>
+        <div class="form-grid">
+            <label class="field"><span>{{ t('form.patch_cord_label') }}</span><input name="front_patch_cord_label" maxlength="120" placeholder="PC-LC-001"></label>
+            <label class="field field-wide"><span>{{ t('form.front_connection_notes') }}</span><textarea name="front_connection_notes" maxlength="2000" rows="2" placeholder="{{ t('form.front_connection_notes_hint') }}"></textarea></label>
+        </div>
+    </div>
+</section>
+{% endset %}
+<datalist id="active-device-vendors"><option value="Juniper"><option value="Palo Alto Networks"><option value="Fortinet"><option value="Cisco"><option value="Arista Networks"></datalist>
+<nav class="breadcrumbs"><a href="/locations">{{ t('nav.locations') }}</a><span>›</span><a href="/locations/{{ panel.location_id }}">{{ panel.location }}</a><span>›</span><a href="/racks/{{ panel.rack_id }}">{{ panel.rack }}</a><span>›</span><strong>{{ panel.code }}</strong></nav>
+<section class="page-hero compact-hero">
+    <div><span class="eyebrow">{{ t('panel.eyebrow') }}</span><h1>{{ panel.code }} · {{ panel.name }}</h1><p>{{ panel.location }} · {{ panel.room }} · {{ panel.rack }}</p></div>
+    <div class="hero-actions"><button class="button button-ghost" type="button" data-panel-edit-open>{{ icons.icon('edit') }}{{ t('action.edit_panel') }}</button><button class="button button-danger-subtle" type="button" data-delete-open data-delete-url="/api/v1/patch-panels/{{ panel.id }}" data-delete-name="{{ panel.code }} · {{ panel.name }}" data-delete-redirect="/racks/{{ panel.rack_id }}">{{ icons.icon('trash') }}{{ t('action.delete') }}</button><button class="button button-ghost" type="button" data-trace-selected>{{ icons.icon('activity') }}{{ t('action.trace') }}</button><button class="button button-primary" type="button" data-port-connect-open disabled>{{ icons.icon('link') }}{{ t('action.connect_rear_port') }}</button></div>
+</section>
+
+<section class="panel-summary-grid premium-summary">
+    <div><span>{{ t('panel.incoming_cable') }}</span><strong>{{ panel.incoming }}</strong></div>
+    <div><span>{{ t('panel.connector') }}</span><strong>{{ panel.connector }}</strong></div>
+    <div><span>{{ t('common.occupied') }}</span><strong>{{ panel.occupied }}/{{ panel.ports }}</strong></div>
+    <div class="attention-metric"><span>{{ t('common.unterminated') }}</span><strong>{{ panel.unterminated }}</strong></div>
+</section>
+
+<section class="panel-layout cad-panel-layout">
+    <div class="panel-workspace-card cad-workspace" data-konva-workspace>
+        <div class="visualization-toolbar">
+            <div class="toolbar-title"><span class="toolbar-kicker">PORT MICRO-VIEW</span><strong>{{ t('panel.title') }}</strong><span class="canvas-status"><i></i> {{ panel.ports }} PORT</span></div>
+            <div class="toolbar-tools">
+                <span class="interaction-hint">{{ icons.icon('move') }}{{ t('visual.canvas_hint') }}</span>
+                <div class="tool-cluster">
+                    <button class="cad-tool" type="button" data-canvas-rotate-left aria-label="{{ t('action.rotate_left') }}">{{ icons.icon('rotate-left') }}</button>
+                    <button class="cad-tool" type="button" data-canvas-rotate-right aria-label="{{ t('action.rotate_right') }}">{{ icons.icon('rotate-right') }}</button>
+                    <span class="tool-divider"></span>
+                    <button class="cad-tool" type="button" data-canvas-zoom-out aria-label="{{ t('action.zoom_out') }}">{{ icons.icon('zoom-out') }}</button>
+                    <button class="cad-tool" type="button" data-canvas-zoom-in aria-label="{{ t('action.zoom_in') }}">{{ icons.icon('zoom-in') }}</button>
+                    <button class="cad-tool" type="button" data-canvas-fit aria-label="{{ t('action.fit_view') }}">{{ icons.icon('crosshair') }}</button>
+                </div>
+            </div>
+        </div>
+        <div class="konva-shell panel-konva-shell">
+            <div class="canvas-grid"></div>
+            <div class="konva-stage" data-panel-canvas data-patch-cord-label="{{ t('panel.patch_cord') }}" data-fiber-termination-label="{{ t('panel.fiber_termination') }}" data-rear-side-label="{{ t('panel.rear_side') }}" data-front-side-label="{{ t('panel.front_side') }}" role="img" aria-label="{{ t('panel.title') }}"></div>
+            <div class="zoom-readout" data-zoom-readout>100%</div>
+        </div>
+        {% if panel.unterminated > 0 %}<div class="loose-fibers-callout"><span class="alert-icon">{{ icons.icon('alert', 18) }}</span><div><strong>{{ panel.unterminated }} {{ t('panel.loose_fibers')|lower }}</strong><p>{{ t('panel.loose_fibers_hint') }}</p></div><span class="fiber-range">{{ panel.terminated_ports + 1 }}–{{ panel.incoming_capacity }}</span></div>{% endif %}
+        <script type="application/json" class="panel-data">{{ panel|json_encode|raw }}</script>
+    </div>
+
+    <aside class="port-inspector" data-port-inspector>
+        <div class="inspector-head"><span class="eyebrow">{{ t('panel.port_inspector') }}</span><strong data-port-title>—</strong></div>
+        <div class="inspector-empty" data-port-empty><span class="empty-icon">{{ icons.icon('panel', 26) }}</span><p>{{ t('panel.select_hint') }}</p></div>
+        <div class="port-details" data-port-details hidden>
+            <div class="selected-port-visual"><i data-port-color></i><span><small>{{ t('panel.port') }}</small><strong data-port-number>—</strong></span><span class="status-badge" data-port-status>—</span></div>
+            <dl><div><dt>{{ t('panel.connector') }}</dt><dd data-port-connector>—</dd></div><div><dt>{{ t('panel.port_label') }}</dt><dd data-port-label>—</dd></div><div><dt>{{ t('panel.fiber') }}</dt><dd data-port-fiber>—</dd></div><div><dt>{{ t('panel.loss') }}</dt><dd data-port-loss>—</dd></div><div class="wide connection-detail rear"><dt>{{ t('panel.rear_side') }}</dt><dd data-port-rear-destination>—</dd></div><div class="wide connection-detail front"><dt>{{ t('panel.front_side') }}</dt><dd data-port-front-destination>—</dd></div><div class="wide"><dt>{{ t('panel.notes') }}</dt><dd data-port-notes>—</dd></div></dl>
+            <div class="inspector-actions"><button class="button button-ghost" type="button" data-port-inline-edit-open>{{ icons.icon('edit') }}{{ t('action.edit_port') }}</button><button class="button button-primary" type="button" data-trace-button>{{ icons.icon('topology') }}{{ t('action.trace') }}</button></div>
+            <form class="port-inline-editor" data-port-inline-edit-form hidden>
+                <div class="inline-editor-head"><span>{{ icons.icon('edit', 16) }}<strong>{{ t('panel.inline_edit_title') }}</strong></span><button class="icon-button" type="button" data-port-inline-edit-close aria-label="{{ t('action.close') }}">{{ icons.icon('close', 16) }}</button></div>
+                {{ port_edit_fields|raw }}
+                <p class="form-error" data-form-error hidden></p>
+                <div class="inline-editor-actions"><button class="button button-ghost" type="button" data-port-inline-edit-close>{{ t('action.cancel') }}</button><button class="button button-primary" type="submit">{{ icons.icon('save') }}{{ t('action.save') }}</button></div>
+            </form>
+            <div class="fiber-trace-result" data-trace-result hidden></div>
+        </div>
+    </aside>
+</section>
+
+{% include 'components/asset-gallery.twig' with {
+    images: panel.images,
+    upload_url: '/api/v1/patch-panels/' ~ panel.id ~ '/images',
+    input_id: 'panel-image-upload',
+    entity_code: panel.code,
+    title: t('photos.panel_title'),
+    subtitle: t('photos.panel_subtitle')
+} %}
+
+<section class="port-management-card" data-port-management>
+    <div class="port-management-head">
+        <div>
+            <span class="eyebrow">{{ t('panel.port_management') }}</span>
+            <h2>{{ t('panel.port_management_title') }}</h2>
+            <p>{{ t('panel.port_management_subtitle') }}</p>
+        </div>
+        <label class="inline-search port-management-search">{{ icons.icon('search', 18) }}<input type="search" data-panel-port-search placeholder="{{ t('panel.port_search_hint') }}"></label>
+    </div>
+    <div class="port-table-shell">
+        <table class="port-management-table">
+            <thead><tr><th>{{ t('panel.port') }}</th><th>{{ t('common.status') }}</th><th>{{ t('panel.port_label') }}</th><th>{{ t('panel.connector') }}</th><th>{{ t('panel.fiber') }}</th><th>{{ t('panel.rear_side') }}</th><th>{{ t('panel.front_side') }}</th><th>{{ t('common.details') }}</th></tr></thead>
+            <tbody data-panel-port-list>
+            {% for port in panel.port_items %}
+                <tr data-panel-port-row data-search-value="{{ (port.number ~ ' ' ~ port.label ~ ' ' ~ port.connector ~ ' ' ~ port.fiber ~ ' ' ~ port.rear_destination ~ ' ' ~ port.front_destination ~ ' ' ~ port.status)|lower }}">
+                    <td><button class="port-number-button" type="button" data-port-inspect data-port-id="{{ port.id }}"><span>{{ '%02d'|format(port.number) }}</span><small>{{ panel.code }}</small></button></td>
+                    <td><span class="status-badge status-{{ port.status }}"><i></i>{{ t('common.' ~ port.status) }}</span></td>
+                    <td><strong class="port-primary-value">{{ port.label ?: '—' }}</strong></td>
+                    <td><span class="connector-chip">{{ port.connector }}</span></td>
+                    <td><span class="port-secondary-value">{{ port.fiber ?: '—' }}</span></td>
+                    <td><span class="port-destination-value rear-value">{{ port.rear_destination ?: '—' }}</span></td>
+                    <td><span class="port-destination-value front-value">{{ port.front_destination ?: '—' }}</span></td>
+                    <td>
+                        <div class="port-row-actions">
+                            <button class="button button-ghost button-small" type="button" data-port-edit-open data-port-id="{{ port.id }}">{{ icons.icon('edit', 15) }}{{ t('action.edit') }}</button>
+                            <button class="button button-primary button-small" type="button" data-port-connect-open data-port-id="{{ port.id }}" {% if port.has_patch_cord or port.status in ['blocked', 'damaged'] %}disabled{% endif %}>{{ icons.icon('link', 15) }}{{ t('action.connect_rear_port') }}</button>
+                        </div>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="port-management-empty" data-panel-port-empty hidden>{{ icons.icon('search', 20) }}<span>{{ t('panel.port_search_empty') }}</span></div>
+</section>
+
+<dialog class="modal hs-overlay" id="panel-edit-modal">
+    <form class="modal-card modal-card-wide" data-panel-edit-form data-panel-id="{{ panel.id }}">
+        <div class="modal-head"><div><span class="eyebrow">{{ t('action.edit_panel') }}</span><h2>{{ t('modal.panel_edit_title') }}</h2><p>{{ panel.rack }} · U{{ panel.rack_unit_start - panel.rack_unit_height + 1 }}–U{{ panel.rack_unit_start }}</p></div><button class="icon-button" type="button" data-panel-edit-close aria-label="{{ t('action.close') }}">{{ icons.icon('close') }}</button></div>
+        <div class="form-grid">
+            <label class="field"><span>{{ t('form.panel_code') }}</span><input name="code" maxlength="60" value="{{ panel.code }}" required></label>
+            <label class="field"><span>{{ t('form.panel_name') }}</span><input name="name" maxlength="160" value="{{ panel.name }}" required></label>
+            <label class="field"><span>{{ t('form.rack_unit_start') }}</span><input name="rack_unit_start" type="number" min="1" max="60" value="{{ panel.rack_unit_start }}" required></label>
+            <label class="field"><span>{{ t('form.panel_height') }}</span><select name="rack_unit_height" required>{% for height in 1..6 %}<option value="{{ height }}" {{ height == panel.rack_unit_height ? 'selected' : '' }}>{{ height }}U</option>{% endfor %}</select></label>
+            <label class="field"><span>{{ t('form.port_count') }}</span><input name="port_count" type="number" min="1" max="288" value="{{ panel.ports }}" required></label>
+            <label class="field"><span>{{ t('form.layout_rows') }}</span><input name="layout_rows" type="number" min="1" max="12" value="{{ panel.layout_rows }}" required></label>
+            <label class="field"><span>{{ t('form.connector_type') }}</span><select name="connector_type_id" required>{% for connector in connector_types %}<option value="{{ connector.id }}" {{ connector.id == panel.connector_type_id ? 'selected' : '' }}>{{ connector.code }}</option>{% endfor %}</select></label>
+            <label class="field"><span>{{ t('form.manufacturer') }}</span><input name="manufacturer" maxlength="120" value="{{ panel.manufacturer }}"></label>
+            <label class="field field-wide"><span>{{ t('form.model') }}</span><input name="model" maxlength="120" value="{{ panel.model }}"></label>
+        </div>
+        <div class="form-note">{{ icons.icon('info', 16) }}<span>{{ t('form.panel_resize_hint') }}</span></div>
+        <p class="form-error" data-form-error hidden></p><div class="modal-actions"><button class="button button-ghost" type="button" data-panel-edit-close>{{ t('action.cancel') }}</button><button class="button button-primary" type="submit">{{ icons.icon('save') }}{{ t('action.save') }}</button></div>
+    </form>
+</dialog>
+
+<dialog class="modal hs-overlay" id="port-edit-modal">
+    <form class="modal-card modal-card-wide port-edit-modal-card" data-port-edit-form>
+        <div class="modal-head"><div><span class="eyebrow">{{ t('action.edit_port') }}</span><h2>{{ t('modal.port_title') }}</h2><p data-edit-port-context>—</p></div><button class="icon-button" type="button" data-port-edit-close aria-label="{{ t('action.close') }}">{{ icons.icon('close') }}</button></div>
+        {{ port_edit_fields|raw }}
+        <p class="form-error" data-form-error hidden></p>
+        <div class="modal-actions"><button class="button button-ghost" type="button" data-port-edit-close>{{ t('action.cancel') }}</button><button class="button button-primary" type="submit">{{ icons.icon('save') }}{{ t('action.save') }}</button></div>
+    </form>
+</dialog>
+
+<dialog class="modal hs-overlay" id="port-connect-modal">
+    <form class="modal-card modal-card-wide" data-port-connect-form>
+        <div class="modal-head"><div><span class="eyebrow">{{ t('action.connect_port') }}</span><h2>{{ t('modal.connection_title') }}</h2><p>{{ t('modal.connection_subtitle') }}</p></div><button class="icon-button" type="button" data-port-connect-close aria-label="{{ t('action.close') }}">{{ icons.icon('close') }}</button></div>
+        <input type="hidden" name="source_port_id">
+        <div class="connection-source-card">{{ icons.icon('panel', 20) }}<span><small>{{ t('form.source_port') }}</small><strong data-connect-source>—</strong></span></div>
+        <div class="form-grid">
+            <label class="field field-wide"><span>{{ t('form.physical_fiber_route') }}</span><select name="rear_route_key" required data-rear-route-select><option value="">{{ t('form.route_loading') }}</option></select><small data-rear-route-status>{{ t('form.route_start_hint') }}</small></label>
+            <div class="rear-route-summary field-wide" data-rear-route-summary hidden><span class="rear-route-summary-icon">{{ icons.icon('cable', 20) }}</span><div><strong data-rear-route-name>—</strong><small data-rear-route-detail>—</small></div><span class="status-badge status-active" data-rear-route-capacity>—</span></div>
+            <label class="field field-wide"><span>{{ t('form.find_destination') }}</span><div class="field-search">{{ icons.icon('search', 17) }}<input type="search" data-target-search placeholder="{{ t('form.destination_hint') }}" disabled></div></label>
+            <label class="field field-wide"><span>{{ t('form.destination_port') }}</span><select name="destination_port_id" size="9" required data-target-select disabled></select><small data-target-status data-count-label="{{ t('form.destination_count') }}">{{ t('form.destination_route_hint') }}</small></label>
+            <label class="field field-wide"><span>{{ t('form.connection_notes') }}</span><textarea name="notes" maxlength="2000" rows="3"></textarea></label>
+        </div>
+        <div class="form-note">{{ icons.icon('info', 16) }}<span>{{ t('form.connection_domain_hint') }}</span></div>
+        <p class="form-error" data-form-error hidden></p>
+        <div class="modal-actions"><button class="button button-ghost" type="button" data-port-connect-close>{{ t('action.cancel') }}</button><button class="button button-primary" type="submit" data-port-connect-submit disabled>{{ icons.icon('link') }}{{ t('action.create_connection') }}</button></div>
+    </form>
+</dialog>
+{% endblock %}

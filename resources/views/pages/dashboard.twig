@@ -1,0 +1,106 @@
+{% extends 'layouts/app.twig' %}
+{% import 'components/icons.twig' as icons %}
+
+{% block content %}
+<section class="page-hero dashboard-hero">
+    <div>
+        <span class="eyebrow"><span class="pulse-dot"></span>{{ t('dashboard.eyebrow') }}</span>
+        <h1>{{ t('dashboard.title') }}</h1>
+        <p>{{ t('dashboard.subtitle') }}</p>
+    </div>
+    <div class="sync-status"><span></span>{{ t('dashboard.last_sync') }}</div>
+</section>
+
+<section class="stats-grid">
+    {% for stat in stats %}
+    <article class="stat-card tone-{{ stat.tone }}">
+        <div class="stat-icon">{{ icons.icon(stat.key == 'locations' ? 'building' : (stat.key == 'active_cables' ? 'cable' : (stat.key == 'fiber_capacity' ? 'activity' : 'alert'))) }}</div>
+        <span class="stat-label">{{ t('stats.' ~ stat.key) }}</span>
+        <strong>{{ stat.value }}</strong>
+        <span class="stat-trend">{{ stat.trend }}</span>
+        <div class="stat-glow"></div>
+    </article>
+    {% endfor %}
+</section>
+
+<section class="dashboard-grid dashboard-primary-grid">
+    <article class="card topology-preview-card">
+        <div class="card-heading">
+            <div><h2>{{ t('dashboard.network_map') }}</h2><p>{{ t('dashboard.network_map_subtitle') }}</p></div>
+            <a class="text-link" href="/topology">{{ t('action.explore') }} {{ icons.icon('arrow', 16) }}</a>
+        </div>
+        <div class="mini-topology cytoscape-shell">
+            <div class="canvas-grid"></div>
+            <div class="map-interaction-badge">{{ icons.icon('move', 14) }}{{ t('visual.pan_zoom_hint') }}</div>
+            <div class="cytoscape-canvas" data-cytoscape></div>
+        </div>
+        <script type="application/json" class="topology-data">{{ topology|json_encode|raw }}</script>
+        <div class="topology-footer">
+            <span><i class="legend-dot violet"></i>48J SM</span>
+            <span><i class="legend-dot cyan"></i>24J SM</span>
+            <span><i class="legend-dot amber"></i>{{ t('topology.legend_partial') }}</span>
+        </div>
+    </article>
+
+    <article class="card health-card">
+        <div class="card-heading"><div><h2>{{ t('dashboard.health') }}</h2><p>{{ t('dashboard.health_subtitle') }}</p></div>{{ icons.icon('activity', 20) }}</div>
+        <div class="health-score-wrap">
+            <div class="health-ring" style="--score: {{ health.score }}"><div><strong>{{ health.score }}%</strong><span>{{ t('health.excellent') }}</span></div></div>
+        </div>
+        <div class="health-breakdown">
+            <div><span><i class="legend-dot cyan"></i>{{ t('health.active') }}</span><strong>{{ health.active }}</strong></div>
+            <div><span><i class="legend-dot blue"></i>{{ t('health.available') }}</span><strong>{{ health.available }}</strong></div>
+            <div><span><i class="legend-dot amber"></i>{{ t('health.reserved') }}</span><strong>{{ health.reserved }}</strong></div>
+            <div><span><i class="legend-dot red"></i>{{ t('health.damaged') }}</span><strong>{{ health.damaged }}</strong></div>
+        </div>
+    </article>
+</section>
+
+<section class="section-block">
+    <div class="section-heading"><div><h2>{{ t('dashboard.locations') }}</h2><p>{{ t('locations.subtitle') }}</p></div><a class="text-link" href="/locations">{{ t('action.view_all') }} {{ icons.icon('arrow', 16) }}</a></div>
+    <div class="location-strip">
+        {% for location in locations|slice(0, 3) %}
+        <a class="location-card tone-{{ location.accent }}" href="/locations/{{ location.id }}">
+            <div class="location-card-top"><span class="location-symbol">{{ icons.icon(location.icon_key, 22) }}</span><span class="status-badge status-{{ location.status }}"><i></i>{{ t('common.' ~ location.status) }}</span></div>
+            <span class="code-label">{{ location.code }}</span>
+            <h3>{{ location.name }}</h3>
+            <p>{{ location.address }}</p>
+            <div class="location-metrics"><span><strong>{{ location.rooms }}</strong>{{ t('common.rooms') }}</span><span><strong>{{ location.racks }}</strong>{{ t('common.racks') }}</span><span><strong>{{ location.panels }}</strong>{{ t('common.panels') }}</span></div>
+            <div class="util-row"><span>{{ t('common.utilization') }}</span><strong>{{ location.utilization }}%</strong></div>
+            <div class="progress"><i style="width: {{ location.utilization }}%"></i></div>
+        </a>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="dashboard-grid dashboard-secondary-grid">
+    <article class="card table-card">
+        <div class="card-heading"><div><h2>{{ t('dashboard.cables') }}</h2><p>{{ t('cables.subtitle') }}</p></div><a class="text-link" href="/cables">{{ t('action.view_all') }} {{ icons.icon('arrow', 16) }}</a></div>
+        <div class="responsive-table">
+            <table>
+                <thead><tr><th>{{ t('cables.route') }}</th><th>{{ t('common.capacity') }}</th><th>{{ t('common.medium') }}</th><th>{{ t('common.status') }}</th><th></th></tr></thead>
+                <tbody>
+                {% for cable in cables %}
+                    <tr><td><span class="route-cell"><i class="route-line {{ cable.accent }}"></i><span><strong>{{ cable.code }}</strong><small>{{ cable.source }} → {{ cable.destinations|join(', ') }}</small></span></span></td><td><strong>{{ cable.used }}/{{ cable.fiber_count }}J</strong></td><td><span class="medium-chip">{{ cable.medium }}</span></td><td><span class="status-badge status-{{ cable.status }}"><i></i>{{ t('common.' ~ cable.status) }}</span></td><td><button class="row-action" type="button" aria-label="{{ t('action.details') }}">{{ icons.icon('chevron', 16) }}</button></td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </article>
+
+    <div class="stacked-cards">
+        <article class="card alerts-card">
+            <div class="card-heading"><h2>{{ t('dashboard.alerts') }}</h2><span class="count-pill">{{ alerts|length }}</span></div>
+            <div class="alert-list">
+                {% for alert in alerts %}<div class="alert-row severity-{{ alert.severity }}"><span class="alert-icon">{{ icons.icon('alert', 17) }}</span><span><strong>{{ alert.title }}</strong><small>{{ alert.detail }}</small></span><time>{{ alert.time }}</time></div>{% endfor %}
+            </div>
+        </article>
+        <article class="card activity-card">
+            <div class="card-heading"><h2>{{ t('dashboard.activity') }}</h2></div>
+            <div class="activity-list">
+                {% for item in activity %}<div class="activity-row"><span class="activity-avatar tone-{{ item.tone }}">{{ item.initials }}</span><span><strong>{{ item.action }}</strong><small>{{ item.time }}</small></span></div>{% endfor %}
+            </div>
+        </article>
+    </div>
+</section>
+{% endblock %}

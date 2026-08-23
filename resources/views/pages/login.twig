@@ -1,0 +1,13 @@
+{% extends 'layouts/auth.twig' %}
+
+{% block content %}
+<div class="auth-head"><span class="eyebrow">nStructure</span><h1>{{ t('auth.login_title') }}</h1><p>{{ t('auth.login_subtitle') }}</p></div>
+<form class="auth-form" method="post" action="/login">
+    <input type="hidden" name="_token" value="{{ csrf_token }}">
+    <input type="hidden" name="redirect" value="{{ redirect }}">
+    <label class="field"><span>{{ t('auth.email') }}</span><input type="email" name="email" maxlength="190" autocomplete="username" autofocus required></label>
+    <label class="field"><span>{{ t('auth.password') }}</span><input type="password" name="password" maxlength="200" autocomplete="current-password" required></label>
+    {% if error %}<p class="form-error">{{ t(error) }}</p>{% endif %}
+    <button class="button button-primary button-block" type="submit">{{ t('auth.sign_in') }}</button>
+</form>
+{% endblock %}

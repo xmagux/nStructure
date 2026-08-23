@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="{{ locale }}" data-theme="light">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#070b14">
+    <title>{{ page_title }} · {{ app_name }}</title>
+    <link rel="stylesheet" href="/assets/tailwind.css?v=20260822p">
+    <link rel="stylesheet" href="/assets/app.css?v=20260823d">
+</head>
+<body>
+<div class="auth-shell">
+    <div class="auth-card">
+        <div class="auth-brand"><span class="brand-emblem"><span></span><span></span><span></span></span><strong>nStructure</strong></div>
+        {% block content %}{% endblock %}
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "name": "nstructure-ui",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Static UI build for nStructure",
+  "scripts": {
+    "build": "npm run build:css && node scripts/build-assets.mjs",
+    "build:css": "tailwindcss -i resources/styles/tailwind.css -o public/assets/tailwind.css --minify"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "4.3.3",
+    "@tailwindcss/forms": "0.5.11",
+    "cytoscape": "3.34.1",
+    "konva": "10.3.1",
+    "lucide": "1.33.0",
+    "preline": "5.0.0",
+    "tailwindcss": "4.3.3"
+  }
+}
