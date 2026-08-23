@@ -65,3 +65,7 @@ Source code, identifiers, database objects, and comments are English-only. Human
 ## License
 
 Released under the [MIT License](LICENSE).
+<img width="1910" height="899" alt="Zrzut ekranu 2026-08-23 172005" src="https://github.com/user-attachments/assets/9a2ec43e-392b-4699-a614-0eba55626497" />
+<img width="1896" height="888" alt="Zrzut ekranu 2026-08-23 172153" src="https://github.com/user-attachments/assets/519525c8-3e40-4fb6-9474-4ab2ae531a3c" />
+<img width="1810" height="898" alt="Zrzut ekranu 2026-08-23 172357" src="https://github.com/user-attachments/assets/60091daf-a329-4d09-bf74-c890ab8cf2e1" />
+<img width="1770" height="872" alt="Zrzut ekranu 2026-08-23 172443" src="https://github.com/user-attachments/assets/d2e07dee-308b-4220-ab30-289ce81e3fd9" />
