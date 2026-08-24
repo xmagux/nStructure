@@ -5,7 +5,7 @@
 <section class="page-hero compact-hero">
     <div><span class="eyebrow">{{ t('cables.eyebrow') }}</span><h1>{{ t('cables.title') }}</h1><p>{{ t('cables.subtitle') }}</p></div>
     <div class="hero-search-group"><label class="inline-search hero-search">{{ icons.icon('search') }}<input type="search" placeholder="{{ t('action.search') }}" data-list-search></label><span class="result-count">{{ cables|length }} {{ t('nav.cables')|lower }}</span></div>
-    <div class="hero-actions"><button class="button button-ghost" type="button">{{ icons.icon('filter') }}{{ t('action.filter') }}</button><button class="button button-primary" type="button" data-cable-modal-open>{{ icons.icon('plus') }}{{ t('action.add_cable') }}</button></div>
+    <div class="hero-actions"><button class="button button-primary" type="button" data-cable-modal-open>{{ icons.icon('plus') }}{{ t('action.add_cable') }}</button></div>
 </section>
 
 <section class="cable-list" data-search-list>
@@ -15,16 +15,23 @@
         <div class="cable-main"><span class="cable-icon tone-{{ cable.accent }}">{{ icons.icon('cable', 25) }}</span><div><span class="code-label">{{ cable.code }}</span><h2>{{ cable.name }}</h2><p class="cable-route"><strong>{{ cable.source }}</strong><span>→</span><strong>{{ cable.destinations|join(' · ') }}</strong></p></div></div>
         <div class="cable-capacity"><div><span>{{ t('common.capacity') }}</span><strong>{{ cable.used }}/{{ cable.fiber_count }}J</strong></div><div class="progress"><i style="width: {{ (cable.used / cable.fiber_count * 100)|round }}%"></i></div><small>{{ (cable.used / cable.fiber_count * 100)|round }}% {{ t('common.utilization')|lower }}</small></div>
         <div class="cable-meta"><span><small>{{ t('common.medium') }}</small><strong class="medium-chip">{{ cable.medium }}</strong></span><span><small>{{ t('common.length') }}</small><strong>{{ cable.length }}</strong></span><span><small>{{ t('common.segments') }}</small><strong>{{ cable.segments }}</strong></span><span><small>{{ t('common.status') }}</small><strong class="status-badge status-{{ cable.status }}"><i></i>{{ t('common.' ~ cable.status) }}</strong></span></div>
-        <div class="cable-actions"><button class="row-action large" type="button" aria-label="{{ t('action.edit') }}" data-cable-edit-open data-cable-id="{{ cable.id }}" data-code="{{ cable.code }}" data-name="{{ cable.name }}" data-medium="{{ cable.medium }}" data-fiber-count="{{ cable.fiber_count }}" data-source-endpoint="{{ cable.source_endpoint_key }}" data-destination-endpoint="{{ cable.destination_endpoint_key }}" data-length-m="{{ cable.length_m }}" data-operational-status="{{ cable.operational_status }}">{{ icons.icon('edit', 18) }}</button><button class="row-action large danger" type="button" aria-label="{{ t('action.delete') }}" data-delete-open data-delete-url="/api/v1/cables/{{ cable.id }}" data-delete-name="{{ cable.code }} · {{ cable.name }}">{{ icons.icon('trash', 18) }}</button></div>
-        {% include 'components/asset-gallery.twig' with {
-            images: cable.images,
-            upload_url: '/api/v1/cables/' ~ cable.id ~ '/images',
-            input_id: 'cable-image-upload-' ~ cable.id,
-            entity_code: cable.code,
-            title: t('photos.cable_title'),
-            subtitle: t('photos.cable_subtitle')
-        } %}
+        <div class="cable-actions"><button class="row-action large" type="button" aria-label="{{ t('action.edit') }}" data-cable-edit-open data-cable-id="{{ cable.id }}" data-code="{{ cable.code }}" data-name="{{ cable.name }}" data-medium="{{ cable.medium }}" data-fiber-count="{{ cable.fiber_count }}" data-source-endpoint="{{ cable.source_endpoint_key }}" data-destination-endpoint="{{ cable.destination_endpoint_key }}" data-length-m="{{ cable.length_m }}" data-operational-status="{{ cable.operational_status }}">{{ icons.icon('edit', 18) }}</button><button class="row-action large" type="button" aria-label="{{ t('photos.eyebrow') }}" data-modal-open="cable-photos-{{ cable.id }}">{{ icons.icon('camera', 18) }}{% if cable.images|length %}<span class="row-action-badge">{{ cable.images|length }}</span>{% endif %}</button><button class="row-action large danger" type="button" aria-label="{{ t('action.delete') }}" data-delete-open data-delete-url="/api/v1/cables/{{ cable.id }}" data-delete-name="{{ cable.code }} · {{ cable.name }}">{{ icons.icon('trash', 18) }}</button></div>
     </article>
+
+    <dialog class="modal entity-modal" id="cable-photos-{{ cable.id }}">
+        <div class="modal-card modal-card-wide">
+            <div class="modal-head"><div><span class="eyebrow">{{ cable.code }}</span><h2>{{ t('photos.cable_title') }}</h2></div><button class="icon-button" type="button" data-modal-close aria-label="{{ t('action.close') }}">{{ icons.icon('close') }}</button></div>
+            {% include 'components/asset-gallery.twig' with {
+                images: cable.images,
+                upload_url: '/api/v1/cables/' ~ cable.id ~ '/images',
+                input_id: 'cable-image-upload-' ~ cable.id,
+                entity_code: cable.code,
+                title: t('photos.cable_title'),
+                subtitle: t('photos.cable_subtitle'),
+                expanded: true
+            } %}
+        </div>
+    </dialog>
     {% endfor %}
 </section>
 

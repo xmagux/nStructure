@@ -113,6 +113,18 @@
     updateSidebarToggle();
 
     const formatFileSize = (bytes) => `${(bytes / 1048576).toFixed(1)} MB`;
+    document.querySelectorAll('[data-modal-open]').forEach((trigger) => {
+        const target = document.getElementById(trigger.dataset.modalOpen);
+        if (!target) return;
+        trigger.addEventListener('click', () => target.showModal());
+    });
+    document.querySelectorAll('dialog:has([data-modal-close])').forEach((dialog) => {
+        dialog.querySelectorAll('[data-modal-close]').forEach((closeButton) => closeButton.addEventListener('click', () => dialog.close()));
+        dialog.addEventListener('click', (event) => {
+            if (event.target === dialog) dialog.close();
+        });
+    });
+
     document.querySelectorAll('[data-asset-gallery-toggle]').forEach((toggle) => {
         const body = toggle.closest('[data-asset-gallery]')?.querySelector('[data-asset-gallery-body]');
         toggle.addEventListener('click', () => {

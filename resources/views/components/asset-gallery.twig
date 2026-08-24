@@ -1,4 +1,13 @@
 <section class="asset-gallery-card card" data-asset-gallery>
+    {% if expanded %}
+    <div class="asset-gallery-head asset-gallery-head-static">
+        <div class="asset-gallery-heading">
+            <span class="asset-gallery-icon">{{ icons.icon('camera', 22) }}</span>
+            <div><span class="eyebrow">{{ t('photos.eyebrow') }}</span><h2>{{ title }}</h2><p>{{ subtitle }}</p></div>
+        </div>
+        <span class="asset-image-count">{{ icons.icon('image', 15) }}{{ images|length }} {{ t('photos.files') }}</span>
+    </div>
+    {% else %}
     <button class="asset-gallery-head" type="button" data-asset-gallery-toggle aria-expanded="false">
         <div class="asset-gallery-heading">
             <span class="asset-gallery-icon">{{ icons.icon('camera', 22) }}</span>
@@ -7,7 +16,8 @@
         <span class="asset-image-count">{{ icons.icon('image', 15) }}{{ images|length }} {{ t('photos.files') }}</span>
         <span class="asset-gallery-chevron">{{ icons.icon('chevron-down', 18) }}</span>
     </button>
-    <div class="asset-gallery-body" data-asset-gallery-body hidden>
+    {% endif %}
+    <div class="asset-gallery-body" data-asset-gallery-body {{ expanded ? '' : 'hidden' }}>
         <form class="asset-upload-form" action="{{ upload_url }}" method="post" enctype="multipart/form-data" data-asset-image-form>
             <input class="asset-file-input" id="{{ input_id }}" name="image" type="file" accept="image/jpeg,image/png,image/webp" data-asset-image-input>
             <label class="asset-dropzone" for="{{ input_id }}" data-asset-dropzone>
