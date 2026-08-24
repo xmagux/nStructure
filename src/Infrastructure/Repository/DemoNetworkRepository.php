@@ -673,6 +673,8 @@ final class DemoNetworkRepository implements NetworkRepository
             'management_url' => trim((string) ($input['management_url'] ?? '')) ?: null,
             'battery_replaced_at' => trim((string) ($input['battery_replaced_at'] ?? '')) ?: null,
             'battery_replacement_interval_months' => (int) ($input['battery_replacement_interval_months'] ?? 36),
+            'battery_count' => ($input['battery_count'] ?? '') === '' ? null : (int) $input['battery_count'],
+            'battery_type' => trim((string) ($input['battery_type'] ?? '')) ?: null,
             'operational_status' => strtolower(trim((string) ($input['operational_status'] ?? 'ACTIVE'))),
             'notes' => trim((string) ($input['notes'] ?? '')) ?: null,
         ];
@@ -1476,6 +1478,8 @@ final class DemoNetworkRepository implements NetworkRepository
             'management_url' => trim((string) ($input['management_url'] ?? '')) ?: null,
             'battery_replaced_at' => trim((string) ($input['battery_replaced_at'] ?? '')) ?: null,
             'battery_replacement_interval_months' => (int) ($input['battery_replacement_interval_months'] ?? 36),
+            'battery_count' => ($input['battery_count'] ?? '') === '' ? null : (int) $input['battery_count'],
+            'battery_type' => trim((string) ($input['battery_type'] ?? '')) ?: null,
             'operational_status' => strtolower(trim((string) ($input['operational_status'] ?? 'ACTIVE'))),
             'notes' => trim((string) ($input['notes'] ?? '')) ?: null,
         ];

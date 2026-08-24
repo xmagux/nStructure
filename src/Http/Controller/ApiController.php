@@ -488,6 +488,15 @@ final readonly class ApiController
         if ($interval === false || $interval < 1 || $interval > 240) {
             throw new InvalidArgumentException('Battery replacement interval must be between 1 and 240 months');
         }
+        if (($input['battery_count'] ?? '') !== '') {
+            $batteryCount = filter_var($input['battery_count'], FILTER_VALIDATE_INT);
+            if ($batteryCount === false || $batteryCount < 1 || $batteryCount > 200) {
+                throw new InvalidArgumentException('Battery count must be between 1 and 200');
+            }
+        }
+        if (mb_strlen(trim((string) ($input['battery_type'] ?? ''))) > 160) {
+            throw new InvalidArgumentException('Battery type must contain no more than 160 characters');
+        }
         $status = strtoupper(trim((string) ($input['operational_status'] ?? 'ACTIVE')));
         if (!in_array($status, ['ACTIVE', 'MAINTENANCE', 'ALARM', 'RETIRED'], true)) {
             throw new InvalidArgumentException('Invalid UPS status');

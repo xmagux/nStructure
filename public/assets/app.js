@@ -511,6 +511,8 @@
         form.elements.management_url.value = button.dataset.upsManagementUrl || '';
         form.elements.battery_replaced_at.value = button.dataset.upsBatteryReplacedAt || '';
         form.elements.battery_replacement_interval_months.value = button.dataset.upsBatteryInterval || '36';
+        form.elements.battery_count.value = button.dataset.upsBatteryCount || '';
+        form.elements.battery_type.value = button.dataset.upsBatteryType || '';
         form.elements.operational_status.value = button.dataset.upsStatus || 'ACTIVE';
         form.elements.notes.value = button.dataset.upsNotes || '';
         upsEditModal.querySelector('[data-ups-edit-context]').textContent = button.dataset.upsCode || '';

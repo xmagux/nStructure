@@ -228,7 +228,8 @@ final readonly class MySqlNetworkRepository implements NetworkRepository
         $upsStatement = $this->pdo->prepare(
             'SELECT id, server_room_id, code, name, manufacturer, model, serial_number,
                 rated_power_va, rated_power_w, ip_address, management_url, battery_replaced_at,
-                battery_replacement_interval_months, operational_status, notes, created_at, updated_at
+                battery_replacement_interval_months, battery_count, battery_type,
+                operational_status, notes, created_at, updated_at
              FROM ups_devices
              WHERE server_room_id = :room_id AND archived_at IS NULL
              ORDER BY name, code',
@@ -1175,11 +1176,13 @@ SQL;
                     server_room_id, code, name, manufacturer, model, serial_number,
                     rated_power_va, rated_power_w, ip_address, management_url,
                     battery_replaced_at, battery_replacement_interval_months,
+                    battery_count, battery_type,
                     operational_status, notes
                  ) VALUES (
                     :server_room_id, :code, :name, :manufacturer, :model, :serial_number,
                     :rated_power_va, :rated_power_w, :ip_address, :management_url,
                     :battery_replaced_at, :battery_replacement_interval_months,
+                    :battery_count, :battery_type,
                     :operational_status, :notes
                  )',
             );
@@ -1213,6 +1216,7 @@ SQL;
                 rated_power_w = :rated_power_w, ip_address = :ip_address,
                 management_url = :management_url, battery_replaced_at = :battery_replaced_at,
                 battery_replacement_interval_months = :battery_replacement_interval_months,
+                battery_count = :battery_count, battery_type = :battery_type,
                 operational_status = :operational_status, notes = :notes
              WHERE id = :id AND archived_at IS NULL',
         );
@@ -2798,7 +2802,8 @@ SQL;
         $statement = $this->pdo->prepare(
             'SELECT id, server_room_id, code, name, manufacturer, model, serial_number,
                 rated_power_va, rated_power_w, ip_address, management_url, battery_replaced_at,
-                battery_replacement_interval_months, operational_status, notes, created_at, updated_at
+                battery_replacement_interval_months, battery_count, battery_type,
+                operational_status, notes, created_at, updated_at
              FROM ups_devices
              WHERE id = :id AND archived_at IS NULL',
         );
@@ -2820,6 +2825,8 @@ SQL;
             'management_url' => trim((string) ($input['management_url'] ?? '')) ?: null,
             'battery_replaced_at' => trim((string) ($input['battery_replaced_at'] ?? '')) ?: null,
             'battery_replacement_interval_months' => (int) ($input['battery_replacement_interval_months'] ?? 36),
+            'battery_count' => ($input['battery_count'] ?? '') === '' ? null : (int) $input['battery_count'],
+            'battery_type' => trim((string) ($input['battery_type'] ?? '')) ?: null,
             'operational_status' => strtoupper(trim((string) ($input['operational_status'] ?? 'ACTIVE'))),
             'notes' => trim((string) ($input['notes'] ?? '')) ?: null,
         ];
@@ -2855,6 +2862,8 @@ SQL;
             'management_url' => $upsDevice['management_url'],
             'battery_replaced_at' => $upsDevice['battery_replaced_at'],
             'battery_replacement_interval_months' => (int) $upsDevice['battery_replacement_interval_months'],
+            'battery_count' => ($upsDevice['battery_count'] ?? null) === null ? null : (int) $upsDevice['battery_count'],
+            'battery_type' => $upsDevice['battery_type'] ?? null,
             'battery_due_at' => $batteryDueAt,
             'battery_state' => $batteryState,
             'operational_status' => strtolower((string) $upsDevice['operational_status']),
