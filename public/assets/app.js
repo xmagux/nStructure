@@ -1439,6 +1439,9 @@
         const readout = workspace?.querySelector('[data-zoom-readout]');
         let rotation = 0;
         let initialFit = true;
+        let wheelZoomActive = false;
+        container.addEventListener('mousedown', () => { wheelZoomActive = true; });
+        container.addEventListener('mouseleave', () => { wheelZoomActive = false; });
 
         const updateReadout = () => {
             if (readout) readout.textContent = `${Math.round(stage.scaleX() * 100)}% · ${rotation}°`;
@@ -1482,6 +1485,7 @@
         window.addEventListener('nstructure:theme', redrawForTheme);
 
         stage.on('wheel', (event) => {
+            if (!wheelZoomActive) return;
             event.evt.preventDefault();
             const direction = event.evt.deltaY > 0 ? 1 / 1.12 : 1.12;
             zoomAt(stage.getPointerPosition(), event.evt.ctrlKey ? 1 / direction : direction);
