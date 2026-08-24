@@ -1286,9 +1286,7 @@
             row.append(createElement('dt', '', label), createElement('dd', '', value));
             details.append(row);
         });
-        const button = createElement('button', 'button button-primary button-full', 'Open route details');
-        button.type = 'button';
-        content.append(icon, code, title, subtitle, capacity, details, button);
+        content.append(icon, code, title, subtitle, capacity, details);
         inspector.append(content);
         refreshIcons();
     };
