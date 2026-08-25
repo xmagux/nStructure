@@ -14,9 +14,9 @@
     <script src="/assets/vendor/lucide.min.js?v=20260822p" defer></script>
     <script src="/assets/vendor/cytoscape.min.js?v=20260822p" defer></script>
     <script src="/assets/vendor/konva.min.js?v=20260822p" defer></script>
-    <script src="/assets/app.js?v=20260824d" defer></script>
+    <script src="/assets/app.js?v=20260825a" defer></script>
 </head>
-<body data-toast-created="{{ t('toast.created') }}" data-toast-saved="{{ t('toast.saved') }}" data-toast-deleted="{{ t('toast.deleted') }}" data-toast-error="{{ t('toast.error') }}" data-toast-image-uploaded="{{ t('toast.image_uploaded') }}" data-image-error-type="{{ t('photos.error_type') }}" data-image-error-size="{{ t('photos.error_size') }}" data-action-close="{{ t('action.close') }}" data-inspector-hint="{{ t('topology.select_hint') }}" data-searching="{{ t('search.searching') }}" data-search-empty="{{ t('search.empty') }}" data-target-empty="{{ t('form.destination_empty') }}" data-route-empty="{{ t('form.route_empty') }}" data-route-unavailable="{{ t('form.route_unavailable') }}" data-route-free-label="{{ t('form.route_free') }}" data-route-full-label="{{ t('form.route_full') }}" data-route-planned-label="{{ t('form.route_planned') }}" data-route-maintenance-label="{{ t('form.route_maintenance') }}" data-route-damaged-label="{{ t('form.route_damaged') }}" data-route-mixed-label="{{ t('form.route_mixed_medium') }}" data-route-select-label="{{ t('form.route_select') }}" data-confirm-disconnect-rear="{{ t('confirm.disconnect_rear_route') }}">
+<body data-toast-created="{{ t('toast.created') }}" data-toast-saved="{{ t('toast.saved') }}" data-toast-deleted="{{ t('toast.deleted') }}" data-toast-error="{{ t('toast.error') }}" data-toast-image-uploaded="{{ t('toast.image_uploaded') }}" data-image-error-type="{{ t('photos.error_type') }}" data-image-error-size="{{ t('photos.error_size') }}" data-action-close="{{ t('action.close') }}" data-inspector-hint="{{ t('topology.select_hint') }}" data-searching="{{ t('search.searching') }}" data-search-empty="{{ t('search.empty') }}" data-target-empty="{{ t('form.destination_empty') }}" data-route-empty="{{ t('form.route_empty') }}" data-route-unavailable="{{ t('form.route_unavailable') }}" data-route-free-label="{{ t('form.route_free') }}" data-route-full-label="{{ t('form.route_full') }}" data-route-planned-label="{{ t('form.route_planned') }}" data-route-maintenance-label="{{ t('form.route_maintenance') }}" data-route-damaged-label="{{ t('form.route_damaged') }}" data-route-mixed-label="{{ t('form.route_mixed_medium') }}" data-route-select-label="{{ t('form.route_select') }}" data-confirm-disconnect-rear="{{ t('confirm.disconnect_rear_route') }}" data-label-utilization="{{ t('common.utilization') }}" data-label-medium="{{ t('common.medium') }}" data-label-length="{{ t('common.length') }}" data-label-available="{{ t('common.available') }}" data-search-results-label="{{ t('search.results') }}" data-label-physical-path="{{ t('panel.physical_path') }}">
 <div class="ambient ambient-one"></div>
 <div class="ambient ambient-two"></div>
 <div class="mobile-overlay" data-sidebar-close></div>
@@ -25,16 +25,16 @@
         <div class="brand-row">
             <a class="brand" href="/" aria-label="nStructure home">
                 <span class="brand-emblem"><span></span><span></span><span></span></span>
-                <span class="brand-copy"><strong>nStructure</strong><small>Fiber intelligence</small></span>
+                <span class="brand-copy"><strong>nStructure</strong><small>{{ t('brand.tagline') }}</small></span>
             </a>
             <button class="icon-button sidebar-toggle" type="button" data-sidebar-toggle data-collapse-label="{{ t('action.collapse_navigation') }}" data-expand-label="{{ t('action.expand_navigation') }}" aria-label="{{ t('action.collapse_navigation') }}" title="{{ t('action.collapse_navigation') }}">{{ icons.icon('collapse') }}</button>
             <button class="icon-button sidebar-close" type="button" data-sidebar-close aria-label="{{ t('action.close') }}">{{ icons.icon('close') }}</button>
         </div>
         <div class="workspace-card hs-dropdown">
             <button class="workspace-button hs-dropdown-toggle" type="button" aria-label="{{ t('nav.workspace') }}">
-                <span class="workspace-avatar">NO</span><span><small>{{ t('nav.workspace') }}</small><strong>Network Operations</strong></span><i data-lucide="chevrons-up-down" aria-hidden="true"></i>
+                <span class="workspace-avatar">{{ t('nav.workspace_initials') }}</span><span><small>{{ t('nav.workspace') }}</small><strong>{{ t('nav.workspace_name') }}</strong></span><i data-lucide="chevrons-up-down" aria-hidden="true"></i>
             </button>
-            <div class="hs-dropdown-menu workspace-menu hidden" role="menu"><span>Production workspace</span><small>Warsaw metro network</small></div>
+            <div class="hs-dropdown-menu workspace-menu hidden" role="menu"><span>{{ t('nav.workspace_tier') }}</span><small>{{ t('nav.workspace_region') }}</small></div>
         </div>
         <nav class="navigation" aria-label="Primary navigation">
             <span class="nav-label">{{ t('nav.operations') }}</span>

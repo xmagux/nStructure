@@ -278,7 +278,7 @@
             renderCommandMessage(body.dataset.searchEmpty);
             return;
         }
-        commandResults.append(createElement('small', '', 'Infrastructure'));
+        commandResults.append(createElement('small', '', body.dataset.searchResultsLabel || 'Infrastructure'));
         const icons = { location: 'house', room: 'server-cog', rack: 'server', panel: 'panels-top-left', port: 'circle-dot', cable: 'cable' };
         items.forEach((item, index) => {
             const link = createElement('a');
@@ -1288,14 +1288,14 @@
         const subtitle = createElement('p', '', `${edge.medium} · ${edge.length}`);
         const capacity = createElement('div', `inspector-capacity tone-${edge.tone}`);
         const capacityHeader = createElement('div');
-        capacityHeader.append(createElement('span', '', 'Fiber utilization'), createElement('strong', '', `${edge.used}/${edge.fibers}J`));
+        capacityHeader.append(createElement('span', '', body.dataset.labelUtilization || 'Utilization'), createElement('strong', '', `${edge.used}/${edge.fibers}J`));
         const progress = createElement('div', 'progress large');
         const progressBar = createElement('i');
         progressBar.style.width = `${Math.round((edge.used / edge.fibers) * 100)}%`;
         progress.append(progressBar);
         capacity.append(capacityHeader, progress);
         const details = createElement('dl');
-        [['Medium', edge.medium], ['Length', edge.length], ['Available', `${edge.fibers - edge.used}J`]].forEach(([label, value]) => {
+        [[body.dataset.labelMedium || 'Medium', edge.medium], [body.dataset.labelLength || 'Length', edge.length], [body.dataset.labelAvailable || 'Available', `${edge.fibers - edge.used}J`]].forEach(([label, value]) => {
             const row = createElement('div');
             row.append(createElement('dt', '', label), createElement('dd', '', value));
             details.append(row);
@@ -1393,6 +1393,26 @@
             autoungrabify: compact,
         });
         graphInstances.push(cy);
+        if (!compact && !inventoryMode) {
+            const viewStorageKey = 'nstructure-topology-view';
+            let savedView = null;
+            try {
+                savedView = JSON.parse(localStorage.getItem(viewStorageKey) || 'null');
+            } catch {
+                savedView = null;
+            }
+            if (savedView && typeof savedView.zoom === 'number' && savedView.pan) {
+                cy.zoom(savedView.zoom);
+                cy.pan(savedView.pan);
+            }
+            let saveViewTimer = 0;
+            cy.on('zoom pan', () => {
+                window.clearTimeout(saveViewTimer);
+                saveViewTimer = window.setTimeout(() => {
+                    localStorage.setItem(viewStorageKey, JSON.stringify({ zoom: cy.zoom(), pan: cy.pan() }));
+                }, 250);
+            });
+        }
         cy.on('mouseover', 'node', (event) => event.target.addClass('hovered'));
         cy.on('mouseout', 'node', (event) => event.target.removeClass('hovered'));
         cy.on('tap', 'node[type="location"]', (event) => {
@@ -1758,7 +1778,7 @@
             const payload = await response.json();
             if (!response.ok) throw new Error(payload.error || body.dataset.toastError);
             result.replaceChildren();
-            const heading = createElement('strong', '', 'Physical path');
+            const heading = createElement('strong', '', body.dataset.labelPhysicalPath || 'Physical path');
             const timeline = createElement('ol', 'fiber-trace-timeline');
             payload.data.steps.forEach((step) => {
                 const item = createElement('li', `trace-step type-${step.type} status-${step.status}`);
