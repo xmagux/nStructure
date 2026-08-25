@@ -1355,6 +1355,18 @@
         const compact = container.dataset.compact === 'true';
         const graphMode = container.dataset.graphMode || 'topology';
         const inventoryMode = graphMode === 'inventory';
+        const viewKind = inventoryMode ? 'inventory' : (compact ? 'dashboard' : 'topology');
+        const canDragNodes = !compact;
+        const nodePositionsKey = `nstructure-graph-nodes-${viewKind}`;
+        const viewStateKey = `nstructure-graph-view-${viewKind}`;
+        let savedPositions = {};
+        if (canDragNodes) {
+            try {
+                savedPositions = JSON.parse(localStorage.getItem(nodePositionsKey) || '{}') || {};
+            } catch {
+                savedPositions = {};
+            }
+        }
         const elements = [];
         data.nodes.forEach((node) => elements.push({
             group: 'nodes',
@@ -1363,7 +1375,7 @@
                 icon: graphIconUri(node.type, node.icon_key),
                 label: compact || inventoryMode ? `${node.code}\n${inventoryNodeName(scope, node)}` : `${node.name}\n${node.code} · ${node.subtitle}`,
             },
-            position: inventoryMode ? undefined : { x: node.x * 10, y: node.y * 7 },
+            position: savedPositions[node.id] || (inventoryMode ? undefined : { x: node.x * 10, y: node.y * 7 }),
         }));
         data.edges.forEach((edge) => {
             if (inventoryMode) {
@@ -1393,24 +1405,34 @@
             autoungrabify: compact,
         });
         graphInstances.push(cy);
-        if (!compact && !inventoryMode) {
-            const viewStorageKey = 'nstructure-topology-view';
-            let savedView = null;
-            try {
-                savedView = JSON.parse(localStorage.getItem(viewStorageKey) || 'null');
-            } catch {
-                savedView = null;
-            }
-            if (savedView && typeof savedView.zoom === 'number' && savedView.pan) {
-                cy.zoom(savedView.zoom);
-                cy.pan(savedView.pan);
-            }
-            let saveViewTimer = 0;
-            cy.on('zoom pan', () => {
-                window.clearTimeout(saveViewTimer);
-                saveViewTimer = window.setTimeout(() => {
-                    localStorage.setItem(viewStorageKey, JSON.stringify({ zoom: cy.zoom(), pan: cy.pan() }));
-                }, 250);
+        if (inventoryMode && Object.keys(savedPositions).length) {
+            cy.nodes().forEach((node) => {
+                const saved = savedPositions[node.id()];
+                if (saved) node.position(saved);
+            });
+        }
+        let savedView = null;
+        try {
+            savedView = JSON.parse(localStorage.getItem(viewStateKey) || 'null');
+        } catch {
+            savedView = null;
+        }
+        if (savedView && typeof savedView.zoom === 'number' && savedView.pan) {
+            cy.zoom(savedView.zoom);
+            cy.pan(savedView.pan);
+        }
+        let saveViewTimer = 0;
+        cy.on('zoom pan', () => {
+            window.clearTimeout(saveViewTimer);
+            saveViewTimer = window.setTimeout(() => {
+                localStorage.setItem(viewStateKey, JSON.stringify({ zoom: cy.zoom(), pan: cy.pan() }));
+            }, 250);
+        });
+        if (canDragNodes) {
+            cy.on('dragfree', 'node', (event) => {
+                const node = event.target;
+                savedPositions[node.id()] = node.position();
+                localStorage.setItem(nodePositionsKey, JSON.stringify(savedPositions));
             });
         }
         cy.on('mouseover', 'node', (event) => event.target.addClass('hovered'));
