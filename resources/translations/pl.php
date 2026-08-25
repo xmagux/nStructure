@@ -132,7 +132,7 @@ return [
     'action.rotate_left' => 'Obróć w lewo',
     'action.rotate_right' => 'Obróć w prawo',
     'visual.pan_zoom_hint' => 'Przeciągnij, aby przesunąć · kółko, aby powiększyć',
-    'visual.canvas_hint' => 'Przeciągnij, aby przesunąć · kliknij, a potem kółkiem, aby powiększyć · przyciski, aby obrócić',
+    'visual.canvas_hint' => 'Przeciągnij, aby przesunąć · klik + kółko, aby powiększyć · przyciski, aby obrócić',
     'dashboard.eyebrow' => 'Operacje światłowodowe',
     'dashboard.title' => 'Twoja sieć pod pełną kontrolą.',
     'dashboard.subtitle' => 'Widoczność od trasy metropolitalnej aż do pojedynczego portu patch panela.',

@@ -132,7 +132,7 @@ return [
     'action.rotate_left' => 'Rotate left',
     'action.rotate_right' => 'Rotate right',
     'visual.pan_zoom_hint' => 'Drag to pan · wheel to zoom',
-    'visual.canvas_hint' => 'Drag to pan · click, then scroll to zoom · controls to rotate',
+    'visual.canvas_hint' => 'Drag to pan · click + scroll to zoom · controls to rotate',
     'dashboard.eyebrow' => 'Fiber operations',
     'dashboard.title' => 'Your network, under control.',
     'dashboard.subtitle' => 'Live visibility from the metro route down to a single patch-panel port.',
