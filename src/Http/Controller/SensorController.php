@@ -99,6 +99,18 @@ final readonly class SensorController
                 throw new InvalidArgumentException('OID must look like 1.3.6.1.4.1.21796.4.1.3.1.4.1');
             }
         }
+        foreach ([['temperature_min', 'temperature_max'], ['humidity_min', 'humidity_max']] as [$minField, $maxField]) {
+            $min = $input[$minField] ?? '';
+            $max = $input[$maxField] ?? '';
+            foreach ([$minField => $min, $maxField => $max] as $field => $raw) {
+                if ($raw !== '' && $raw !== null && filter_var($raw, FILTER_VALIDATE_FLOAT) === false) {
+                    throw new InvalidArgumentException(sprintf('%s must be a number', $field));
+                }
+            }
+            if ($min !== '' && $min !== null && $max !== '' && $max !== null && (float) $min > (float) $max) {
+                throw new InvalidArgumentException(sprintf('%s cannot be greater than %s', $minField, $maxField));
+            }
+        }
     }
 
     private function json(ResponseInterface $response, array $payload): ResponseInterface

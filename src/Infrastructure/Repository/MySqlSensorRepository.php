@@ -41,11 +41,13 @@ final class MySqlSensorRepository implements SensorRepository
         $statement = $this->pdo->prepare(
             'INSERT INTO environmental_sensors (
                 name, model, host, snmp_port, snmp_community,
-                temperature_oid, temperature_divisor, humidity_oid, humidity_divisor,
+                temperature_oid, temperature_divisor, temperature_min, temperature_max,
+                humidity_oid, humidity_divisor, humidity_min, humidity_max,
                 ping_enabled, notes
              ) VALUES (
                 :name, :model, :host, :snmp_port, :snmp_community,
-                :temperature_oid, :temperature_divisor, :humidity_oid, :humidity_divisor,
+                :temperature_oid, :temperature_divisor, :temperature_min, :temperature_max,
+                :humidity_oid, :humidity_divisor, :humidity_min, :humidity_max,
                 :ping_enabled, :notes
              )',
         );
@@ -63,7 +65,9 @@ final class MySqlSensorRepository implements SensorRepository
             'UPDATE environmental_sensors SET
                 name = :name, model = :model, host = :host, snmp_port = :snmp_port, snmp_community = :snmp_community,
                 temperature_oid = :temperature_oid, temperature_divisor = :temperature_divisor,
+                temperature_min = :temperature_min, temperature_max = :temperature_max,
                 humidity_oid = :humidity_oid, humidity_divisor = :humidity_divisor,
+                humidity_min = :humidity_min, humidity_max = :humidity_max,
                 ping_enabled = :ping_enabled, notes = :notes
              WHERE id = :id AND archived_at IS NULL',
         );
@@ -120,7 +124,28 @@ final class MySqlSensorRepository implements SensorRepository
         $sensor['temperature'] = $this->readValue($sensor, 'temperature_oid', 'temperature_divisor');
         $sensor['humidity'] = $this->readValue($sensor, 'humidity_oid', 'humidity_divisor');
         $this->recordReading($sensor);
+
+        $reasons = [];
+        if ($sensor['ping'] !== null && !$sensor['ping']['ok']) {
+            $reasons[] = 'ping';
+        }
+        if ($sensor['temperature']['ok'] && $this->outOfRange($sensor['temperature']['value'], $sensor['temperature_min'], $sensor['temperature_max'])) {
+            $reasons[] = 'temperature';
+        }
+        if ($sensor['humidity']['ok'] && $this->outOfRange($sensor['humidity']['value'], $sensor['humidity_min'], $sensor['humidity_max'])) {
+            $reasons[] = 'humidity';
+        }
+        $sensor['alarm'] = $reasons !== [] ? ['active' => true, 'reasons' => $reasons] : ['active' => false, 'reasons' => []];
+
         return $sensor;
+    }
+
+    private function outOfRange(float $value, ?float $min, ?float $max): bool
+    {
+        if ($min !== null && $value < $min) {
+            return true;
+        }
+        return $max !== null && $value > $max;
     }
 
     private function recordReading(array $sensor): void
@@ -263,11 +288,23 @@ final class MySqlSensorRepository implements SensorRepository
             'snmp_community' => trim((string) ($input['snmp_community'] ?? '')) ?: 'public',
             'temperature_oid' => trim((string) ($input['temperature_oid'] ?? '')) ?: null,
             'temperature_divisor' => (float) ($input['temperature_divisor'] ?? 10),
+            'temperature_min' => $this->nullableFloat($input['temperature_min'] ?? null),
+            'temperature_max' => $this->nullableFloat($input['temperature_max'] ?? null),
             'humidity_oid' => trim((string) ($input['humidity_oid'] ?? '')) ?: null,
             'humidity_divisor' => (float) ($input['humidity_divisor'] ?? 10),
+            'humidity_min' => $this->nullableFloat($input['humidity_min'] ?? null),
+            'humidity_max' => $this->nullableFloat($input['humidity_max'] ?? null),
             'ping_enabled' => !empty($input['ping_enabled']) ? 1 : 0,
             'notes' => trim((string) ($input['notes'] ?? '')) ?: null,
         ];
+    }
+
+    private function nullableFloat(mixed $value): ?float
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        return (float) $value;
     }
 
     private function normalize(array $row): array
@@ -281,8 +318,12 @@ final class MySqlSensorRepository implements SensorRepository
             'snmp_community' => $row['snmp_community'],
             'temperature_oid' => $row['temperature_oid'],
             'temperature_divisor' => (float) $row['temperature_divisor'],
+            'temperature_min' => $row['temperature_min'] !== null ? (float) $row['temperature_min'] : null,
+            'temperature_max' => $row['temperature_max'] !== null ? (float) $row['temperature_max'] : null,
             'humidity_oid' => $row['humidity_oid'],
             'humidity_divisor' => (float) $row['humidity_divisor'],
+            'humidity_min' => $row['humidity_min'] !== null ? (float) $row['humidity_min'] : null,
+            'humidity_max' => $row['humidity_max'] !== null ? (float) $row['humidity_max'] : null,
             'ping_enabled' => (bool) $row['ping_enabled'],
             'notes' => $row['notes'],
         ];

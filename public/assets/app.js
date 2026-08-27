@@ -2016,31 +2016,56 @@
             if (!reading.ok) return reading.error || '—';
             return `${Number(reading.value).toFixed(1)}${unit}`;
         };
+        const ALARM_REASON_LABELS = {
+            ping: 'alarmPingLabel',
+            temperature: 'alarmTemperatureLabel',
+            humidity: 'alarmHumidityLabel',
+        };
         const applySensorReadings = (sensor) => {
+            const alarmActive = sensor.alarm?.active === true;
             const card = sensorGrid.querySelector(`[data-sensor-card][data-sensor-id="${sensor.id}"]`);
-            if (!card) return;
-            const pingBadge = card.querySelector('[data-sensor-ping]');
-            const pingText = card.querySelector('[data-sensor-ping-text]');
-            if (sensor.ping) {
-                pingBadge.hidden = false;
-                pingBadge.classList.toggle('ping-up', sensor.ping.ok);
-                pingBadge.classList.toggle('ping-down', !sensor.ping.ok);
-                const latency = sensor.ping.ok && sensor.ping.latency_ms != null ? ` · ${sensor.ping.latency_ms}ms` : '';
-                pingText.textContent = (sensor.ping.ok ? sensorLabels.pingUpLabel : sensorLabels.pingDownLabel) + latency;
-            } else {
-                pingBadge.hidden = true;
+            if (card) {
+                card.classList.toggle('alarm', alarmActive);
+                const pingBadge = card.querySelector('[data-sensor-ping]');
+                const pingText = card.querySelector('[data-sensor-ping-text]');
+                if (sensor.ping) {
+                    pingBadge.hidden = false;
+                    pingBadge.classList.toggle('ping-up', sensor.ping.ok);
+                    pingBadge.classList.toggle('ping-down', !sensor.ping.ok);
+                    const latency = sensor.ping.ok && sensor.ping.latency_ms != null ? ` · ${sensor.ping.latency_ms}ms` : '';
+                    pingText.textContent = (sensor.ping.ok ? sensorLabels.pingUpLabel : sensorLabels.pingDownLabel) + latency;
+                } else {
+                    pingBadge.hidden = true;
+                }
+                const tempValue = card.querySelector('[data-sensor-temperature] [data-sensor-reading-value]');
+                const humidityValue = card.querySelector('[data-sensor-humidity] [data-sensor-reading-value]');
+                if (tempValue) tempValue.textContent = formatReading(sensor.temperature, ' °C');
+                if (humidityValue) humidityValue.textContent = formatReading(sensor.humidity, ' %');
+                const rawParts = [];
+                if (sensor.temperature?.raw != null) rawParts.push(`T: ${sensor.temperature.raw}`);
+                if (sensor.humidity?.raw != null) rawParts.push(`H: ${sensor.humidity.raw}`);
+                const rawElement = card.querySelector('[data-sensor-raw]');
+                if (rawElement) {
+                    rawElement.textContent = rawParts.join(' · ');
+                    rawElement.hidden = rawParts.length === 0;
+                }
             }
-            const tempValue = card.querySelector('[data-sensor-temperature] [data-sensor-reading-value]');
-            const humidityValue = card.querySelector('[data-sensor-humidity] [data-sensor-reading-value]');
-            if (tempValue) tempValue.textContent = formatReading(sensor.temperature, ' °C');
-            if (humidityValue) humidityValue.textContent = formatReading(sensor.humidity, ' %');
-            const rawParts = [];
-            if (sensor.temperature?.raw != null) rawParts.push(`T: ${sensor.temperature.raw}`);
-            if (sensor.humidity?.raw != null) rawParts.push(`H: ${sensor.humidity.raw}`);
-            const rawElement = card.querySelector('[data-sensor-raw]');
-            if (rawElement) {
-                rawElement.textContent = rawParts.join(' · ');
-                rawElement.hidden = rawParts.length === 0;
+            const mapTile = document.querySelector(`[data-sensor-map-tile][data-sensor-id="${sensor.id}"]`);
+            if (mapTile) {
+                mapTile.classList.toggle('alarm', alarmActive);
+                const statusElement = mapTile.querySelector('[data-sensor-map-status]');
+                if (statusElement) {
+                    if (alarmActive) {
+                        statusElement.textContent = (sensor.alarm.reasons || [])
+                            .map((reason) => sensorLabels[ALARM_REASON_LABELS[reason]] || reason)
+                            .join(' · ');
+                    } else {
+                        const parts = [];
+                        if (sensor.temperature?.ok) parts.push(`${Number(sensor.temperature.value).toFixed(1)}°C`);
+                        if (sensor.humidity?.ok) parts.push(`${Number(sensor.humidity.value).toFixed(1)}%`);
+                        statusElement.textContent = parts.length ? parts.join(' · ') : (sensorLabels.okLabel || 'OK');
+                    }
+                }
             }
         };
         const refreshSensors = async () => {
@@ -2123,6 +2148,10 @@
             form.elements.temperature_divisor.value = button.dataset.sensorTemperatureDivisor || '10';
             form.elements.humidity_oid.value = button.dataset.sensorHumidityOid || '';
             form.elements.humidity_divisor.value = button.dataset.sensorHumidityDivisor || '10';
+            form.elements.temperature_min.value = button.dataset.sensorTemperatureMin || '';
+            form.elements.temperature_max.value = button.dataset.sensorTemperatureMax || '';
+            form.elements.humidity_min.value = button.dataset.sensorHumidityMin || '';
+            form.elements.humidity_max.value = button.dataset.sensorHumidityMax || '';
             form.elements.ping_enabled.checked = button.dataset.sensorPingEnabled === '1';
             form.elements.notes.value = button.dataset.sensorNotes || '';
         });
@@ -2130,6 +2159,16 @@
             event.preventDefault();
             const form = event.currentTarget;
             submitEntityForm(form, `/api/v1/sensors/${form.elements.sensor_id.value}`, sensorEditModal);
+        });
+
+        document.querySelectorAll('[data-sensor-tab]').forEach((tabButton) => {
+            tabButton.addEventListener('click', () => {
+                const target = tabButton.dataset.sensorTab;
+                document.querySelectorAll('[data-sensor-tab]').forEach((btn) => btn.classList.toggle('active', btn === tabButton));
+                document.querySelectorAll('[data-sensor-panel]').forEach((panel) => {
+                    panel.hidden = panel.dataset.sensorPanel !== target;
+                });
+            });
         });
     }
 

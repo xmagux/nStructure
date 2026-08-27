@@ -1919,3 +1919,18 @@ body.sidebar-collapsed .user-avatar { width: 40px; height: 40px; }
 .sensor-reading strong { font-size: 15px; }
 .sensor-raw { margin: 0; color: var(--text-muted); font-family: var(--font-mono); font-size: 11px; }
 .sensor-card-actions { display: flex; justify-content: flex-end; gap: 6px; }
+
+/* Sensor tabs + map view */
+.sensor-tabs { margin: 4px 0 16px; display: inline-flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); }
+.sensor-tab { padding: 8px 16px; display: inline-flex; align-items: center; gap: 6px; border: 0; border-radius: 999px; color: var(--text-muted); background: transparent; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: color .15s, background .15s; }
+.sensor-tab:hover { color: var(--text); }
+.sensor-tab.active { color: #fff; background: var(--blue); }
+.sensor-card.alarm { border-color: var(--red); box-shadow: 0 0 0 1px var(--red), 0 10px 26px color-mix(in srgb, var(--red) 22%, transparent); }
+.sensor-map { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; }
+.sensor-map-tile { padding: 16px 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); transition: border-color .2s, box-shadow .2s, transform .2s; }
+.sensor-map-icon { width: 52px; height: 52px; display: grid; place-items: center; border-radius: 14px; color: var(--blue); background: color-mix(in srgb, var(--blue) 10%, var(--surface-2)); transition: color .2s, background .2s; }
+.sensor-map-tile strong { max-width: 100%; overflow: hidden; color: var(--text); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.sensor-map-tile small { color: var(--text-muted); font-size: 11px; }
+.sensor-map-tile.alarm { border-color: var(--red); background: color-mix(in srgb, var(--red) 6%, var(--surface)); box-shadow: 0 0 0 1px var(--red), 0 0 22px color-mix(in srgb, var(--red) 35%, transparent); transform: translateY(-1px); }
+.sensor-map-tile.alarm .sensor-map-icon { color: #fff; background: var(--red); }
+.sensor-map-tile.alarm small { color: var(--red); font-weight: 600; }

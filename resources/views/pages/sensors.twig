@@ -11,12 +11,23 @@
 </select></label>
 <label class="field" data-sensor-model-custom-field hidden><span>{{ t('form.sensor_model_custom') }}</span><input type="text" maxlength="80" data-sensor-model-custom placeholder="HWg-PWR, Poseidon2…"></label>
 {% endset %}
+{% set sensor_threshold_fields %}
+<label class="field"><span>{{ t('form.sensor_temperature_min') }}</span><input name="temperature_min" type="number" step="0.01" placeholder="{{ t('form.sensor_no_limit') }}"></label>
+<label class="field"><span>{{ t('form.sensor_temperature_max') }}</span><input name="temperature_max" type="number" step="0.01" placeholder="{{ t('form.sensor_no_limit') }}"></label>
+<label class="field"><span>{{ t('form.sensor_humidity_min') }}</span><input name="humidity_min" type="number" step="0.01" placeholder="{{ t('form.sensor_no_limit') }}"></label>
+<label class="field"><span>{{ t('form.sensor_humidity_max') }}</span><input name="humidity_max" type="number" step="0.01" placeholder="{{ t('form.sensor_no_limit') }}"></label>
+{% endset %}
 <section class="page-hero compact-hero">
     <div><span class="eyebrow">{{ t('sensors.eyebrow') }}</span><h1>{{ t('sensors.title') }}</h1><p>{{ t('sensors.subtitle') }}</p></div>
     <div class="hero-actions"><button class="button button-ghost" type="button" data-sensors-refresh>{{ icons.icon('refresh-cw') }}{{ t('action.refresh') }}</button><button class="button button-primary" type="button" data-sensor-modal-open>{{ icons.icon('plus') }}{{ t('action.add_sensor') }}</button></div>
 </section>
 
-<section class="sensor-grid" data-sensor-grid data-ping-up-label="{{ t('sensors.ping_up') }}" data-ping-down-label="{{ t('sensors.ping_down') }}" data-not-configured-label="{{ t('sensors.not_configured') }}">
+<div class="sensor-tabs" data-sensor-tabs>
+    <button class="sensor-tab active" type="button" data-sensor-tab="list">{{ icons.icon('layers', 15) }}{{ t('sensors.tab_list') }}</button>
+    <button class="sensor-tab" type="button" data-sensor-tab="map">{{ icons.icon('grid', 15) }}{{ t('sensors.tab_map') }}</button>
+</div>
+
+<section class="sensor-grid" data-sensor-grid data-sensor-panel="list" data-ping-up-label="{{ t('sensors.ping_up') }}" data-ping-down-label="{{ t('sensors.ping_down') }}" data-not-configured-label="{{ t('sensors.not_configured') }}" data-alarm-ping-label="{{ t('sensors.alarm_ping') }}" data-alarm-temperature-label="{{ t('sensors.alarm_temperature') }}" data-alarm-humidity-label="{{ t('sensors.alarm_humidity') }}" data-ok-label="{{ t('sensors.ok') }}">
     {% for sensor in sensors %}
     <article class="card sensor-card" data-sensor-card data-sensor-id="{{ sensor.id }}">
         <div class="sensor-card-head">
@@ -39,11 +50,25 @@
                 data-sensor-id="{{ sensor.id }}" data-sensor-name="{{ sensor.name }}" data-sensor-model="{{ sensor.model }}" data-sensor-host="{{ sensor.host }}"
                 data-sensor-port="{{ sensor.snmp_port }}" data-sensor-community="{{ sensor.snmp_community }}"
                 data-sensor-temperature-oid="{{ sensor.temperature_oid }}" data-sensor-temperature-divisor="{{ sensor.temperature_divisor }}"
+                data-sensor-temperature-min="{{ sensor.temperature_min }}" data-sensor-temperature-max="{{ sensor.temperature_max }}"
                 data-sensor-humidity-oid="{{ sensor.humidity_oid }}" data-sensor-humidity-divisor="{{ sensor.humidity_divisor }}"
+                data-sensor-humidity-min="{{ sensor.humidity_min }}" data-sensor-humidity-max="{{ sensor.humidity_max }}"
                 data-sensor-ping-enabled="{{ sensor.ping_enabled ? '1' : '0' }}" data-sensor-notes="{{ sensor.notes }}">{{ icons.icon('edit', 15) }}</button>
             <button class="icon-button danger" type="button" aria-label="{{ t('action.delete') }}" title="{{ t('action.delete') }}" data-delete-open data-delete-url="/api/v1/sensors/{{ sensor.id }}" data-delete-name="{{ sensor.name }}">{{ icons.icon('trash', 15) }}</button>
         </div>
     </article>
+    {% else %}
+    <div class="empty-state">{{ t('sensors.empty') }}</div>
+    {% endfor %}
+</section>
+
+<section class="sensor-map" data-sensor-map data-sensor-panel="map" hidden>
+    {% for sensor in sensors %}
+    <div class="sensor-map-tile" data-sensor-map-tile data-sensor-id="{{ sensor.id }}">
+        <div class="sensor-map-icon">{{ icons.icon('server', 26) }}</div>
+        <strong>{{ sensor.name }}</strong>
+        <small data-sensor-map-status>{{ t('sensors.pending') }}</small>
+    </div>
     {% else %}
     <div class="empty-state">{{ t('sensors.empty') }}</div>
     {% endfor %}
@@ -62,6 +87,7 @@
             <label class="field"><span>{{ t('form.sensor_divisor') }}</span><input name="temperature_divisor" type="number" step="0.0001" value="1"></label>
             <label class="field"><span>{{ t('form.sensor_humidity_oid') }}</span><input name="humidity_oid" maxlength="255" value="1.3.6.1.4.1.21796.4.1.3.1.4.1" placeholder="1.3.6.1.4.1.21796.4.1.3.1.4.1"><small>{{ t('form.sensor_oid_hint') }}</small></label>
             <label class="field"><span>{{ t('form.sensor_divisor') }}</span><input name="humidity_divisor" type="number" step="0.0001" value="1"></label>
+            {{ sensor_threshold_fields }}
             <label class="field field-wide checkbox-field"><input name="ping_enabled" type="checkbox" value="1" checked><span>{{ t('form.sensor_ping_enabled') }}</span></label>
             <label class="field field-wide"><span>{{ t('form.notes') }}</span><textarea name="notes" maxlength="2000" rows="3"></textarea></label>
         </div>
@@ -85,6 +111,7 @@
             <label class="field"><span>{{ t('form.sensor_divisor') }}</span><input name="temperature_divisor" type="number" step="0.0001"></label>
             <label class="field"><span>{{ t('form.sensor_humidity_oid') }}</span><input name="humidity_oid" maxlength="255"><small>{{ t('form.sensor_oid_hint') }}</small></label>
             <label class="field"><span>{{ t('form.sensor_divisor') }}</span><input name="humidity_divisor" type="number" step="0.0001"></label>
+            {{ sensor_threshold_fields }}
             <label class="field field-wide checkbox-field"><input name="ping_enabled" type="checkbox" value="1"><span>{{ t('form.sensor_ping_enabled') }}</span></label>
             <label class="field field-wide"><span>{{ t('form.notes') }}</span><textarea name="notes" maxlength="2000" rows="3"></textarea></label>
         </div>
