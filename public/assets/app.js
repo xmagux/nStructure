@@ -2161,6 +2161,8 @@
             submitEntityForm(form, `/api/v1/sensors/${form.elements.sensor_id.value}`, sensorEditModal);
         });
 
+        const sensorCharts = document.querySelector('[data-sensor-charts]');
+        let chartsController = null;
         document.querySelectorAll('[data-sensor-tab]').forEach((tabButton) => {
             tabButton.addEventListener('click', () => {
                 const target = tabButton.dataset.sensorTab;
@@ -2168,8 +2170,169 @@
                 document.querySelectorAll('[data-sensor-panel]').forEach((panel) => {
                     panel.hidden = panel.dataset.sensorPanel !== target;
                 });
+                if (target === 'charts') {
+                    if (!chartsController) chartsController = initSensorCharts(sensorCharts);
+                    chartsController?.resume();
+                } else {
+                    chartsController?.pause();
+                }
             });
         });
+        document.querySelectorAll('[data-sensor-map-tile]').forEach((tile) => {
+            tile.addEventListener('click', () => {
+                document.querySelector('[data-sensor-tab="charts"]')?.click();
+                if (chartsController) chartsController.selectSensor(tile.dataset.sensorId);
+            });
+        });
+        window.addEventListener('beforeunload', () => chartsController?.pause());
+    }
+
+    function initSensorCharts(container) {
+        if (!window.echarts) return null;
+        const sensorSelect = container.querySelector('[data-chart-sensor-select]');
+        const rangeButtons = container.querySelectorAll('[data-chart-range]');
+        const warning = container.querySelector('[data-vm-warning]');
+        const chartConfigs = [
+            { key: 'temperature', metric: 'temperature', unit: ' °C', color: '#3b82f6' },
+            { key: 'humidity', metric: 'humidity', unit: ' %', color: '#14b8a6' },
+            { key: 'ping_latency', metric: 'ping_latency', unit: ' ms', color: '#a855f7' },
+        ];
+        const instances = chartConfigs.map((config) => {
+            const element = container.querySelector(`[data-chart="${config.key}"]`);
+            return element ? { config, chart: window.echarts.init(element), data: [], lastTimestampMs: 0 } : null;
+        }).filter(Boolean);
+        if (!instances.length) return null;
+
+        const resizeObserver = new ResizeObserver(() => instances.forEach(({ chart }) => chart.resize()));
+        resizeObserver.observe(container);
+
+        let currentRange = '24h';
+        let heartbeatTimer = null;
+        let refreshTimer = null;
+        const HEARTBEAT_INTERVAL_MS = 5000;
+
+        const renderInstance = (instance) => {
+            instance.chart.setOption({
+                grid: { left: 48, right: 16, top: 16, bottom: 32 },
+                tooltip: { trigger: 'axis', valueFormatter: (value) => `${Number(value).toFixed(1)}${instance.config.unit}` },
+                xAxis: { type: 'time' },
+                yAxis: { type: 'value', axisLabel: { formatter: `{value}${instance.config.unit}` } },
+                series: [{
+                    type: 'line',
+                    showSymbol: false,
+                    smooth: true,
+                    areaStyle: { opacity: 0.08 },
+                    lineStyle: { color: instance.config.color, width: 2 },
+                    itemStyle: { color: instance.config.color },
+                    data: instance.data,
+                }],
+            });
+        };
+
+        const loadFull = async () => {
+            const sensorId = sensorSelect?.value;
+            if (!sensorId) return;
+            let anyFailed = false;
+            await Promise.all(instances.map(async (instance) => {
+                try {
+                    const response = await fetch(`/api/v1/sensors/${sensorId}/history?metric=${instance.config.metric}&range=${currentRange}`, { headers: { Accept: 'application/json' } });
+                    const payload = await response.json();
+                    const points = payload.data || [];
+                    instance.data = points.map((point) => [point.timestampMs, point.value]);
+                    instance.lastTimestampMs = points.length ? points[points.length - 1].timestampMs : 0;
+                    renderInstance(instance);
+                } catch (error) {
+                    anyFailed = true;
+                }
+            }));
+            if (warning) warning.hidden = !anyFailed;
+        };
+
+        const rangeWindowMs = () => {
+            const seconds = { '1h': 3600, '6h': 21600, '24h': 86400, '7d': 604800, '30d': 2592000 }[currentRange] || 86400;
+            return seconds * 1000;
+        };
+
+        const loadIncremental = async () => {
+            const sensorId = sensorSelect?.value;
+            if (!sensorId) return;
+            const cutoff = Date.now() - rangeWindowMs();
+            await Promise.all(instances.map(async (instance) => {
+                if (!instance.lastTimestampMs) return;
+                try {
+                    const response = await fetch(`/api/v1/sensors/${sensorId}/history?metric=${instance.config.metric}&range=${currentRange}&since=${instance.lastTimestampMs}`, { headers: { Accept: 'application/json' } });
+                    const payload = await response.json();
+                    const points = (payload.data || []).filter((point) => point.timestampMs > instance.lastTimestampMs);
+                    if (!points.length) return;
+                    instance.data = instance.data
+                        .concat(points.map((point) => [point.timestampMs, point.value]))
+                        .filter((pair) => pair[0] >= cutoff);
+                    instance.lastTimestampMs = points[points.length - 1].timestampMs;
+                    renderInstance(instance);
+                } catch (error) {
+                    // keep showing the last known data; the warning banner covers VM outages
+                }
+            }));
+        };
+
+        const sendHeartbeat = () => {
+            const sensorId = sensorSelect?.value;
+            if (!sensorId) return;
+            fetch('/api/v1/sensors/heartbeat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-Token': csrfToken },
+                body: JSON.stringify({ sensor_id: sensorId }),
+            }).catch(() => {});
+        };
+
+        const stopTimers = () => {
+            if (heartbeatTimer) clearInterval(heartbeatTimer);
+            if (refreshTimer) clearInterval(refreshTimer);
+            heartbeatTimer = null;
+            refreshTimer = null;
+        };
+        const startTimers = () => {
+            stopTimers();
+            sendHeartbeat();
+            heartbeatTimer = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL_MS);
+            refreshTimer = setInterval(loadIncremental, HEARTBEAT_INTERVAL_MS);
+        };
+
+        sensorSelect?.addEventListener('change', () => { loadFull(); startTimers(); });
+        rangeButtons.forEach((button) => button.addEventListener('click', () => {
+            rangeButtons.forEach((btn) => btn.classList.toggle('active', btn === button));
+            currentRange = button.dataset.chartRange;
+            loadFull();
+        }));
+        document.addEventListener('visibilitychange', () => {
+            if (container.hidden) return;
+            if (document.hidden) stopTimers(); else startTimers();
+        });
+
+        const refreshVmStatus = () => {
+            fetch('/api/v1/sensors/metrics-status', { headers: { Accept: 'application/json' } })
+                .then((response) => response.json())
+                .then((payload) => { if (warning) warning.hidden = payload?.data?.reachable !== false; })
+                .catch(() => {});
+        };
+
+        return {
+            resume() {
+                refreshVmStatus();
+                if (!instances[0].data.length) loadFull();
+                startTimers();
+            },
+            pause() {
+                stopTimers();
+            },
+            selectSensor(sensorId) {
+                if (!sensorSelect || sensorSelect.value === sensorId) return;
+                sensorSelect.value = sensorId;
+                instances.forEach((instance) => { instance.data = []; instance.lastTimestampMs = 0; });
+                loadFull();
+                startTimers();
+            },
+        };
     }
 
     updateThemeIcon();

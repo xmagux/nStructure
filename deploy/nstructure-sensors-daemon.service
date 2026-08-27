@@ -1,0 +1,33 @@
+[Unit]
+Description=nStructure environmental sensors collector
+After=network-online.target mysql.service
+Wants=network-online.target
+# fping needs raw ICMP sockets. It cannot get them unprivileged out of the
+# box; run once as root before starting this unit (not something a systemd
+# directive can do for you):
+#   sudo setcap cap_net_raw+ep "$(command -v fping)"
+
+[Service]
+Type=simple
+User=nstructure-deploy
+Group=nstructure-deploy
+WorkingDirectory=/var/www/nstructure
+ExecStart=/usr/bin/php /var/www/nstructure/bin/sensors-daemon.php
+# The daemon exits(0) on purpose every SENSOR_DAEMON_MAX_ITERATIONS ticks
+# (default 1000, ~15-20 min) so it can't leak memory or state indefinitely;
+# systemd is what actually restarts it. Restart=always (not on-failure) is
+# required because a clean exit(0) is the expected, non-error case here.
+Restart=always
+RestartSec=2
+StartLimitIntervalSec=0
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+# The daemon only reads from /var/www/nstructure (code/config) and writes
+# to its private /tmp (lock file) and /dev/shm (heartbeat file, excluded
+# from ProtectSystem=strict by default) — no extra ReadWritePaths needed.
+
+[Install]
+WantedBy=multi-user.target

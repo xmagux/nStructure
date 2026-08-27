@@ -7,6 +7,8 @@ namespace NStructure\Http\Controller;
 use InvalidArgumentException;
 use NStructure\Application\View\ViewContext;
 use NStructure\Domain\Repository\SensorRepository;
+use NStructure\Infrastructure\Heartbeat\HeartbeatStore;
+use NStructure\Infrastructure\Metrics\VictoriaMetricsClient;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use RuntimeException;
@@ -15,10 +17,29 @@ use Throwable;
 
 final readonly class SensorController
 {
+    private const METRIC_NAMES = [
+        'temperature' => 'sensor_temperature_celsius',
+        'humidity' => 'sensor_humidity_percent',
+        'ping_latency' => 'sensor_ping_latency_ms',
+        'ping_up' => 'sensor_ping_up',
+    ];
+
+    private const RANGE_SECONDS = [
+        '1h' => 3600,
+        '6h' => 21600,
+        '24h' => 86400,
+        '7d' => 604800,
+        '30d' => 2592000,
+    ];
+
+    private const MAX_POINTS = 1000;
+
     public function __construct(
         private Twig $view,
         private ViewContext $context,
         private SensorRepository $repository,
+        private VictoriaMetricsClient $metrics,
+        private HeartbeatStore $heartbeat,
     ) {
     }
 
@@ -77,6 +98,69 @@ final readonly class SensorController
         } catch (Throwable $exception) {
             return $this->json($response->withStatus(409), ['error' => $exception->getMessage() ?: 'Sensor could not be removed']);
         }
+    }
+
+    public function history(ServerRequestInterface $request, ResponseInterface $response, array $arguments): ResponseInterface
+    {
+        $sensorId = (int) $arguments['id'];
+        $sensor = $this->repository->find($sensorId);
+        if ($sensor === null) {
+            return $this->json($response->withStatus(404), ['error' => 'Sensor not found']);
+        }
+
+        $query = $request->getQueryParams();
+        $metricKey = (string) ($query['metric'] ?? 'temperature');
+        $rangeKey = (string) ($query['range'] ?? '24h');
+        if (!isset(self::METRIC_NAMES[$metricKey])) {
+            return $this->json($response->withStatus(422), ['error' => 'Unknown metric']);
+        }
+        if (!isset(self::RANGE_SECONDS[$rangeKey])) {
+            return $this->json($response->withStatus(422), ['error' => 'Unknown range']);
+        }
+
+        $rangeSeconds = self::RANGE_SECONDS[$rangeKey];
+        $end = time();
+        $sinceMs = filter_var($query['since'] ?? null, FILTER_VALIDATE_INT);
+        $start = $sinceMs !== false && $sinceMs !== null
+            ? max($end - $rangeSeconds, (int) ($sinceMs / 1000))
+            : $end - $rangeSeconds;
+        $windowSeconds = max(1, $end - $start);
+        $step = $this->formatStepDuration(max(1, (int) ceil($windowSeconds / self::MAX_POINTS)));
+
+        $promql = sprintf('%s{sensor_id="%d"}', self::METRIC_NAMES[$metricKey], $sensorId);
+        $points = $this->metrics->queryRange($promql, $start, $end, $step);
+
+        return $this->json($response, ['data' => $points]);
+    }
+
+    public function heartbeat(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        $input = (array) ($request->getParsedBody() ?? []);
+        $sensorId = filter_var($input['sensor_id'] ?? null, FILTER_VALIDATE_INT);
+        if ($sensorId === false || $sensorId === null) {
+            return $this->json($response->withStatus(422), ['error' => 'sensor_id is required']);
+        }
+        if ($this->repository->find($sensorId) === null) {
+            return $this->json($response->withStatus(404), ['error' => 'Sensor not found']);
+        }
+
+        $this->heartbeat->touch($sensorId);
+        return $this->json($response, ['data' => ['ok' => true]]);
+    }
+
+    public function metricsStatus(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        return $this->json($response, ['data' => ['reachable' => $this->metrics->isReachable()]]);
+    }
+
+    private function formatStepDuration(int $seconds): string
+    {
+        return match (true) {
+            $seconds < 60 => $seconds . 's',
+            $seconds < 3600 => (int) ceil($seconds / 60) . 'm',
+            $seconds < 86400 => (int) ceil($seconds / 3600) . 'h',
+            default => (int) ceil($seconds / 86400) . 'd',
+        };
     }
 
     private function validate(array $input): void

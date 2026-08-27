@@ -105,49 +105,130 @@ navigation — visit the URL directly once logged in. It's excluded entirely
 in demo mode, since it lets a logged-in user make the server issue SNMP and
 ping traffic to any host they configure.
 
-No extra system packages are required — SNMP is implemented as a
-self-contained PHP client (no `php-snmp` extension or `net-snmp` tools
-needed). Reachability checks shell out to the system `ping` binary, present
-on virtually every Linux install by default.
+History is collected by a standalone daemon (`bin/sensors-daemon.php`) and
+stored in [VictoriaMetrics](https://victoriametrics.com/), a single-node
+time-series database (Apache-2.0). Charts on the page are rendered with
+[Apache ECharts](https://echarts.apache.org/) (Apache-2.0, vendored as a
+static file under `public/assets/vendor/`). The list/map views' "poll now"
+button still talks to sensors directly and does not touch VictoriaMetrics —
+only the daemon writes history. Both are optional: without them, the page
+still works for live SNMP/ping checks, but the Wykresy (charts) tab has
+nothing to show and reports the metrics backend as unreachable.
 
-Opening the page (or clicking Refresh) always polls sensors live,
-server-side, regardless of whether anyone's browser is open. To keep a
-historical record even when nobody is looking at the page, add a cron job
-that polls on a schedule; every poll — interactive or scheduled — is stored
-in the `environmental_sensor_readings` table:
+This module needs three things installed that a bare nStructure checkout
+does not require: the `php-snmp` extension, the `fping` binary, and a
+running VictoriaMetrics instance. All are free to install and license-clear
+for commercial use.
 
-```bash
-# crontab -e (as the user PHP-FPM/CLI runs as, or a dedicated service account)
-*/5 * * * * php /var/www/nstructure/bin/poll-sensors.php >> /var/log/nstructure-sensors.log 2>&1
-```
-
-Adjust the interval to taste — `bin/poll-sensors.php` polls every configured
-sensor once per invocation and prints a one-line summary per sensor.
-
-### Faster reachability monitoring
-
-Temperature and humidity rarely need checking more than every few minutes,
-but uptime monitoring usually wants a much tighter interval. Cron itself
-cannot run more often than once a minute, so `bin/ping-sensors.php` loops
-internally for just under a minute, pinging every 5 seconds by default, then
-exits — cron simply relaunches it each minute for the next burst. Pings are
-recorded separately in `environmental_sensor_pings`, independent of the
-slower SNMP poll above.
+### 1. php-snmp and fping
 
 ```bash
-* * * * * php /var/www/nstructure/bin/ping-sensors.php 5 55 >> /var/log/nstructure-pings.log 2>&1
+sudo apt install php8.4-snmp fping   # adjust the PHP version suffix to match your install
+sudo systemctl restart php8.4-fpm    # only needed if php-fpm also loads snmp (it doesn't have to)
 ```
 
-The two arguments are the interval and the total run time in seconds
-(`5 55` above means "ping every 5s, stop after 55s" — leaving a safety
-margin before cron's next invocation).
+`fping` needs to open raw ICMP sockets, which isn't available to an
+unprivileged user by default. Rather than running the daemon as root, grant
+the capability directly to the binary once:
 
-Both `bin/ping-sensors.php` and `bin/poll-sensors.php` only write a new row
-when something actually changed since the last recorded one (reachability
-flips up/down, or a sensor's reported value changes) — a sensor sitting
-idle at the same reading, or reachable the whole time, does not grow the
-table on every single check. Growth is driven by how often things actually
-change, not by the polling interval.
+```bash
+sudo setcap cap_net_raw+ep "$(command -v fping)"
+```
+
+This is a one-time step outside of any config file — re-run it if the
+`fping` package is ever upgraded (upgrades can replace the binary and drop
+the capability).
+
+### 2. VictoriaMetrics
+
+Single static Go binary, no Docker required. Download the latest release for
+your architecture from the
+[VictoriaMetrics releases page](https://github.com/VictoriaMetrics/VictoriaMetrics/releases)
+and install it as its own unprivileged user:
+
+```bash
+sudo useradd --system --no-create-home --shell /usr/sbin/nologin victoriametrics
+sudo mkdir -p /var/lib/victoria-metrics-data
+sudo chown victoriametrics:victoriametrics /var/lib/victoria-metrics-data
+
+# extract the downloaded release tarball, then:
+sudo install -o root -g root -m 755 victoria-metrics-prod /usr/local/bin/victoria-metrics-prod
+```
+
+Deploy `deploy/victoriametrics.service` to `/etc/systemd/system/` and enable it:
+
+```bash
+sudo cp deploy/victoriametrics.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now victoriametrics
+```
+
+The unit starts VictoriaMetrics with:
+
+- `-httpListenAddr=127.0.0.1:8428` — loopback only, never exposed publicly.
+  nStructure's own API proxies chart queries to it (see below); nothing
+  external ever talks to VictoriaMetrics directly.
+- `-storageDataPath=/var/lib/victoria-metrics-data` — where series data lives.
+- `-retentionPeriod=3` — keep 3 months of history, then auto-expire.
+
+Adjust `-retentionPeriod` to taste (e.g. `12` for a year); disk usage below
+scales roughly linearly with it.
+
+**Disk usage estimate.** VictoriaMetrics typically costs ~1-2 bytes per
+raw sample once compressed. With delta-on-change + hysteresis dedup, a
+sensor sitting at a stable reading produces far fewer samples than its
+polling interval would suggest — in practice budget for one sample every
+few minutes per series even at a 5-minute poll interval, since keepalive
+forces at least one point per hour regardless. For 20 sensors, each with 6
+series (temperature, temperature probe_up, humidity, humidity probe_up,
+ping up, ping latency), at a worst case of one sample/minute/series:
+
+```
+20 sensors x 6 series x 1 sample/min x 60 x 24 x 90 days x ~2 bytes
+≈ 20 x 6 x 129,600 x 2 bytes ≈ 31 MB for 90 days of retention
+```
+
+Even a pessimistic estimate stays in the tens of megabytes for a
+few dozen sensors over a few months — this module does not need disk
+planning beyond "make sure a few hundred MB are free."
+
+### 3. The collector daemon
+
+`bin/sensors-daemon.php` is a long-running PHP CLI process, not a cron job:
+it loops internally with a drift-free one-second tick, checks each sensor's
+own due time (300s by default, 5s while someone is actively viewing its
+chart), batches all due hosts into a single `fping` call per tick, reads
+SNMP via `snmp2_get()`, and writes to VictoriaMetrics as one batched HTTP
+POST per tick using the Influx line protocol. It exits cleanly with
+`exit(0)` after `SENSOR_DAEMON_MAX_ITERATIONS` ticks (1000 by default,
+roughly 15-20 minutes) so systemd's `Restart=always` periodically restarts
+it — this bounds any per-process resource growth without needing cron.
+
+Deploy `deploy/nstructure-sensors-daemon.service` to
+`/etc/systemd/system/` and enable it:
+
+```bash
+sudo cp deploy/nstructure-sensors-daemon.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now nstructure-sensors-daemon
+```
+
+Tune the daemon's polling interval, hysteresis thresholds, and keepalive via
+the `SENSOR_DAEMON_*` variables in `.env` — see `.env.example` for the full
+list and defaults. All are optional; the daemon runs correctly with none of
+them set.
+
+To confirm it's running and writing data:
+
+```bash
+sudo systemctl status nstructure-sensors-daemon
+sudo journalctl -u nstructure-sensors-daemon -f
+curl -s 'http://127.0.0.1:8428/api/v1/query?query=up' | head -c 300
+```
+
+The `/tools/sensors` page's Wykresy tab shows a warning banner if
+VictoriaMetrics is unreachable (checked via `/api/v1/sensors/metrics-status`)
+without breaking the rest of the page.
 
 ## Verification
 

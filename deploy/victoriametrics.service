@@ -1,0 +1,23 @@
+[Unit]
+Description=VictoriaMetrics (single-node)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=victoriametrics
+Group=victoriametrics
+ExecStart=/usr/local/bin/victoria-metrics-prod \
+    -storageDataPath=/var/lib/victoria-metrics-data \
+    -retentionPeriod=3 \
+    -httpListenAddr=127.0.0.1:8428
+Restart=always
+RestartSec=2
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/victoria-metrics-data
+
+[Install]
+WantedBy=multi-user.target

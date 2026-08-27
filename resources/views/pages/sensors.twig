@@ -25,6 +25,7 @@
 <div class="sensor-tabs" data-sensor-tabs>
     <button class="sensor-tab active" type="button" data-sensor-tab="list">{{ icons.icon('layers', 15) }}{{ t('sensors.tab_list') }}</button>
     <button class="sensor-tab" type="button" data-sensor-tab="map">{{ icons.icon('grid', 15) }}{{ t('sensors.tab_map') }}</button>
+    <button class="sensor-tab" type="button" data-sensor-tab="charts">{{ icons.icon('activity', 15) }}{{ t('sensors.tab_charts') }}</button>
 </div>
 
 <section class="sensor-grid" data-sensor-grid data-sensor-panel="list" data-ping-up-label="{{ t('sensors.ping_up') }}" data-ping-down-label="{{ t('sensors.ping_down') }}" data-not-configured-label="{{ t('sensors.not_configured') }}" data-alarm-ping-label="{{ t('sensors.alarm_ping') }}" data-alarm-temperature-label="{{ t('sensors.alarm_temperature') }}" data-alarm-humidity-label="{{ t('sensors.alarm_humidity') }}" data-ok-label="{{ t('sensors.ok') }}">
@@ -73,6 +74,30 @@
     <div class="empty-state">{{ t('sensors.empty') }}</div>
     {% endfor %}
 </section>
+
+<section class="sensor-charts" data-sensor-charts data-sensor-panel="charts" hidden data-vm-unreachable-label="{{ t('sensors.vm_unreachable') }}" data-chart-temperature-label="{{ t('sensors.temperature') }}" data-chart-humidity-label="{{ t('sensors.humidity') }}" data-chart-ping-latency-label="{{ t('sensors.ping_latency') }}">
+    {% if sensors|length %}
+    <div class="sensor-charts-controls">
+        <label class="field"><span>{{ t('sensors.chart_sensor') }}</span><select data-chart-sensor-select>{% for sensor in sensors %}<option value="{{ sensor.id }}">{{ sensor.name }}</option>{% endfor %}</select></label>
+        <div class="sensor-range-buttons" data-chart-range-buttons>
+            <button class="sensor-range-btn" type="button" data-chart-range="1h">1h</button>
+            <button class="sensor-range-btn" type="button" data-chart-range="6h">6h</button>
+            <button class="sensor-range-btn active" type="button" data-chart-range="24h">24h</button>
+            <button class="sensor-range-btn" type="button" data-chart-range="7d">7d</button>
+            <button class="sensor-range-btn" type="button" data-chart-range="30d">30d</button>
+        </div>
+    </div>
+    <p class="sensor-chart-warning" data-vm-warning hidden>{{ icons.icon('alert', 15) }}<span>{{ t('sensors.vm_unreachable') }}</span></p>
+    <div class="sensor-chart-grid">
+        <article class="card sensor-chart-card"><h3>{{ t('sensors.temperature') }}</h3><div class="sensor-chart" data-chart="temperature"></div></article>
+        <article class="card sensor-chart-card"><h3>{{ t('sensors.humidity') }}</h3><div class="sensor-chart" data-chart="humidity"></div></article>
+        <article class="card sensor-chart-card"><h3>{{ t('sensors.ping_latency') }}</h3><div class="sensor-chart" data-chart="ping_latency"></div></article>
+    </div>
+    {% else %}
+    <div class="empty-state">{{ t('sensors.empty') }}</div>
+    {% endif %}
+</section>
+<script src="/assets/vendor/echarts.min.js?v=20260828a" defer></script>
 
 <dialog class="modal entity-modal" id="sensor-modal">
     <form class="modal-card modal-card-wide" data-sensor-form>

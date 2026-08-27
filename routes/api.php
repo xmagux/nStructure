@@ -53,6 +53,9 @@ return static function (App $app): void {
             $group->post('/account/profile', [UserController::class, 'updateProfile']);
             $group->get('/sensors/poll', [SensorController::class, 'pollAll']);
             $group->get('/sensors/{id:[0-9]+}/poll', [SensorController::class, 'poll']);
+            $group->get('/sensors/{id:[0-9]+}/history', [SensorController::class, 'history']);
+            $group->get('/sensors/metrics-status', [SensorController::class, 'metricsStatus']);
+            $group->post('/sensors/heartbeat', [SensorController::class, 'heartbeat']);
             $group->post('/sensors', [SensorController::class, 'create']);
             $group->post('/sensors/{id:[0-9]+}', [SensorController::class, 'update']);
             $group->delete('/sensors/{id:[0-9]+}', [SensorController::class, 'archive']);

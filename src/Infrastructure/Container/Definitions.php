@@ -14,6 +14,8 @@ use NStructure\Http\Middleware\AuthMiddleware;
 use NStructure\Http\Middleware\LocaleMiddleware;
 use NStructure\Http\Middleware\SessionMiddleware;
 use NStructure\Infrastructure\Database\ConnectionFactory;
+use NStructure\Infrastructure\Heartbeat\HeartbeatStore;
+use NStructure\Infrastructure\Metrics\VictoriaMetricsClient;
 use NStructure\Infrastructure\Repository\DemoNetworkRepository;
 use NStructure\Infrastructure\Repository\MySqlNetworkRepository;
 use NStructure\Infrastructure\Repository\MySqlSensorRepository;
@@ -61,6 +63,12 @@ final class Definitions
         });
         $container->set(UserRepository::class, static fn (Container $container): UserRepository => new MySqlUserRepository($container->get(PDO::class)));
         $container->set(SnmpClient::class, static fn (): SnmpClient => new SnmpClient());
+        $container->set(VictoriaMetricsClient::class, static fn (): VictoriaMetricsClient => new VictoriaMetricsClient(
+            $settings['metrics']['victoriametrics_url'],
+        ));
+        $container->set(HeartbeatStore::class, static fn (): HeartbeatStore => new HeartbeatStore(
+            $settings['metrics']['heartbeat_file'],
+        ));
         $container->set(SensorRepository::class, static fn (Container $container): SensorRepository => new MySqlSensorRepository(
             $container->get(PDO::class),
             $container->get(SnmpClient::class),

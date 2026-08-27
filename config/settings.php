@@ -27,5 +27,12 @@ return static function (string $rootPath): array {
             'path' => $rootPath . '/resources/views',
             'cache' => false,
         ],
+        'metrics' => [
+            'victoriametrics_url' => rtrim((string) $env('VICTORIAMETRICS_URL', 'http://127.0.0.1:8428'), '/'),
+            'heartbeat_file' => (string) $env(
+                'SENSOR_HEARTBEAT_FILE',
+                is_dir('/dev/shm') ? '/dev/shm/nstructure-sensor-heartbeats.json' : sys_get_temp_dir() . '/nstructure-sensor-heartbeats.json',
+            ),
+        ],
     ];
 };
