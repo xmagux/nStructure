@@ -23,7 +23,7 @@ final class InfluxLineProtocolBuilderTest extends TestCase
 
         self::assertFalse($builder->isEmpty());
         self::assertSame(
-            'sensor_temperature_celsius,sensor_id=1,sensor=Server\ Room value=23.5 1700000000000000000',
+            'sensor_temperature_celsius,sensor_id=1,sensor=Server\ Room value=23.5 1700000000000',
             $builder->build(),
         );
     }
@@ -33,7 +33,7 @@ final class InfluxLineProtocolBuilderTest extends TestCase
         $builder = new InfluxLineProtocolBuilder();
         $builder->addPoint('sensor_ping_up', ['sensor_id' => '1'], 1.0, 1_700_000_000_000);
 
-        self::assertSame('sensor_ping_up,sensor_id=1 value=1 1700000000000000000', $builder->build());
+        self::assertSame('sensor_ping_up,sensor_id=1 value=1 1700000000000', $builder->build());
     }
 
     public function testMultiplePointsAreNewlineSeparated(): void
@@ -43,7 +43,7 @@ final class InfluxLineProtocolBuilderTest extends TestCase
         $builder->addPoint('b', ['x' => '2'], 2.0, 2000);
 
         self::assertSame(
-            "a,x=1 value=1 1000000000\nb,x=2 value=2 2000000000",
+            "a,x=1 value=1 1000\nb,x=2 value=2 2000",
             $builder->build(),
         );
     }

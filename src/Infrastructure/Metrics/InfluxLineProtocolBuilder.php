@@ -28,7 +28,7 @@ final class InfluxLineProtocolBuilder
             $this->escape($measurement),
             $tagString,
             $this->formatFloat($value),
-            $timestampMs * 1_000_000,
+            $timestampMs,
         );
 
         return $this;
