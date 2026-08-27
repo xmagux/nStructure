@@ -391,14 +391,18 @@
     const deleteError = deleteModal?.querySelector('[data-delete-error]');
     const deleteConfirm = deleteModal?.querySelector('[data-delete-confirm]');
     let pendingDeleteButton = null;
-    bindModal(deleteModal, '[data-delete-open]', '[data-delete-close]', (button) => {
-        pendingDeleteButton = button;
-        if (deleteName) deleteName.textContent = button.dataset.deleteName || '—';
+    const openDeleteConfirm = (url, name, redirect) => {
+        pendingDeleteButton = { dataset: { deleteUrl: url, deleteName: name, deleteRedirect: redirect } };
+        if (deleteName) deleteName.textContent = name || '—';
         if (deleteError) {
             deleteError.textContent = '';
             deleteError.hidden = true;
         }
         if (deleteConfirm) deleteConfirm.disabled = false;
+        if (deleteModal && !deleteModal.open) deleteModal.showModal();
+    };
+    bindModal(deleteModal, '[data-delete-open]', '[data-delete-close]', (button) => {
+        openDeleteConfirm(button.dataset.deleteUrl, button.dataset.deleteName, button.dataset.deleteRedirect);
     });
     deleteConfirm?.addEventListener('click', async () => {
         const endpoint = pendingDeleteButton?.dataset.deleteUrl;
@@ -590,15 +594,38 @@
     });
 
     const rackItemEditModal = document.querySelector('#rack-item-edit-modal');
-    bindModal(rackItemEditModal, '[data-rack-item-edit-open]', '[data-rack-item-edit-close]', (button) => {
+    const populateRackItemEditForm = (item) => {
         const form = rackItemEditModal?.querySelector('[data-rack-item-edit-form]');
         if (!form) return;
-        form.elements.item_id.value = button.dataset.itemId || '';
-        form.elements.name.value = button.dataset.itemName || '';
-        form.elements.kind.value = button.dataset.itemKind || 'OTHER';
-        form.elements.rack_unit_start.value = button.dataset.itemStart || '';
-        form.elements.rack_unit_height.value = button.dataset.itemHeight || '1';
-        form.elements.notes.value = button.dataset.itemNotes || '';
+        form.elements.item_id.value = item.id ?? '';
+        form.elements.name.value = item.name ?? '';
+        form.elements.kind.value = item.kind || 'OTHER';
+        form.elements.rack_unit_start.value = item.start ?? '';
+        form.elements.rack_unit_height.value = item.height ?? '1';
+        form.elements.notes.value = item.notes ?? '';
+    };
+    window.openRackItemEditModal = (item) => {
+        if (!rackItemEditModal) return;
+        populateRackItemEditForm(item);
+        if (!rackItemEditModal.open) rackItemEditModal.showModal();
+    };
+    bindModal(rackItemEditModal, '[data-rack-item-edit-open]', '[data-rack-item-edit-close]', (button) => {
+        populateRackItemEditForm({
+            id: button.dataset.itemId,
+            name: button.dataset.itemName,
+            kind: button.dataset.itemKind,
+            start: button.dataset.itemStart,
+            height: button.dataset.itemHeight,
+            notes: button.dataset.itemNotes,
+        });
+    });
+    rackItemEditModal?.querySelector('[data-rack-item-edit-delete]')?.addEventListener('click', () => {
+        const form = rackItemEditModal.querySelector('[data-rack-item-edit-form]');
+        const itemId = form?.elements.item_id.value;
+        if (!itemId) return;
+        const itemName = form.elements.name.value;
+        rackItemEditModal.close();
+        openDeleteConfirm(`/api/v1/rack-items/${itemId}`, itemName);
     });
     document.querySelector('[data-rack-item-edit-form]')?.addEventListener('submit', (event) => {
         event.preventDefault();
@@ -1747,7 +1774,11 @@
         }
         group.on('mouseenter', () => { document.body.style.cursor = 'pointer'; group.scale({ x: 1.006, y: 1.006 }); world.getLayer().batchDraw(); });
         group.on('mouseleave', () => { document.body.style.cursor = 'default'; group.scale({ x: 1, y: 1 }); group.findOne('Label')?.hide(); world.getLayer().batchDraw(); });
-        if (device.type === 'patch_panel') group.on('click tap', () => { window.location.href = `/patch-panels/${device.id}`; });
+        if (device.type === 'patch_panel') {
+            group.on('click tap', () => { window.location.href = `/patch-panels/${device.id}`; });
+        } else if (device.type === 'rack_item') {
+            group.on('click tap', () => { window.openRackItemEditModal?.(device); });
+        }
         world.add(group);
     };
 

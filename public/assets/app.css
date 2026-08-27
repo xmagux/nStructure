@@ -1398,17 +1398,18 @@ html[data-theme="dark"] .inventory-canvas { background: radial-gradient(circle a
 .panel-port-count small { text-transform: uppercase; letter-spacing: .05em; }
 .rack-active-devices-list, .rack-items-list { display: flex; flex-direction: column; gap: 8px; }
 .rack-active-devices-list h3, .rack-items-list h3 { margin-bottom: 4px; }
-.rack-item-row { padding: 11px 12px; display: flex; gap: 12px; align-items: center; justify-content: space-between; border: 1px solid var(--line); border-radius: 13px; background: var(--surface-2); }
+.rack-item-block { display: flex; flex-direction: column; gap: 8px; }
+.rack-item-row { min-height: 62px; padding: 14px; display: flex; gap: 12px; align-items: center; justify-content: space-between; border: 1px solid var(--line); border-radius: 13px; background: var(--surface-2); transition: border-color .18s ease, transform .18s ease, background .18s ease; }
+.rack-item-row:hover { border-color: color-mix(in srgb, var(--blue) 45%, var(--line)); background: color-mix(in srgb, var(--blue) 6%, var(--surface-2)); transform: translateY(-1px); }
 .rack-item-row > span:first-child { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.rack-item-row strong { color: var(--text); font-size: 13px; }
-.rack-item-row small { overflow: hidden; color: var(--text-muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.rack-item-row strong { color: var(--text); font-size: 15px; }
+.rack-item-row small { overflow: hidden; color: var(--text-muted); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .rack-item-actions { flex: 0 0 auto; display: flex; gap: 6px; }
-.rack-item-block { display: flex; flex-direction: column; gap: 6px; }
 .device-interface-list { list-style: none; margin: 0; padding: 0 0 0 14px; display: flex; flex-direction: column; gap: 6px; }
-.device-interface-list li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; border: 1px dashed var(--line); border-radius: 10px; background: var(--surface); }
+.device-interface-list li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 10px; background: var(--surface); }
 .device-interface-copy { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.device-interface-copy strong { color: var(--text); font-size: 12px; }
-.device-interface-copy small { overflow: hidden; color: var(--text-muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.device-interface-copy strong { color: var(--text); font-size: 13px; }
+.device-interface-copy small { overflow: hidden; color: var(--text-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .button:disabled { opacity: .55; cursor: wait; transform: none; }
 
 @media (max-width: 680px) {

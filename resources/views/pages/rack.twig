@@ -114,7 +114,7 @@
             <label class="field"><span>{{ t('form.item_height') }}</span><select name="rack_unit_height" required>{% for height in 1..12 %}<option value="{{ height }}">{{ height }}U</option>{% endfor %}</select></label>
             <label class="field field-wide"><span>{{ t('form.notes') }}</span><textarea name="notes" maxlength="2000" rows="3"></textarea></label>
         </div>
-        <p class="form-error" data-form-error hidden></p><div class="modal-actions"><button class="button button-ghost" type="button" data-rack-item-edit-close>{{ t('action.cancel') }}</button><button class="button button-primary" type="submit">{{ icons.icon('save') }}{{ t('action.save') }}</button></div>
+        <p class="form-error" data-form-error hidden></p><div class="modal-actions"><button class="button button-danger-subtle" type="button" data-rack-item-edit-delete>{{ icons.icon('trash') }}{{ t('action.delete') }}</button><button class="button button-ghost" type="button" data-rack-item-edit-close>{{ t('action.cancel') }}</button><button class="button button-primary" type="submit">{{ icons.icon('save') }}{{ t('action.save') }}</button></div>
     </form>
 </dialog>
 {% endblock %}
