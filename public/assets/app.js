@@ -245,6 +245,15 @@
         }));
     });
 
+    document.querySelectorAll('[data-color-picker]').forEach((picker) => {
+        const hidden = picker.querySelector('input[type="hidden"]');
+        const options = picker.querySelectorAll('[data-color-value]');
+        options.forEach((button) => button.addEventListener('click', () => {
+            if (hidden) hidden.value = button.dataset.colorValue || '';
+            options.forEach((candidate) => candidate.classList.toggle('selected', candidate === button));
+        }));
+    });
+
     const commandModal = document.querySelector('#command-modal');
     const commandInput = commandModal?.querySelector('[data-command-input]');
     const openCommand = () => {
@@ -535,6 +544,50 @@
         submitEntityForm(form, `/api/v1/ups-devices/${form.elements.ups_device_id.value}`, upsEditModal);
     });
 
+    const activeDeviceEditModal = document.querySelector('#active-device-edit-modal');
+    bindModal(activeDeviceEditModal, '[data-active-device-edit-open]', '[data-active-device-edit-close]', (button) => {
+        const form = activeDeviceEditModal?.querySelector('[data-active-device-edit-form]');
+        if (!form) return;
+        form.elements.active_device_id.value = button.dataset.deviceId || '';
+        form.elements.name.value = button.dataset.deviceName || '';
+        form.elements.device_type.value = button.dataset.deviceType || 'SWITCH';
+        form.elements.vendor.value = button.dataset.deviceVendor || '';
+        form.elements.model.value = button.dataset.deviceModel || '';
+        form.elements.management_address.value = button.dataset.deviceManagementAddress || '';
+        form.elements.notes.value = button.dataset.deviceNotes || '';
+        activeDeviceEditModal.querySelector('[data-active-device-edit-context]').textContent = button.dataset.deviceCode || '';
+    });
+    document.querySelector('[data-active-device-edit-form]')?.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        submitEntityForm(form, `/api/v1/active-devices/${form.elements.active_device_id.value}`, activeDeviceEditModal);
+    });
+
+    const rackItemModal = document.querySelector('#rack-item-modal');
+    bindModal(rackItemModal, '[data-rack-item-modal-open]', '[data-rack-item-modal-close]');
+    document.querySelector('[data-rack-item-form]')?.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        submitEntityForm(form, `/api/v1/racks/${form.dataset.rackId}/rack-items`, rackItemModal);
+    });
+
+    const rackItemEditModal = document.querySelector('#rack-item-edit-modal');
+    bindModal(rackItemEditModal, '[data-rack-item-edit-open]', '[data-rack-item-edit-close]', (button) => {
+        const form = rackItemEditModal?.querySelector('[data-rack-item-edit-form]');
+        if (!form) return;
+        form.elements.item_id.value = button.dataset.itemId || '';
+        form.elements.name.value = button.dataset.itemName || '';
+        form.elements.kind.value = button.dataset.itemKind || 'OTHER';
+        form.elements.rack_unit_start.value = button.dataset.itemStart || '';
+        form.elements.rack_unit_height.value = button.dataset.itemHeight || '1';
+        form.elements.notes.value = button.dataset.itemNotes || '';
+    });
+    document.querySelector('[data-rack-item-edit-form]')?.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        submitEntityForm(form, `/api/v1/rack-items/${form.elements.item_id.value}`, rackItemEditModal);
+    });
+
     const cableModal = document.querySelector('#cable-modal');
     bindModal(cableModal, '[data-cable-modal-open]', '[data-cable-modal-close]');
     document.querySelector('[data-cable-form]')?.addEventListener('submit', (event) => {
@@ -706,12 +759,23 @@
         if (field && 'value' in field) field.value = value ?? '';
     };
 
+    const syncColorPicker = (form, value) => {
+        const picker = form?.querySelector('[data-color-picker]');
+        if (!picker) return;
+        const hidden = picker.querySelector('input[type="hidden"]');
+        if (hidden) hidden.value = value || '';
+        picker.querySelectorAll('[data-color-value]').forEach((button) => {
+            button.classList.toggle('selected', (button.dataset.colorValue || '') === (value || ''));
+        });
+    };
+
     const populatePortEditForm = (form, port) => {
         if (!form || !port) return;
         setFormValue(form, 'port_id', String(port.id));
         setFormValue(form, 'connector_type_id', String(port.connector_type_id || panelPortData?.connector_type_id || ''));
         setFormValue(form, 'label', port.label || '');
         setFormValue(form, 'notes', port.notes || '');
+        syncColorPicker(form, port.highlight_color || '');
         form.querySelectorAll('[data-port-form-rear-destination]').forEach((element) => {
             element.textContent = port.rear_destination || '—';
         });
@@ -1470,6 +1534,12 @@
         yellow: '#eab308', violet: '#8b5cf6', rose: '#f43f5e', aqua: '#06b6d4',
     };
 
+    const portHighlightColors = {
+        red: '#ef4444', orange: '#f97316', amber: '#f59e0b', yellow: '#eab308',
+        lime: '#84cc16', green: '#22c55e', teal: '#14b8a6', cyan: '#06b6d4',
+        blue: '#3b82f6', indigo: '#6366f1', purple: '#a855f7', pink: '#ec4899',
+    };
+
     const createCadController = (container, worldWidth, worldHeight, renderWorld) => {
         if (!window.Konva) return null;
         const workspace = container.closest('[data-konva-workspace]');
@@ -1564,12 +1634,13 @@
             const portStates = Array.isArray(device.port_items) && device.port_items.length
                 ? device.port_items
                 : Array.from({ length: Number(device.ports) }, (_, index) => ({ number: index + 1, status: index < Number(device.occupied) ? 'occupied' : 'available' }));
-            const portRows = Math.max(1, Math.min(Number(device.rows || (device.ports > 24 ? 2 : 1)), 4));
-            const portColumns = Math.ceil(portStates.length / portRows);
             const portMap = { x: 230, y: 4, width: 274, height: Math.max(10, height - 8) };
+            const maxRowsForHeight = Math.max(1, Math.min(Math.floor(portMap.height / 7), 6));
+            const portRows = Math.max(1, Math.min(Number(device.rows || (device.ports > 24 ? 2 : 1)), maxRowsForHeight));
+            const portColumns = Math.ceil(portStates.length / portRows);
             const xStep = portMap.width / Math.max(1, portColumns);
             const yStep = portMap.height / portRows;
-            const radius = Math.max(1.6, Math.min(4.1, xStep * 0.31, yStep * 0.3));
+            const dotsFit = xStep >= 6.5 && yStep >= 6.5;
             const portTooltip = new window.Konva.Label({ visible: false, listening: false, opacity: 0.98 });
             const portTooltipTag = new window.Konva.Tag({ fill: palette.dark ? '#202124' : '#ffffff', stroke: palette.green, strokeWidth: 1.5, cornerRadius: 9, pointerDirection: 'down', pointerWidth: 12, pointerHeight: 7, shadowColor: palette.shadow, shadowBlur: 16, shadowOpacity: 0.3, shadowOffsetY: 6 });
             const portTooltipText = new window.Konva.Text({ width: 360, padding: 11, fontFamily: 'Inter, sans-serif', fontSize: 13, fontStyle: 'bold', lineHeight: 1.35, fill: palette.text });
@@ -1583,42 +1654,75 @@
             portTooltip.add(portTooltipTag);
             portTooltip.add(portTooltipText);
             group.add(new window.Konva.Rect({ ...portMap, cornerRadius: 4, fill: palette.canvas, stroke: palette.border, strokeWidth: 0.8, opacity: 0.72, listening: false }));
-            portStates.forEach((port, index) => {
-                const row = Math.floor(index / portColumns);
-                const column = index % portColumns;
-                const status = String(port.status || 'available').toLowerCase();
-                const statusColor = status === 'occupied' ? palette.green : (status === 'reserved' ? palette.amber : (['blocked', 'damaged'].includes(status) ? palette.red : palette.borderStrong));
-                const portCircle = new window.Konva.Circle({
-                    x: portMap.x + (column * xStep) + (xStep / 2),
-                    y: portMap.y + (row * yStep) + (yStep / 2),
-                    radius,
-                    fill: status === 'available' ? palette.surfaceRaised : statusColor,
-                    stroke: statusColor,
-                    strokeWidth: Math.max(0.8, radius * 0.34),
-                    shadowColor: statusColor,
-                    shadowBlur: status === 'available' ? 0 : radius * 1.8,
-                    shadowOpacity: status === 'available' ? 0 : 0.32,
+            if (dotsFit) {
+                const radius = Math.max(1.6, Math.min(4.1, xStep * 0.31, yStep * 0.3));
+                portStates.forEach((port, index) => {
+                    const row = Math.floor(index / portColumns);
+                    const column = index % portColumns;
+                    const status = String(port.status || 'available').toLowerCase();
+                    const statusColor = status === 'occupied' ? palette.green : (status === 'reserved' ? palette.amber : (['blocked', 'damaged'].includes(status) ? palette.red : palette.borderStrong));
+                    const portCircle = new window.Konva.Circle({
+                        x: portMap.x + (column * xStep) + (xStep / 2),
+                        y: portMap.y + (row * yStep) + (yStep / 2),
+                        radius,
+                        fill: status === 'available' ? palette.surfaceRaised : statusColor,
+                        stroke: statusColor,
+                        strokeWidth: Math.max(0.6, radius * 0.3),
+                        shadowColor: statusColor,
+                        shadowBlur: status === 'available' ? 0 : Math.min(radius * 1.8, xStep * 0.32, yStep * 0.32),
+                        shadowOpacity: status === 'available' ? 0 : 0.32,
+                    });
+                    portCircle.on('mouseenter', () => {
+                        const portNumber = String(port.number || index + 1).padStart(2, '0');
+                        const portDescription = port.label ? ` · ${port.label}` : '';
+                        const routeLines = [];
+                        if (port.rear_destination) routeLines.push(`${labels.rearSideLabel || 'Rear'}  →  ${port.rear_destination}`);
+                        if (port.front_destination) routeLines.push(`${labels.frontSideLabel || 'Front'}  →  ${port.front_destination}`);
+                        const destination = routeLines.length ? routeLines.join('\n') : (port.destination || labels.noDestination || 'No documented destination');
+                        portTooltipTag.stroke(statusColor);
+                        portTooltipText.text(`${labels.portLabel || 'Port'} ${portNumber}${portDescription} · ${statusLabels[status] || status}\n${destination}`);
+                        portTooltip.position({ x: portCircle.x(), y: portMap.y - 5 });
+                        portTooltip.show();
+                        portTooltip.moveToTop();
+                        world.getLayer().batchDraw();
+                    });
+                    portCircle.on('mouseleave', () => {
+                        portTooltip.hide();
+                        world.getLayer().batchDraw();
+                    });
+                    group.add(portCircle);
                 });
-                portCircle.on('mouseenter', () => {
-                    const portNumber = String(port.number || index + 1).padStart(2, '0');
-                    const portDescription = port.label ? ` · ${port.label}` : '';
-                    const routeLines = [];
-                    if (port.rear_destination) routeLines.push(`${labels.rearSideLabel || 'Rear'}  →  ${port.rear_destination}`);
-                    if (port.front_destination) routeLines.push(`${labels.frontSideLabel || 'Front'}  →  ${port.front_destination}`);
-                    const destination = routeLines.length ? routeLines.join('\n') : (port.destination || labels.noDestination || 'No documented destination');
-                    portTooltipTag.stroke(statusColor);
-                    portTooltipText.text(`${labels.portLabel || 'Port'} ${portNumber}${portDescription} · ${statusLabels[status] || status}\n${destination}`);
-                    portTooltip.position({ x: portCircle.x(), y: portMap.y - 5 });
-                    portTooltip.show();
-                    portTooltip.moveToTop();
-                    world.getLayer().batchDraw();
+            } else {
+                const counts = portStates.reduce((acc, port) => {
+                    const status = String(port.status || 'available').toLowerCase();
+                    acc[status] = (acc[status] || 0) + 1;
+                    return acc;
+                }, {});
+                let cursor = portMap.x;
+                const barHeight = Math.min(14, portMap.height);
+                const barY = portMap.y + (portMap.height - barHeight) / 2;
+                ['occupied', 'reserved', 'damaged', 'blocked'].forEach((status) => {
+                    const count = counts[status] || 0;
+                    if (!count) return;
+                    const segmentWidth = (count / portStates.length) * portMap.width;
+                    const statusColor = status === 'occupied' ? palette.green : (status === 'reserved' ? palette.amber : (['blocked', 'damaged'].includes(status) ? palette.red : palette.borderStrong));
+                    const segment = new window.Konva.Rect({ x: cursor, y: barY, width: Math.max(0, segmentWidth), height: barHeight, cornerRadius: 2, fill: statusColor, opacity: 0.85 });
+                    segment.on('mouseenter', () => {
+                        portTooltipTag.stroke(statusColor);
+                        portTooltipText.text(`${count} × ${statusLabels[status] || status}`);
+                        portTooltip.position({ x: segment.x() + segment.width() / 2, y: portMap.y - 5 });
+                        portTooltip.show();
+                        portTooltip.moveToTop();
+                        world.getLayer().batchDraw();
+                    });
+                    segment.on('mouseleave', () => {
+                        portTooltip.hide();
+                        world.getLayer().batchDraw();
+                    });
+                    group.add(segment);
+                    cursor += segmentWidth;
                 });
-                portCircle.on('mouseleave', () => {
-                    portTooltip.hide();
-                    world.getLayer().batchDraw();
-                });
-                group.add(portCircle);
-            });
+            }
             group.add(portTooltip);
         }
         group.on('mouseenter', () => { document.body.style.cursor = 'pointer'; group.scale({ x: 1.006, y: 1.006 }); world.getLayer().batchDraw(); });
@@ -1741,6 +1845,9 @@
             const selection = new window.Konva.Circle({ name: 'selection-ring', radius: 31, stroke: palette.green, strokeWidth: 3, visible: false, shadowColor: palette.green, shadowBlur: 14, shadowOpacity: 0.62 });
             group.add(selection);
             group.add(new window.Konva.Circle({ radius: 24, fill: palette.canvas, stroke: damaged ? palette.red : (blocked || reserved ? palette.amber : (occupied ? palette.borderStrong : palette.border)), strokeWidth: damaged ? 5 : 3, shadowColor: damaged ? palette.red : palette.shadow, shadowBlur: damaged ? 16 : 6, shadowOpacity: damaged ? 0.58 : 0.3 }));
+            if (port.highlight_color && portHighlightColors[port.highlight_color]) {
+                group.add(new window.Konva.Circle({ radius: 28, stroke: portHighlightColors[port.highlight_color], strokeWidth: 3, dash: [4, 3] }));
+            }
             group.add(new window.Konva.Circle({ radius: 15, fill: occupied || damaged || blocked || reserved ? accent : palette.surfaceMuted, stroke: occupied && port.color === 'white' ? palette.borderStrong : accent, strokeWidth: 2 }));
             group.add(new window.Konva.Circle({ radius: 6, fill: occupied || damaged || blocked || reserved ? palette.canvas : palette.border, opacity: 0.9 }));
             const portLabelSize = Math.max(14, Math.min(18, xStep * 0.24, yStep * 0.24));

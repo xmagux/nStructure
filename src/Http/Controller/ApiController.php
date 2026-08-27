@@ -212,8 +212,8 @@ final readonly class ApiController
             if ($start === false || $start < 1 || $start > 60) {
                 throw new InvalidArgumentException('Rack unit must be between 1 and 60');
             }
-            if ($height === false || $height < 1 || $height > 6) {
-                throw new InvalidArgumentException('Panel height must be between 1U and 6U');
+            if ($height === false || $height < 1 || $height > 12) {
+                throw new InvalidArgumentException('Panel height must be between 1U and 12U');
             }
             if ($portCount === false || $portCount < 1 || $portCount > 288) {
                 throw new InvalidArgumentException('Port count must be between 1 and 288');
@@ -257,6 +257,64 @@ final readonly class ApiController
         );
     }
 
+    public function updateActiveDevice(ServerRequestInterface $request, ResponseInterface $response, array $arguments): ResponseInterface
+    {
+        try {
+            $input = (array) ($request->getParsedBody() ?? []);
+            $this->validateActiveDevice($input);
+            $device = $this->repository->updateActiveDevice((int) $arguments['id'], $input);
+            return $this->json($response, ['data' => $device]);
+        } catch (InvalidArgumentException $exception) {
+            return $this->json($response->withStatus(422), ['error' => $exception->getMessage()]);
+        } catch (Throwable $exception) {
+            return $this->json($response->withStatus(409), ['error' => $exception->getMessage() ?: 'Active device could not be updated']);
+        }
+    }
+
+    public function archiveActiveDevice(ServerRequestInterface $request, ResponseInterface $response, array $arguments): ResponseInterface
+    {
+        return $this->archiveResource(
+            $response,
+            fn (): array => $this->repository->archiveActiveDevice((int) $arguments['id']),
+        );
+    }
+
+    public function createRackItem(ServerRequestInterface $request, ResponseInterface $response, array $arguments): ResponseInterface
+    {
+        try {
+            $input = (array) ($request->getParsedBody() ?? []);
+            $this->validateRackItem($input);
+            $item = $this->repository->createRackItem((int) $arguments['id'], $input);
+            return $this->json($response->withStatus(201), ['data' => $item]);
+        } catch (InvalidArgumentException $exception) {
+            return $this->json($response->withStatus(422), ['error' => $exception->getMessage()]);
+        } catch (Throwable $exception) {
+            return $this->json($response->withStatus(409), ['error' => $exception->getMessage() ?: 'Rack item could not be created']);
+        }
+    }
+
+    public function updateRackItem(ServerRequestInterface $request, ResponseInterface $response, array $arguments): ResponseInterface
+    {
+        try {
+            $input = (array) ($request->getParsedBody() ?? []);
+            $this->validateRackItem($input);
+            $item = $this->repository->updateRackItem((int) $arguments['id'], $input);
+            return $this->json($response, ['data' => $item]);
+        } catch (InvalidArgumentException $exception) {
+            return $this->json($response->withStatus(422), ['error' => $exception->getMessage()]);
+        } catch (Throwable $exception) {
+            return $this->json($response->withStatus(409), ['error' => $exception->getMessage() ?: 'Rack item could not be updated']);
+        }
+    }
+
+    public function archiveRackItem(ServerRequestInterface $request, ResponseInterface $response, array $arguments): ResponseInterface
+    {
+        return $this->archiveResource(
+            $response,
+            fn (): array => $this->repository->archiveRackItem((int) $arguments['id']),
+        );
+    }
+
     public function updatePort(ServerRequestInterface $request, ResponseInterface $response, array $arguments): ResponseInterface
     {
         try {
@@ -267,8 +325,12 @@ final readonly class ApiController
             $connectorTypeId = filter_var($input['connector_type_id'] ?? null, FILTER_VALIDATE_INT);
             $frontMode = strtoupper(trim((string) ($input['front_connection_mode'] ?? 'UNCHANGED')));
             $rearMode = strtoupper(trim((string) ($input['rear_connection_mode'] ?? 'UNCHANGED')));
+            $highlightColor = trim((string) ($input['highlight_color'] ?? ''));
             if (!in_array($status, ['AVAILABLE', 'RESERVED', 'BLOCKED', 'DAMAGED'], true)) {
                 throw new InvalidArgumentException('Invalid administrative status');
+            }
+            if ($highlightColor !== '' && !in_array($highlightColor, ['red', 'orange', 'amber', 'yellow', 'lime', 'green', 'teal', 'cyan', 'blue', 'indigo', 'purple', 'pink'], true)) {
+                throw new InvalidArgumentException('Invalid port highlight color');
             }
             if ($connectorTypeId === false || $connectorTypeId < 1) {
                 throw new InvalidArgumentException('Select a connector type');
@@ -506,6 +568,58 @@ final readonly class ApiController
         }
     }
 
+    private function validateActiveDevice(array $input): void
+    {
+        $name = trim((string) ($input['name'] ?? ''));
+        $vendor = trim((string) ($input['vendor'] ?? ''));
+        $model = trim((string) ($input['model'] ?? ''));
+        $deviceType = strtoupper(trim((string) ($input['device_type'] ?? '')));
+        $managementAddress = trim((string) ($input['management_address'] ?? ''));
+        $notes = trim((string) ($input['notes'] ?? ''));
+        if (mb_strlen($name) < 2 || mb_strlen($name) > 160) {
+            throw new InvalidArgumentException('Name must contain 2-160 characters');
+        }
+        if (!in_array($deviceType, ['SWITCH', 'ROUTER', 'FIREWALL', 'TRANSPORT', 'SERVER', 'OTHER'], true)) {
+            throw new InvalidArgumentException('Select a valid device type');
+        }
+        if (mb_strlen($vendor) < 2 || mb_strlen($vendor) > 120) {
+            throw new InvalidArgumentException('Vendor must contain 2-120 characters');
+        }
+        if (mb_strlen($model) > 120) {
+            throw new InvalidArgumentException('Model must contain no more than 120 characters');
+        }
+        if (mb_strlen($managementAddress) > 255) {
+            throw new InvalidArgumentException('Management address must contain no more than 255 characters');
+        }
+        if (mb_strlen($notes) > 2000) {
+            throw new InvalidArgumentException('Notes must contain no more than 2000 characters');
+        }
+    }
+
+    private function validateRackItem(array $input): void
+    {
+        $name = trim((string) ($input['name'] ?? ''));
+        $kind = strtoupper(trim((string) ($input['kind'] ?? '')));
+        $start = filter_var($input['rack_unit_start'] ?? null, FILTER_VALIDATE_INT);
+        $height = filter_var($input['rack_unit_height'] ?? null, FILTER_VALIDATE_INT);
+        $notes = trim((string) ($input['notes'] ?? ''));
+        if (mb_strlen($name) < 2 || mb_strlen($name) > 160) {
+            throw new InvalidArgumentException('Name must contain 2-160 characters');
+        }
+        if (!in_array($kind, ['ORGANIZER', 'PATCH_PANEL', 'FREE_SPACE', 'POWER', 'ACTIVE_DEVICE', 'UPS', 'OTHER'], true)) {
+            throw new InvalidArgumentException('Select a valid item kind');
+        }
+        if ($start === false || $start < 1 || $start > 60) {
+            throw new InvalidArgumentException('Rack unit must be between 1 and 60');
+        }
+        if ($height === false || $height < 1 || $height > 12) {
+            throw new InvalidArgumentException('Height must be between 1U and 12U');
+        }
+        if (mb_strlen($notes) > 2000) {
+            throw new InvalidArgumentException('Notes must contain no more than 2000 characters');
+        }
+    }
+
     private function validateNamedEntity(array $input): void
     {
         $code = trim((string) ($input['code'] ?? ''));
@@ -536,8 +650,8 @@ final readonly class ApiController
         if ($start === false || $start < 1 || $start > 60) {
             throw new InvalidArgumentException('Rack unit must be between 1 and 60');
         }
-        if ($height === false || $height < 1 || $height > 6) {
-            throw new InvalidArgumentException('Panel height must be between 1U and 6U');
+        if ($height === false || $height < 1 || $height > 12) {
+            throw new InvalidArgumentException('Panel height must be between 1U and 12U');
         }
         if ($portCount === false || $portCount < 1 || $portCount > 288) {
             throw new InvalidArgumentException('Port count must be between 1 and 288');

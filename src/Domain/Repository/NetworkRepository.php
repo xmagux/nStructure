@@ -38,6 +38,16 @@ interface NetworkRepository
 
     public function activeDeviceOptions(): array;
 
+    public function updateActiveDevice(int $activeDeviceId, array $input): array;
+
+    public function archiveActiveDevice(int $activeDeviceId): array;
+
+    public function createRackItem(int $rackId, array $input): array;
+
+    public function updateRackItem(int $rackItemId, array $input): array;
+
+    public function archiveRackItem(int $rackItemId): array;
+
     public function createLocation(array $input): array;
 
     public function updateLocation(int $locationId, array $input): array;

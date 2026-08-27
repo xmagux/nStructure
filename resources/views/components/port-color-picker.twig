@@ -1,0 +1,9 @@
+{% import 'components/icons.twig' as icons %}
+{% set port_color_options = ['red', 'orange', 'amber', 'yellow', 'lime', 'green', 'teal', 'cyan', 'blue', 'indigo', 'purple', 'pink'] %}
+<div class="color-picker" data-color-picker>
+    <input type="hidden" name="highlight_color" value="">
+    <button class="color-picker-option none selected" type="button" data-color-value="" title="{{ t('form.no_color') }}" aria-label="{{ t('form.no_color') }}">{{ icons.icon('close', 15) }}</button>
+    {% for opt in port_color_options %}
+    <button class="color-picker-option" type="button" data-color-value="{{ opt }}" data-color-swatch="{{ opt }}" title="{{ t('color.' ~ opt) }}" aria-label="{{ t('color.' ~ opt) }}"></button>
+    {% endfor %}
+</div>

@@ -10,6 +10,7 @@
         <label class="field"><span>{{ t('form.connector_type') }}</span><select name="connector_type_id" required>{% for connector in connector_types %}<option value="{{ connector.id }}">{{ connector.code }}</option>{% endfor %}</select></label>
         <label class="field"><span>{{ t('form.port_status') }}</span><select name="administrative_status"><option value="AVAILABLE">{{ t('common.available') }}</option><option value="RESERVED">{{ t('common.reserved') }}</option><option value="BLOCKED">{{ t('common.blocked') }}</option><option value="DAMAGED">{{ t('common.damaged') }}</option></select></label>
         <label class="field field-wide"><span>{{ t('form.port_label') }}</span><input name="label" maxlength="120" placeholder="{{ t('form.port_label_hint') }}"></label>
+        <label class="field field-wide"><span>{{ t('form.port_highlight_color') }}</span>{% include 'components/port-color-picker.twig' %}</label>
         <label class="field field-wide"><span>{{ t('form.notes') }}</span><textarea name="notes" maxlength="2000" rows="3" placeholder="{{ t('form.port_notes_hint') }}"></textarea></label>
     </div>
 </section>
@@ -168,7 +169,7 @@
             <label class="field"><span>{{ t('form.panel_code') }}</span><input name="code" maxlength="60" value="{{ panel.code }}" required></label>
             <label class="field"><span>{{ t('form.panel_name') }}</span><input name="name" maxlength="160" value="{{ panel.name }}" required></label>
             <label class="field"><span>{{ t('form.rack_unit_start') }}</span><input name="rack_unit_start" type="number" min="1" max="60" value="{{ panel.rack_unit_start }}" required></label>
-            <label class="field"><span>{{ t('form.panel_height') }}</span><select name="rack_unit_height" required>{% for height in 1..6 %}<option value="{{ height }}" {{ height == panel.rack_unit_height ? 'selected' : '' }}>{{ height }}U</option>{% endfor %}</select></label>
+            <label class="field"><span>{{ t('form.panel_height') }}</span><select name="rack_unit_height" required>{% for height in 1..12 %}<option value="{{ height }}" {{ height == panel.rack_unit_height ? 'selected' : '' }}>{{ height }}U</option>{% endfor %}</select></label>
             <label class="field"><span>{{ t('form.port_count') }}</span><input name="port_count" type="number" min="1" max="288" value="{{ panel.ports }}" required></label>
             <label class="field"><span>{{ t('form.layout_rows') }}</span><input name="layout_rows" type="number" min="1" max="12" value="{{ panel.layout_rows }}" required></label>
             <label class="field"><span>{{ t('form.connector_type') }}</span><select name="connector_type_id" required>{% for connector in connector_types %}<option value="{{ connector.id }}" {{ connector.id == panel.connector_type_id ? 'selected' : '' }}>{{ connector.code }}</option>{% endfor %}</select></label>

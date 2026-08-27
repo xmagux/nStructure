@@ -39,6 +39,11 @@ return static function (App $app): void {
         $group->post('/patch-panels/{id:[0-9]+}/images', [AssetController::class, 'uploadPanelImage']);
         $group->post('/patch-panel-ports/{id:[0-9]+}', [ApiController::class, 'updatePort']);
         $group->post('/patch-panel-ports/{id:[0-9]+}/connections', [ApiController::class, 'connectPorts']);
+        $group->post('/active-devices/{id:[0-9]+}', [ApiController::class, 'updateActiveDevice']);
+        $group->delete('/active-devices/{id:[0-9]+}', [ApiController::class, 'archiveActiveDevice']);
+        $group->post('/racks/{id:[0-9]+}/rack-items', [ApiController::class, 'createRackItem']);
+        $group->post('/rack-items/{id:[0-9]+}', [ApiController::class, 'updateRackItem']);
+        $group->delete('/rack-items/{id:[0-9]+}', [ApiController::class, 'archiveRackItem']);
         if (!$demoMode) {
             $group->post('/users', [UserController::class, 'create']);
             $group->delete('/users/{id:[0-9]+}', [UserController::class, 'archive']);

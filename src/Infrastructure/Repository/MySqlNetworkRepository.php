@@ -285,7 +285,7 @@ final readonly class MySqlNetworkRepository implements NetworkRepository
         );
         $panels->execute(['rack_id' => $id]);
         $portStatement = $this->pdo->prepare(
-            'SELECT ppp.patch_panel_id, ppp.port_number AS number, ppp.label, ppp.remote_endpoint_label,
+            'SELECT ppp.patch_panel_id, ppp.port_number AS number, ppp.label, ppp.highlight_color, ppp.remote_endpoint_label,
                 CASE
                     WHEN ppp.administrative_status <> "AVAILABLE" THEN LOWER(ppp.administrative_status)
                     WHEN EXISTS (
@@ -389,6 +389,7 @@ final readonly class MySqlNetworkRepository implements NetworkRepository
                 'number' => (int) $port['number'],
                 'status' => $port['status'],
                 'label' => $port['label'],
+                'highlight_color' => $port['highlight_color'],
                 'destination' => $frontDestination ?: $rearDestination,
                 'rear_destination' => $rearDestination,
                 'front_destination' => $frontDestination,
@@ -410,6 +411,57 @@ final readonly class MySqlNetworkRepository implements NetworkRepository
                 'tone' => 'violet',
             ];
         }, $panels->fetchAll());
+
+        $rackItemsStatement = $this->pdo->prepare(
+            'SELECT id, name, kind, rack_unit_start AS start, rack_unit_height AS height, notes
+             FROM rack_items WHERE rack_id = :rack_id AND archived_at IS NULL
+             ORDER BY rack_unit_start DESC',
+        );
+        $rackItemsStatement->execute(['rack_id' => $id]);
+        $rackItemTones = [
+            'ORGANIZER' => 'slate', 'PATCH_PANEL' => 'violet', 'FREE_SPACE' => 'slate',
+            'POWER' => 'amber', 'ACTIVE_DEVICE' => 'cyan', 'UPS' => 'amber', 'OTHER' => 'slate',
+        ];
+        $rackItems = array_map(static function (array $item) use ($rackItemTones): array {
+            $kind = (string) $item['kind'];
+            return [
+                'id' => (int) $item['id'],
+                'code' => $kind,
+                'name' => $item['name'],
+                'kind' => $kind,
+                'notes' => $item['notes'],
+                'start' => (int) $item['start'],
+                'height' => (int) $item['height'],
+                'type' => 'rack_item',
+                'tone' => $rackItemTones[$kind] ?? 'slate',
+            ];
+        }, $rackItemsStatement->fetchAll());
+        $devices = [...$devices, ...$rackItems];
+
+        $activeDevicesStatement = $this->pdo->prepare(
+            'SELECT ad.id, ad.code, ad.name, ad.device_type, ad.vendor, ad.model, ad.management_address, ad.notes,
+                (SELECT COUNT(*) FROM active_device_interfaces WHERE active_device_id = ad.id) AS interface_count,
+                (SELECT COUNT(*) FROM active_device_interfaces adi
+                 JOIN patch_panel_front_connections pfc ON pfc.active_device_interface_id = adi.id
+                 WHERE adi.active_device_id = ad.id) AS connected_count
+             FROM active_devices ad
+             WHERE ad.rack_id = :rack_id AND ad.archived_at IS NULL
+             ORDER BY ad.name',
+        );
+        $activeDevicesStatement->execute(['rack_id' => $id]);
+        $activeDevices = array_map(static fn (array $device): array => [
+            'id' => (int) $device['id'],
+            'code' => $device['code'],
+            'name' => $device['name'],
+            'device_type' => $device['device_type'],
+            'vendor' => $device['vendor'],
+            'model' => $device['model'],
+            'management_address' => $device['management_address'],
+            'notes' => $device['notes'],
+            'interface_count' => (int) $device['interface_count'],
+            'connected_count' => (int) $device['connected_count'],
+        ], $activeDevicesStatement->fetchAll());
+
         $used = array_sum(array_map(static fn (array $device): int => (int) $device['height'], $devices));
 
         return [
@@ -426,6 +478,7 @@ final readonly class MySqlNetworkRepository implements NetworkRepository
             'temperature' => '—',
             'utilization' => round(($used / max(1, (int) $rack['total_units'])) * 100),
             'devices' => $devices,
+            'active_devices' => $activeDevices,
             'images' => $this->assetImages('RACK', $id),
         ];
     }
@@ -470,7 +523,7 @@ final readonly class MySqlNetworkRepository implements NetworkRepository
         }
 
         $portStatement = $this->pdo->prepare(
-            'SELECT ppp.id, ppp.port_number AS number, ppp.label, ppp.remote_endpoint_label, ppp.notes, ppp.administrative_status,
+            'SELECT ppp.id, ppp.port_number AS number, ppp.label, ppp.highlight_color, ppp.remote_endpoint_label, ppp.notes, ppp.administrative_status,
                 ct.id AS connector_type_id, ct.code AS connector, fs.strand_number, fs.strand_color,
                 cs.segment_code, c.code AS cable_code,
                 pfc.id AS front_connection_id, pfc.patch_cord_label AS front_patch_cord_label, pfc.notes AS front_connection_notes,
@@ -644,6 +697,7 @@ final readonly class MySqlNetworkRepository implements NetworkRepository
                 'connector_type_id' => (int) $port['connector_type_id'],
                 'connector' => $port['connector'],
                 'label' => $port['label'],
+                'highlight_color' => $port['highlight_color'],
                 'manual_remote_endpoint' => $port['remote_endpoint_label'],
                 'notes' => $port['notes'],
                 'fiber' => $port['rear_fiber_path'] ?: ($port['segment_code'] ? sprintf('%s / %02d', $port['segment_code'], $port['strand_number']) : null),
@@ -1333,6 +1387,10 @@ SQL;
                     'rack_has_devices',
                 ],
                 [
+                    'SELECT COUNT(*) FROM rack_items WHERE rack_id = :id AND archived_at IS NULL',
+                    'rack_has_devices',
+                ],
+                [
                     'SELECT COUNT(DISTINCT c.id)
                      FROM cables c
                      JOIN cable_segments cs ON cs.cable_id = c.id
@@ -1637,6 +1695,138 @@ SQL;
         }
     }
 
+    public function updateActiveDevice(int $activeDeviceId, array $input): array
+    {
+        $record = [
+            'id' => $activeDeviceId,
+            'name' => trim((string) $input['name']),
+            'device_type' => strtoupper(trim((string) $input['device_type'])),
+            'vendor' => trim((string) $input['vendor']),
+            'model' => trim((string) ($input['model'] ?? '')) ?: null,
+            'management_address' => trim((string) ($input['management_address'] ?? '')) ?: null,
+            'notes' => trim((string) ($input['notes'] ?? '')) ?: null,
+        ];
+        $statement = $this->pdo->prepare(
+            'UPDATE active_devices SET
+                name = :name, device_type = :device_type, vendor = :vendor, model = :model,
+                management_address = :management_address, notes = :notes
+             WHERE id = :id AND archived_at IS NULL',
+        );
+        $statement->execute($record);
+        if ($statement->rowCount() === 0 && !$this->recordExists('active_devices', $activeDeviceId)) {
+            throw new RuntimeException('Active device not found');
+        }
+        $this->recordAudit('ACTIVE_DEVICE', $activeDeviceId, 'UPDATE', null, $record);
+        return $record;
+    }
+
+    public function archiveActiveDevice(int $activeDeviceId): array
+    {
+        $this->pdo->beginTransaction();
+        try {
+            $statement = $this->pdo->prepare(
+                'SELECT id, code, name FROM active_devices WHERE id = :id AND archived_at IS NULL FOR UPDATE',
+            );
+            $statement->execute(['id' => $activeDeviceId]);
+            $device = $statement->fetch();
+            if (!is_array($device)) {
+                throw new RuntimeException('Active device not found');
+            }
+            $connected = $this->pdo->prepare(
+                'SELECT COUNT(*) FROM active_device_interfaces adi
+                 JOIN patch_panel_front_connections pfc ON pfc.active_device_interface_id = adi.id
+                 WHERE adi.active_device_id = :id',
+            );
+            $connected->execute(['id' => $activeDeviceId]);
+            if ((int) $connected->fetchColumn() > 0) {
+                throw new ResourceInUseException('active_device_connected');
+            }
+            $archive = $this->pdo->prepare(
+                'UPDATE active_devices SET archived_at = CURRENT_TIMESTAMP WHERE id = :id AND archived_at IS NULL',
+            );
+            $archive->execute(['id' => $activeDeviceId]);
+            $this->recordArchiveAudit('ACTIVE_DEVICE', $activeDeviceId, $device);
+            $this->pdo->commit();
+            return ['id' => $activeDeviceId, 'code' => $device['code'], 'archived' => true];
+        } catch (\Throwable $exception) {
+            $this->pdo->rollBack();
+            throw $exception;
+        }
+    }
+
+    public function createRackItem(int $rackId, array $input): array
+    {
+        $rackStatement = $this->pdo->prepare('SELECT id FROM racks WHERE id = :id AND archived_at IS NULL');
+        $rackStatement->execute(['id' => $rackId]);
+        if ($rackStatement->fetchColumn() === false) {
+            throw new RuntimeException('Rack not found');
+        }
+        $record = [
+            'rack_id' => $rackId,
+            'name' => trim((string) $input['name']),
+            'kind' => strtoupper(trim((string) $input['kind'])),
+            'rack_unit_start' => (int) $input['rack_unit_start'],
+            'rack_unit_height' => (int) $input['rack_unit_height'],
+            'notes' => trim((string) ($input['notes'] ?? '')) ?: null,
+        ];
+        $statement = $this->pdo->prepare(
+            'INSERT INTO rack_items (rack_id, name, kind, rack_unit_start, rack_unit_height, notes)
+             VALUES (:rack_id, :name, :kind, :rack_unit_start, :rack_unit_height, :notes)',
+        );
+        $statement->execute($record);
+        $record['id'] = (int) $this->pdo->lastInsertId();
+        $this->recordAudit('RACK_ITEM', $record['id'], 'CREATE', null, $record);
+        return $record;
+    }
+
+    public function updateRackItem(int $rackItemId, array $input): array
+    {
+        $record = [
+            'id' => $rackItemId,
+            'name' => trim((string) $input['name']),
+            'kind' => strtoupper(trim((string) $input['kind'])),
+            'rack_unit_start' => (int) $input['rack_unit_start'],
+            'rack_unit_height' => (int) $input['rack_unit_height'],
+            'notes' => trim((string) ($input['notes'] ?? '')) ?: null,
+        ];
+        $statement = $this->pdo->prepare(
+            'UPDATE rack_items SET name = :name, kind = :kind, rack_unit_start = :rack_unit_start,
+                rack_unit_height = :rack_unit_height, notes = :notes
+             WHERE id = :id AND archived_at IS NULL',
+        );
+        $statement->execute($record);
+        if ($statement->rowCount() === 0 && !$this->recordExists('rack_items', $rackItemId)) {
+            throw new RuntimeException('Rack item not found');
+        }
+        $this->recordAudit('RACK_ITEM', $rackItemId, 'UPDATE', null, $record);
+        return $record;
+    }
+
+    public function archiveRackItem(int $rackItemId): array
+    {
+        $this->pdo->beginTransaction();
+        try {
+            $statement = $this->pdo->prepare(
+                'SELECT id, name FROM rack_items WHERE id = :id AND archived_at IS NULL FOR UPDATE',
+            );
+            $statement->execute(['id' => $rackItemId]);
+            $item = $statement->fetch();
+            if (!is_array($item)) {
+                throw new RuntimeException('Rack item not found');
+            }
+            $archive = $this->pdo->prepare(
+                'UPDATE rack_items SET archived_at = CURRENT_TIMESTAMP WHERE id = :id AND archived_at IS NULL',
+            );
+            $archive->execute(['id' => $rackItemId]);
+            $this->recordArchiveAudit('RACK_ITEM', $rackItemId, $item);
+            $this->pdo->commit();
+            return ['id' => $rackItemId, 'name' => $item['name'], 'archived' => true];
+        } catch (\Throwable $exception) {
+            $this->pdo->rollBack();
+            throw $exception;
+        }
+    }
+
     public function updatePort(int $portId, array $input): array
     {
         $this->pdo->beginTransaction();
@@ -1659,11 +1849,12 @@ SQL;
                 'label' => trim((string) ($input['label'] ?? '')) ?: null,
                 'status' => strtoupper(trim((string) $input['administrative_status'])),
                 'notes' => trim((string) ($input['notes'] ?? '')) ?: null,
+                'highlight_color' => trim((string) ($input['highlight_color'] ?? '')) ?: null,
             ];
             $statement = $this->pdo->prepare(
                 'UPDATE patch_panel_ports
                  SET connector_type_id = :connector_type_id, label = :label,
-                     administrative_status = :status, notes = :notes
+                     administrative_status = :status, notes = :notes, highlight_color = :highlight_color
                  WHERE id = :id',
             );
             $statement->execute($record);
@@ -1818,6 +2009,7 @@ SQL;
                 'label' => $record['label'],
                 'administrative_status' => $record['status'],
                 'notes' => $record['notes'],
+                'highlight_color' => $record['highlight_color'],
                 'front_connection_mode' => $frontMode,
                 'rear_connection_mode' => $rearMode,
             ];
@@ -2997,7 +3189,7 @@ SQL;
 
     private function recordExists(string $table, int $id): bool
     {
-        $allowedTables = ['locations', 'server_rooms', 'racks', 'cables'];
+        $allowedTables = ['locations', 'server_rooms', 'racks', 'cables', 'active_devices', 'rack_items'];
         if (!in_array($table, $allowedTables, true)) {
             throw new RuntimeException('Unsupported record type');
         }

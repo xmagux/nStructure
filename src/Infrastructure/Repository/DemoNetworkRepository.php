@@ -269,12 +269,15 @@ final class DemoNetworkRepository implements NetworkRepository
                     'number' => (int) $port['number'],
                     'status' => $port['status'],
                     'label' => $port['label'],
+                    'highlight_color' => $port['highlight_color'] ?? null,
                     'destination' => $port['destination'],
                     'rear_destination' => $port['rear_destination'] ?? $port['destination'],
                     'front_destination' => $port['front_destination'] ?? null,
                 ], $panel['port_items']);
                 return $device;
             }, $rack['devices']);
+            $rack['devices'] = [...$rack['devices'], ...$this->rackItemsForRack($id)];
+            $rack['active_devices'] = $this->activeDevicesForRack($id);
             $rack['images'] = $this->assetImages('RACK', $id);
             return $rack;
         }
@@ -282,6 +285,8 @@ final class DemoNetworkRepository implements NetworkRepository
             foreach ($roomRacks as $rack) {
                 if ((int) $rack['id'] === $id) {
                     $storedRack = array_replace($rack + ['devices' => [], 'row_label' => null, 'server_room_id' => 0], $_SESSION['demo_rack_updates'][$id] ?? []);
+                    $storedRack['devices'] = [...$storedRack['devices'], ...$this->rackItemsForRack($id)];
+                    $storedRack['active_devices'] = $this->activeDevicesForRack($id);
                     $storedRack['images'] = $this->assetImages('RACK', $id);
                     return $storedRack;
                 }
@@ -344,6 +349,7 @@ final class DemoNetworkRepository implements NetworkRepository
                 'connector_type_id' => $portUpdate['connector_type_id'] ?? $panel['connector_type_id'],
                 'connector' => $panel['connector'],
                 'label' => $portUpdate['label'] ?? null,
+                'highlight_color' => $portUpdate['highlight_color'] ?? null,
                 'manual_remote_endpoint' => $portUpdate['remote_endpoint_label'] ?? null,
                 'notes' => $portUpdate['notes'] ?? null,
                 'fiber' => sprintf('%s / %02d', match ($id) {
@@ -548,6 +554,11 @@ final class DemoNetworkRepository implements NetworkRepository
         foreach ($_SESSION['demo_active_devices'] ?? [] as $device) {
             $devices[] = $device;
         }
+        $archivedDevices = array_map('intval', $_SESSION['demo_archived_active_devices'] ?? []);
+        $devices = array_values(array_filter(
+            array_map(fn (array $device): array => array_replace($device, $_SESSION['demo_active_device_updates'][$device['id']] ?? []), $devices),
+            static fn (array $device): bool => !in_array((int) $device['id'], $archivedDevices, true),
+        ));
         foreach ($devices as &$device) {
             $device['label'] = implode(' · ', array_filter([$device['location'], $device['rack'], $device['vendor'], $device['name'], $device['model']]));
         }
@@ -759,6 +770,9 @@ final class DemoNetworkRepository implements NetworkRepository
         if (array_filter($rack['devices'] ?? [], static fn (array $device): bool => $device['type'] !== 'patch_panel') !== []) {
             throw new ResourceInUseException('rack_has_devices');
         }
+        if ($this->activeDevicesForRack($rackId) !== []) {
+            throw new ResourceInUseException('rack_has_devices');
+        }
         if ($this->demoCableUsesEndpoint('RACK:' . $rackId)) {
             throw new ResourceInUseException('rack_used_by_cable');
         }
@@ -819,6 +833,7 @@ final class DemoNetworkRepository implements NetworkRepository
                 'connector_type_id' => (int) $input['connector_type_id'],
                 'connector' => $connectorCode,
                 'label' => null,
+                'highlight_color' => null,
                 'manual_remote_endpoint' => null,
                 'notes' => null,
                 'fiber' => null,
@@ -907,6 +922,193 @@ final class DemoNetworkRepository implements NetworkRepository
         return ['id' => $panelId, 'code' => $panel['code'], 'archived' => true];
     }
 
+    private function demoActiveDeviceFixtures(): array
+    {
+        return [
+            701 => ['id' => 701, 'rack_id' => 1, 'code' => 'SW-WAW-01', 'name' => 'Core Switch 01', 'device_type' => 'SWITCH', 'vendor' => 'Juniper', 'model' => 'EX4650', 'management_address' => null, 'notes' => null],
+            702 => ['id' => 702, 'rack_id' => 1, 'code' => 'FW-WAW-01', 'name' => 'Edge Firewall 01', 'device_type' => 'FIREWALL', 'vendor' => 'Palo Alto Networks', 'model' => 'PA-3410', 'management_address' => null, 'notes' => null],
+            703 => ['id' => 703, 'rack_id' => 2, 'code' => 'FW-NORTH-01', 'name' => 'Branch Firewall 01', 'device_type' => 'FIREWALL', 'vendor' => 'Fortinet', 'model' => 'FortiGate 200F', 'management_address' => null, 'notes' => null],
+        ];
+    }
+
+    private function demoActiveDeviceConnectionCount(int $deviceId): int
+    {
+        $panelIds = [1, 2, 3, 10];
+        foreach ($_SESSION['demo_panels'] ?? [] as $rackPanels) {
+            foreach ($rackPanels as $panel) {
+                $panelIds[] = (int) $panel['id'];
+            }
+        }
+        $count = 0;
+        foreach (array_unique($panelIds) as $panelId) {
+            $panel = $this->panel($panelId);
+            if ($panel === null) {
+                continue;
+            }
+            foreach ($panel['port_items'] as $port) {
+                if ((int) ($port['front_connection']['device_id'] ?? 0) === $deviceId) {
+                    $count++;
+                }
+            }
+        }
+        return $count;
+    }
+
+    private function findDemoActiveDevice(int $activeDeviceId): ?array
+    {
+        $device = $this->demoActiveDeviceFixtures()[$activeDeviceId] ?? $_SESSION['demo_active_devices'][$activeDeviceId] ?? null;
+        if ($device === null) {
+            return null;
+        }
+        return array_replace($device, $_SESSION['demo_active_device_updates'][$activeDeviceId] ?? []);
+    }
+
+    private function activeDevicesForRack(int $rackId): array
+    {
+        $archived = array_map('intval', $_SESSION['demo_archived_active_devices'] ?? []);
+        $ids = array_unique([...array_keys($this->demoActiveDeviceFixtures()), ...array_keys($_SESSION['demo_active_devices'] ?? [])]);
+        $devices = [];
+        foreach ($ids as $id) {
+            if (in_array((int) $id, $archived, true)) {
+                continue;
+            }
+            $device = $this->findDemoActiveDevice((int) $id);
+            if ($device === null || (int) $device['rack_id'] !== $rackId) {
+                continue;
+            }
+            $connections = $this->demoActiveDeviceConnectionCount((int) $id);
+            $devices[] = [
+                'id' => (int) $device['id'],
+                'code' => $device['code'],
+                'name' => $device['name'],
+                'device_type' => $device['device_type'],
+                'vendor' => $device['vendor'],
+                'model' => $device['model'] ?? null,
+                'management_address' => $device['management_address'] ?? null,
+                'notes' => $device['notes'] ?? null,
+                'interface_count' => $connections,
+                'connected_count' => $connections,
+            ];
+        }
+        return $devices;
+    }
+
+    public function updateActiveDevice(int $activeDeviceId, array $input): array
+    {
+        if ($this->findDemoActiveDevice($activeDeviceId) === null) {
+            throw new \RuntimeException('Active device not found');
+        }
+        $update = [
+            'name' => trim((string) $input['name']),
+            'device_type' => strtoupper(trim((string) $input['device_type'])),
+            'vendor' => trim((string) $input['vendor']),
+            'model' => trim((string) ($input['model'] ?? '')) ?: null,
+            'management_address' => trim((string) ($input['management_address'] ?? '')) ?: null,
+            'notes' => trim((string) ($input['notes'] ?? '')) ?: null,
+        ];
+        $_SESSION['demo_active_device_updates'][$activeDeviceId] = $update;
+        return ['id' => $activeDeviceId] + $update;
+    }
+
+    public function archiveActiveDevice(int $activeDeviceId): array
+    {
+        $device = $this->findDemoActiveDevice($activeDeviceId);
+        if ($device === null) {
+            throw new \RuntimeException('Active device not found');
+        }
+        if ($this->demoActiveDeviceConnectionCount($activeDeviceId) > 0) {
+            throw new ResourceInUseException('active_device_connected');
+        }
+        $_SESSION['demo_archived_active_devices'][] = $activeDeviceId;
+        return ['id' => $activeDeviceId, 'code' => $device['code'], 'archived' => true];
+    }
+
+    private function rackItemsForRack(int $rackId): array
+    {
+        $archived = array_map('intval', $_SESSION['demo_archived_rack_items'] ?? []);
+        $items = [];
+        foreach ($_SESSION['demo_rack_items'][$rackId] ?? [] as $item) {
+            if (in_array((int) $item['id'], $archived, true)) {
+                continue;
+            }
+            $items[] = array_replace($item, $_SESSION['demo_rack_item_updates'][$item['id']] ?? []);
+        }
+        return array_map(static fn (array $item): array => [
+            'id' => (int) $item['id'],
+            'code' => $item['kind'],
+            'name' => $item['name'],
+            'kind' => $item['kind'],
+            'notes' => $item['notes'] ?? null,
+            'start' => (int) $item['rack_unit_start'],
+            'height' => (int) $item['rack_unit_height'],
+            'type' => 'rack_item',
+            'tone' => match ($item['kind']) {
+                'POWER', 'UPS' => 'amber',
+                'ACTIVE_DEVICE' => 'cyan',
+                'PATCH_PANEL' => 'violet',
+                default => 'slate',
+            },
+        ], $items);
+    }
+
+    private function findDemoRackItem(int $rackItemId): ?array
+    {
+        foreach ($_SESSION['demo_rack_items'] ?? [] as $rackItems) {
+            foreach ($rackItems as $item) {
+                if ((int) $item['id'] === $rackItemId) {
+                    return $item;
+                }
+            }
+        }
+        return null;
+    }
+
+    public function createRackItem(int $rackId, array $input): array
+    {
+        if ($this->rack($rackId) === null) {
+            throw new \RuntimeException('Rack not found');
+        }
+        $id = 8000 + count($_SESSION['demo_rack_items'][$rackId] ?? []) + (int) ($_SESSION['demo_rack_item_sequence'] ?? 0);
+        $_SESSION['demo_rack_item_sequence'] = (int) ($_SESSION['demo_rack_item_sequence'] ?? 0) + 1;
+        $item = [
+            'id' => $id,
+            'rack_id' => $rackId,
+            'name' => trim((string) $input['name']),
+            'kind' => strtoupper(trim((string) $input['kind'])),
+            'rack_unit_start' => (int) $input['rack_unit_start'],
+            'rack_unit_height' => (int) $input['rack_unit_height'],
+            'notes' => trim((string) ($input['notes'] ?? '')) ?: null,
+        ];
+        $_SESSION['demo_rack_items'][$rackId][] = $item;
+        return $item;
+    }
+
+    public function updateRackItem(int $rackItemId, array $input): array
+    {
+        if ($this->findDemoRackItem($rackItemId) === null) {
+            throw new \RuntimeException('Rack item not found');
+        }
+        $update = [
+            'name' => trim((string) $input['name']),
+            'kind' => strtoupper(trim((string) $input['kind'])),
+            'rack_unit_start' => (int) $input['rack_unit_start'],
+            'rack_unit_height' => (int) $input['rack_unit_height'],
+            'notes' => trim((string) ($input['notes'] ?? '')) ?: null,
+        ];
+        $_SESSION['demo_rack_item_updates'][$rackItemId] = $update;
+        return ['id' => $rackItemId] + $update;
+    }
+
+    public function archiveRackItem(int $rackItemId): array
+    {
+        $item = $this->findDemoRackItem($rackItemId);
+        if ($item === null) {
+            throw new \RuntimeException('Rack item not found');
+        }
+        $_SESSION['demo_archived_rack_items'][] = $rackItemId;
+        return ['id' => $rackItemId, 'name' => $item['name'], 'archived' => true];
+    }
+
     public function updatePort(int $portId, array $input): array
     {
         $location = $this->findDemoPortLocation($portId);
@@ -930,6 +1132,7 @@ final class DemoNetworkRepository implements NetworkRepository
 
         $connectorTypeId = (int) ($input['connector_type_id'] ?? $currentPort['connector_type_id'] ?? 4);
         $label = trim((string) ($input['label'] ?? '')) ?: null;
+        $highlightColor = trim((string) ($input['highlight_color'] ?? '')) ?: null;
         $remoteEndpoint = $currentPort['manual_remote_endpoint'] ?? null;
         $rearDestination = $currentPort['rear_destination'] ?? null;
         $notes = trim((string) ($input['notes'] ?? '')) ?: null;
@@ -1051,7 +1254,7 @@ final class DemoNetworkRepository implements NetworkRepository
             ];
             unset($destinationPort);
         }
-        $update = ['connector_type_id' => $connectorTypeId, 'label' => $label, 'remote_endpoint_label' => $remoteEndpoint, 'notes' => $notes, 'administrative_status' => $administrativeStatus, 'front_connection' => $frontConnection, 'rear_connection_mode' => $rearMode];
+        $update = ['connector_type_id' => $connectorTypeId, 'label' => $label, 'highlight_color' => $highlightColor, 'remote_endpoint_label' => $remoteEndpoint, 'notes' => $notes, 'administrative_status' => $administrativeStatus, 'front_connection' => $frontConnection, 'rear_connection_mode' => $rearMode];
         $_SESSION['demo_port_updates'][$portId] = $update;
 
         if ($location !== null) {
@@ -1059,6 +1262,7 @@ final class DemoNetworkRepository implements NetworkRepository
             $port['connector_type_id'] = $connectorTypeId;
             $port['connector'] = array_column($this->connectorTypes(), 'code', 'id')[$connectorTypeId] ?? $port['connector'];
             $port['label'] = $label;
+            $port['highlight_color'] = $highlightColor;
             $port['manual_remote_endpoint'] = $remoteEndpoint;
             $port['notes'] = $notes;
             $port['administrative_status'] = $administrativeStatus;

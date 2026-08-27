@@ -5,7 +5,7 @@
 <nav class="breadcrumbs"><a href="/locations">{{ t('nav.locations') }}</a><span>›</span><a href="/locations/{{ rack.location_id }}">{{ rack.location }}</a><span>›</span><strong>{{ rack.code }}</strong></nav>
 <section class="page-hero compact-hero rack-hero">
     <div><span class="eyebrow">{{ t('rack.eyebrow') }}</span><h1>{{ rack.code }} · {{ rack.name }}</h1><p>{{ rack.location }} · {{ rack.room }}</p></div>
-    <div class="hero-actions"><button class="button button-ghost" type="button" data-rack-edit-open>{{ icons.icon('edit') }}{{ t('action.edit_rack') }}</button><button class="button button-danger-subtle" type="button" data-delete-open data-delete-url="/api/v1/racks/{{ rack.id }}" data-delete-name="{{ rack.code }} · {{ rack.name }}" data-delete-redirect="/locations/{{ rack.location_id }}">{{ icons.icon('trash') }}{{ t('action.delete') }}</button><button class="button button-primary" type="button" data-panel-modal-open>{{ icons.icon('plus') }}{{ t('action.add_panel') }}</button></div>
+    <div class="hero-actions"><button class="button button-ghost" type="button" data-rack-edit-open>{{ icons.icon('edit') }}{{ t('action.edit_rack') }}</button><button class="button button-danger-subtle" type="button" data-delete-open data-delete-url="/api/v1/racks/{{ rack.id }}" data-delete-name="{{ rack.code }} · {{ rack.name }}" data-delete-redirect="/locations/{{ rack.location_id }}">{{ icons.icon('trash') }}{{ t('action.delete') }}</button><button class="button button-ghost" type="button" data-rack-item-modal-open>{{ icons.icon('plus') }}{{ t('action.add_rack_item') }}</button><button class="button button-primary" type="button" data-panel-modal-open>{{ icons.icon('plus') }}{{ t('action.add_panel') }}</button></div>
 </section>
 
 <section class="rack-layout cad-layout">
@@ -30,6 +30,8 @@
     <aside class="rack-sidebar">
         <article class="card rack-summary-card"><div class="inspector-card-head"><span class="eyebrow">{{ t('location.capacity_overview') }}</span>{{ icons.icon('activity') }}</div><div class="rack-big-stat"><strong>{{ rack.utilization }}%</strong><span>{{ t('common.utilization') }}</span></div><div class="progress large"><i style="width: {{ rack.utilization }}%"></i></div><dl><div><dt>{{ t('rack.units') }}</dt><dd>{{ rack.total_units }}U</dd></div><div><dt>{{ t('rack.power') }}</dt><dd>{{ rack.power }}</dd></div><div><dt>{{ t('rack.temperature') }}</dt><dd>{{ rack.temperature }}</dd></div></dl></article>
         <article class="card rack-panel-list"><h3>{{ t('rack.mounted_panels') }}</h3>{% for device in rack.devices %}{% if device.type == 'patch_panel' %}<a href="/patch-panels/{{ device.id }}"><span><strong>{{ device.code }}</strong><small>U{{ device.start - device.height + 1 }}–U{{ device.start }} · {{ device.name }}</small></span><span class="panel-port-count"><strong>{{ device.occupied }}/{{ device.ports }}</strong><small>{{ t('rack.connected_ports') }}</small></span></a>{% endif %}{% else %}<div class="inline-empty">{{ t('rack.no_panels') }}</div>{% endfor %}</article>
+        <article class="card rack-active-devices-list"><h3>{{ t('rack.active_devices_title') }}</h3>{% for device in rack.active_devices %}<div class="rack-item-row"><span><strong>{{ device.code }}</strong><small>{{ t('device.' ~ device.device_type|lower) }} · {{ device.vendor }}{% if device.model %} {{ device.model }}{% endif %} · {{ device.name }}</small></span><span class="rack-item-actions"><button class="icon-button" type="button" aria-label="{{ t('action.edit_active_device') }}" title="{{ t('action.edit_active_device') }}" data-active-device-edit-open data-device-id="{{ device.id }}" data-device-code="{{ device.code }}" data-device-name="{{ device.name }}" data-device-type="{{ device.device_type }}" data-device-vendor="{{ device.vendor }}" data-device-model="{{ device.model }}" data-device-management-address="{{ device.management_address }}" data-device-notes="{{ device.notes }}">{{ icons.icon('edit', 15) }}</button><button class="icon-button danger" type="button" aria-label="{{ t('action.delete') }}" title="{{ t('action.delete') }}" data-delete-open data-delete-url="/api/v1/active-devices/{{ device.id }}" data-delete-name="{{ device.code }} · {{ device.name }}">{{ icons.icon('trash', 15) }}</button></span></div>{% else %}<div class="inline-empty">{{ t('rack.no_active_devices') }}</div>{% endfor %}</article>
+        <article class="card rack-items-list"><h3>{{ t('rack.rack_items_title') }}</h3>{% for item in rack.devices|filter(d => d.type == 'rack_item') %}<div class="rack-item-row"><span><strong>{{ item.name }}</strong><small>{{ t('rack_item.' ~ item.kind|lower) }} · U{{ item.start - item.height + 1 }}–U{{ item.start }}</small></span><span class="rack-item-actions"><button class="icon-button" type="button" aria-label="{{ t('action.edit_rack_item') }}" title="{{ t('action.edit_rack_item') }}" data-rack-item-edit-open data-item-id="{{ item.id }}" data-item-name="{{ item.name }}" data-item-kind="{{ item.kind }}" data-item-start="{{ item.start }}" data-item-height="{{ item.height }}" data-item-notes="{{ item.notes }}">{{ icons.icon('edit', 15) }}</button><button class="icon-button danger" type="button" aria-label="{{ t('action.delete') }}" title="{{ t('action.delete') }}" data-delete-open data-delete-url="/api/v1/rack-items/{{ item.id }}" data-delete-name="{{ item.name }}">{{ icons.icon('trash', 15) }}</button></span></div>{% else %}<div class="inline-empty">{{ t('rack.no_rack_items') }}</div>{% endfor %}</article>
         <article class="card rack-legend"><h3>{{ t('rack.legend') }}</h3><span><i class="legend-box violet"></i>{{ t('rack.patch_panel') }}</span><span><i class="legend-box cyan"></i>{{ t('rack.network_device') }}</span><span><i class="legend-box slate"></i>{{ t('rack.organizer') }}</span><div class="rack-legend-divider"></div><span><i class="legend-port occupied"></i>{{ t('common.occupied') }}</span><span><i class="legend-port available"></i>{{ t('common.available') }}</span></article>
     </aside>
 </section>
@@ -57,7 +59,7 @@
         <div class="form-grid">
             <label class="field field-wide"><span>{{ t('form.panel_name') }}</span><input name="name" maxlength="160" placeholder="{{ t('form.panel_name_hint') }}" required></label>
             <label class="field"><span>{{ t('form.rack_unit_start') }}</span><input name="rack_unit_start" type="number" min="1" max="{{ rack.total_units }}" value="{{ rack.total_units }}" required></label>
-            <label class="field"><span>{{ t('form.panel_height') }}</span><select name="rack_unit_height" required><option value="1">1U</option><option value="2">2U</option><option value="3">3U</option><option value="4">4U</option><option value="5">5U</option><option value="6">6U</option></select></label>
+            <label class="field"><span>{{ t('form.panel_height') }}</span><select name="rack_unit_height" required>{% for height in 1..12 %}<option value="{{ height }}">{{ height }}U</option>{% endfor %}</select></label>
             <label class="field"><span>{{ t('form.port_count') }}</span><input name="port_count" type="number" min="1" max="288" value="24" required></label>
             <label class="field"><span>{{ t('form.layout_rows') }}</span><input name="layout_rows" type="number" min="1" max="12" value="1" required><small>{{ t('form.layout_rows_hint') }}</small></label>
             <label class="field"><span>{{ t('form.connector_type') }}</span><select name="connector_type_id" required>{% for connector in connector_types %}<option value="{{ connector.id }}" {{ connector.code == 'SC-PC' ? 'selected' : '' }}>{{ connector.code }}</option>{% endfor %}</select></label>
@@ -67,6 +69,52 @@
         <div class="form-note">{{ icons.icon('info', 16) }}<span>{{ t('form.panel_code_hint') }}</span></div>
         <p class="form-error" data-form-error hidden></p>
         <div class="modal-actions"><button class="button button-ghost" type="button" data-panel-modal-close>{{ t('action.cancel') }}</button><button class="button button-primary" type="submit">{{ icons.icon('panel') }}{{ t('action.create_panel') }}</button></div>
+    </form>
+</dialog>
+
+<dialog class="modal entity-modal" id="active-device-edit-modal">
+    <form class="modal-card" data-active-device-edit-form>
+        <input type="hidden" name="active_device_id">
+        <div class="modal-head"><div><span class="eyebrow">{{ t('action.edit_active_device') }}</span><h2>{{ t('modal.active_device_edit_title') }}</h2><p data-active-device-edit-context></p></div><button class="icon-button" type="button" data-active-device-edit-close aria-label="{{ t('action.close') }}">{{ icons.icon('close') }}</button></div>
+        <div class="form-grid">
+            <label class="field field-wide"><span>{{ t('form.device_name') }}</span><input name="name" maxlength="160" required></label>
+            <label class="field"><span>{{ t('form.device_type') }}</span><select name="device_type" required><option value="SWITCH">{{ t('device.switch') }}</option><option value="ROUTER">{{ t('device.router') }}</option><option value="FIREWALL">{{ t('device.firewall') }}</option><option value="TRANSPORT">{{ t('device.transport') }}</option><option value="SERVER">{{ t('device.server') }}</option><option value="OTHER">{{ t('device.other') }}</option></select></label>
+            <label class="field"><span>{{ t('form.device_vendor') }}</span><input name="vendor" maxlength="120" required></label>
+            <label class="field"><span>{{ t('form.device_model') }}</span><input name="model" maxlength="120"></label>
+            <label class="field field-wide"><span>{{ t('form.device_management_address') }}</span><input name="management_address" maxlength="255"></label>
+            <label class="field field-wide"><span>{{ t('form.notes') }}</span><textarea name="notes" maxlength="2000" rows="3"></textarea></label>
+        </div>
+        <p class="form-error" data-form-error hidden></p><div class="modal-actions"><button class="button button-ghost" type="button" data-active-device-edit-close>{{ t('action.cancel') }}</button><button class="button button-primary" type="submit">{{ icons.icon('save') }}{{ t('action.save') }}</button></div>
+    </form>
+</dialog>
+
+<dialog class="modal entity-modal" id="rack-item-modal">
+    <form class="modal-card" data-rack-item-form data-rack-id="{{ rack.id }}">
+        <div class="modal-head"><div><span class="eyebrow">{{ t('action.add_rack_item') }}</span><h2>{{ t('modal.rack_item_title') }}</h2><p>{{ t('modal.rack_item_subtitle') }}</p></div><button class="icon-button" type="button" data-rack-item-modal-close aria-label="{{ t('action.close') }}">{{ icons.icon('close') }}</button></div>
+        <div class="form-grid">
+            <label class="field field-wide"><span>{{ t('form.item_name') }}</span><input name="name" maxlength="160" placeholder="{{ t('form.item_name_hint') }}" required></label>
+            <label class="field"><span>{{ t('form.item_kind') }}</span><select name="kind" required><option value="ORGANIZER">{{ t('rack_item.organizer') }}</option><option value="PATCH_PANEL">{{ t('rack_item.patch_panel') }}</option><option value="FREE_SPACE">{{ t('rack_item.free_space') }}</option><option value="POWER">{{ t('rack_item.power') }}</option><option value="ACTIVE_DEVICE">{{ t('rack_item.active_device') }}</option><option value="UPS">{{ t('rack_item.ups') }}</option><option value="OTHER">{{ t('rack_item.other') }}</option></select></label>
+            <label class="field"><span>{{ t('form.rack_unit_start') }}</span><input name="rack_unit_start" type="number" min="1" max="{{ rack.total_units }}" value="{{ rack.total_units }}" required></label>
+            <label class="field"><span>{{ t('form.item_height') }}</span><select name="rack_unit_height" required>{% for height in 1..12 %}<option value="{{ height }}">{{ height }}U</option>{% endfor %}</select></label>
+            <label class="field field-wide"><span>{{ t('form.notes') }}</span><textarea name="notes" maxlength="2000" rows="3"></textarea></label>
+        </div>
+        <p class="form-error" data-form-error hidden></p>
+        <div class="modal-actions"><button class="button button-ghost" type="button" data-rack-item-modal-close>{{ t('action.cancel') }}</button><button class="button button-primary" type="submit">{{ icons.icon('plus') }}{{ t('action.create_rack_item') }}</button></div>
+    </form>
+</dialog>
+
+<dialog class="modal entity-modal" id="rack-item-edit-modal">
+    <form class="modal-card" data-rack-item-edit-form>
+        <input type="hidden" name="item_id">
+        <div class="modal-head"><div><span class="eyebrow">{{ t('action.edit_rack_item') }}</span><h2>{{ t('modal.rack_item_edit_title') }}</h2></div><button class="icon-button" type="button" data-rack-item-edit-close aria-label="{{ t('action.close') }}">{{ icons.icon('close') }}</button></div>
+        <div class="form-grid">
+            <label class="field field-wide"><span>{{ t('form.item_name') }}</span><input name="name" maxlength="160" required></label>
+            <label class="field"><span>{{ t('form.item_kind') }}</span><select name="kind" required><option value="ORGANIZER">{{ t('rack_item.organizer') }}</option><option value="PATCH_PANEL">{{ t('rack_item.patch_panel') }}</option><option value="FREE_SPACE">{{ t('rack_item.free_space') }}</option><option value="POWER">{{ t('rack_item.power') }}</option><option value="ACTIVE_DEVICE">{{ t('rack_item.active_device') }}</option><option value="UPS">{{ t('rack_item.ups') }}</option><option value="OTHER">{{ t('rack_item.other') }}</option></select></label>
+            <label class="field"><span>{{ t('form.rack_unit_start') }}</span><input name="rack_unit_start" type="number" min="1" max="{{ rack.total_units }}" required></label>
+            <label class="field"><span>{{ t('form.item_height') }}</span><select name="rack_unit_height" required>{% for height in 1..12 %}<option value="{{ height }}">{{ height }}U</option>{% endfor %}</select></label>
+            <label class="field field-wide"><span>{{ t('form.notes') }}</span><textarea name="notes" maxlength="2000" rows="3"></textarea></label>
+        </div>
+        <p class="form-error" data-form-error hidden></p><div class="modal-actions"><button class="button button-ghost" type="button" data-rack-item-edit-close>{{ t('action.cancel') }}</button><button class="button button-primary" type="submit">{{ icons.icon('save') }}{{ t('action.save') }}</button></div>
     </form>
 </dialog>
 {% endblock %}

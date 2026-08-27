@@ -1,0 +1,16 @@
+CREATE TABLE rack_items (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    rack_id BIGINT UNSIGNED NOT NULL,
+    name VARCHAR(160) NOT NULL,
+    kind VARCHAR(32) NOT NULL DEFAULT 'OTHER',
+    rack_unit_start SMALLINT UNSIGNED NOT NULL,
+    rack_unit_height SMALLINT UNSIGNED NOT NULL DEFAULT 1,
+    notes TEXT NULL,
+    archived_at TIMESTAMP NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT chk_rack_items_kind CHECK (kind IN ('ORGANIZER', 'PATCH_PANEL', 'FREE_SPACE', 'POWER', 'ACTIVE_DEVICE', 'UPS', 'OTHER')),
+    CONSTRAINT chk_rack_items_height CHECK (rack_unit_height BETWEEN 1 AND 12),
+    CONSTRAINT fk_rack_items_rack FOREIGN KEY (rack_id) REFERENCES racks (id),
+    INDEX idx_rack_items_rack (rack_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
