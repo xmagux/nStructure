@@ -1,5 +1,6 @@
 /.env
 /.tools/
+/CLAUDE.md
 /node_modules/
 /.phpunit.cache
 /.phpunit.result.cache
