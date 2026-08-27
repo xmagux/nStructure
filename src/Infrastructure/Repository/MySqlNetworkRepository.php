@@ -1028,7 +1028,13 @@ SQL;
     public function connectorTypes(): array
     {
         $rows = $this->pdo->query(
-            'SELECT id, code FROM connector_types WHERE active = TRUE ORDER BY FIELD(code, "LC", "SC-APC", "SC-PC", "E2000"), code',
+            'SELECT id, code FROM connector_types WHERE active = TRUE
+             ORDER BY FIELD(code,
+                "LC", "LC-UPC", "LC-APC",
+                "SC", "SC-UPC", "SC-APC", "SC-PC",
+                "E2000", "E2000-UPC", "E2000-APC",
+                "FC", "ST", "MPO", "OTHER"
+             ), code',
         )->fetchAll();
 
         return array_map(static fn (array $row): array => [

@@ -513,13 +513,20 @@ final class DemoNetworkRepository implements NetworkRepository
     public function connectorTypes(): array
     {
         return [
-            ['id' => 1, 'code' => 'E2000'],
-            ['id' => 2, 'code' => 'SC-PC'],
-            ['id' => 3, 'code' => 'SC-APC'],
             ['id' => 4, 'code' => 'LC'],
+            ['id' => 8, 'code' => 'LC-UPC'],
+            ['id' => 9, 'code' => 'LC-APC'],
+            ['id' => 10, 'code' => 'SC'],
+            ['id' => 11, 'code' => 'SC-UPC'],
+            ['id' => 3, 'code' => 'SC-APC'],
+            ['id' => 2, 'code' => 'SC-PC'],
+            ['id' => 1, 'code' => 'E2000'],
+            ['id' => 12, 'code' => 'E2000-UPC'],
+            ['id' => 13, 'code' => 'E2000-APC'],
             ['id' => 5, 'code' => 'FC'],
             ['id' => 6, 'code' => 'ST'],
             ['id' => 7, 'code' => 'MPO'],
+            ['id' => 14, 'code' => 'OTHER'],
         ];
     }
 
