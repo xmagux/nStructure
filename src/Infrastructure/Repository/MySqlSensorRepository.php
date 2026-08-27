@@ -104,6 +104,16 @@ final class MySqlSensorRepository implements SensorRepository
         return array_map(fn (array $sensor): array => $this->pollSensor($sensor), $this->all());
     }
 
+    public function pingAll(): array
+    {
+        $sensors = array_values(array_filter($this->all(), static fn (array $sensor): bool => $sensor['ping_enabled']));
+        return array_map(function (array $sensor): array {
+            $result = $this->ping($sensor['host']);
+            $this->recordPing((int) $sensor['id'], $result);
+            return ['id' => $sensor['id'], 'name' => $sensor['name'], 'ping' => $result];
+        }, $sensors);
+    }
+
     private function pollSensor(array $sensor): array
     {
         $sensor['ping'] = $sensor['ping_enabled'] ? $this->ping($sensor['host']) : null;
@@ -134,6 +144,18 @@ final class MySqlSensorRepository implements SensorRepository
             'humidity_ok' => $sensor['humidity']['ok'] ? 1 : 0,
             'ping_ok' => $sensor['ping'] === null ? null : ($sensor['ping']['ok'] ? 1 : 0),
             'ping_latency_ms' => $sensor['ping']['latency_ms'] ?? null,
+        ]);
+    }
+
+    private function recordPing(int $sensorId, array $result): void
+    {
+        $statement = $this->pdo->prepare(
+            'INSERT INTO environmental_sensor_pings (sensor_id, ok, latency_ms) VALUES (:sensor_id, :ok, :latency_ms)',
+        );
+        $statement->execute([
+            'sensor_id' => $sensorId,
+            'ok' => $result['ok'] ? 1 : 0,
+            'latency_ms' => $result['latency_ms'],
         ]);
     }
 

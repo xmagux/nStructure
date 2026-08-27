@@ -19,4 +19,6 @@ interface SensorRepository
     public function poll(int $id): array;
 
     public function pollAll(): array;
+
+    public function pingAll(): array;
 }

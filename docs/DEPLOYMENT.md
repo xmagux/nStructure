@@ -124,6 +124,27 @@ in the `environmental_sensor_readings` table:
 Adjust the interval to taste — `bin/poll-sensors.php` polls every configured
 sensor once per invocation and prints a one-line summary per sensor.
 
+### Faster reachability monitoring
+
+Temperature and humidity rarely need checking more than every few minutes,
+but uptime monitoring usually wants a much tighter interval. Cron itself
+cannot run more often than once a minute, so `bin/ping-sensors.php` loops
+internally for just under a minute, pinging every 5 seconds by default, then
+exits — cron simply relaunches it each minute for the next burst. Pings are
+recorded separately in `environmental_sensor_pings`, independent of the
+slower SNMP poll above.
+
+```bash
+* * * * * php /var/www/nstructure/bin/ping-sensors.php 5 55 >> /var/log/nstructure-pings.log 2>&1
+```
+
+The two arguments are the interval and the total run time in seconds
+(`5 55` above means "ping every 5s, stop after 55s" — leaving a safety
+margin before cron's next invocation). At a 5-second interval this is
+~17,000 rows per sensor per day in `environmental_sensor_pings`; there is no
+built-in retention/cleanup yet, so prune old rows periodically if disk space
+matters for a long-running installation.
+
 ## Verification
 
 ```bash
