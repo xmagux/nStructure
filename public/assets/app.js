@@ -1605,6 +1605,8 @@
             if (readout) readout.textContent = `${Math.round(stage.scaleX() * 100)}% · ${rotation}°`;
         };
         const fit = () => {
+            stage.scale({ x: 1, y: 1 });
+            stage.position({ x: 0, y: 0 });
             const rect = world.getClientRect({ skipShadow: true });
             const padding = 44;
             const scale = Math.min((stage.width() - padding * 2) / rect.width, (stage.height() - padding * 2) / rect.height, 1.4);
