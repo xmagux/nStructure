@@ -526,7 +526,7 @@ final class DemoNetworkRepository implements NetworkRepository
             ['id' => 5, 'code' => 'FC'],
             ['id' => 6, 'code' => 'ST'],
             ['id' => 7, 'code' => 'MPO'],
-            ['id' => 14, 'code' => 'OTHER'],
+            ['id' => 14, 'code' => 'INNE'],
         ];
     }
 

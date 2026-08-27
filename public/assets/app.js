@@ -1597,7 +1597,6 @@
         stage.add(layer);
         const readout = workspace?.querySelector('[data-zoom-readout]');
         let rotation = 0;
-        let initialFit = true;
         let wheelZoomActive = false;
         container.addEventListener('mousedown', () => { wheelZoomActive = true; });
         container.addEventListener('mouseleave', () => { wheelZoomActive = false; });
@@ -1633,7 +1632,6 @@
         renderWorld(world, layer, stage);
         layer.draw();
         fit();
-        initialFit = false;
 
         const redrawForTheme = () => {
             world.destroyChildren();
@@ -1657,7 +1655,7 @@
         stage.on('dragmove', updateReadout);
         new ResizeObserver(() => {
             stage.size({ width: container.clientWidth, height: container.clientHeight });
-            if (!initialFit) fit();
+            fit();
         }).observe(container);
         return { stage, layer, world, fit };
     };
@@ -1825,7 +1823,9 @@
         setInspectorText('[data-port-rear-destination]', port.rear_destination || port.destination || '—');
         setInspectorText('[data-port-front-destination]', port.front_destination || '—');
         const status = inspector.querySelector('[data-port-status]');
-        status.textContent = port.status;
+        const panelCanvasStatusLabels = document.querySelector('[data-panel-canvas]')?.dataset || {};
+        const statusLabelKey = `status${port.status.charAt(0).toUpperCase()}${port.status.slice(1)}`;
+        status.textContent = panelCanvasStatusLabels[statusLabelKey] || port.status;
         status.className = `status-badge status-${port.status}`;
         inspector.querySelector('[data-port-color]').className = `color-${port.color}`;
         const traceButton = inspector.querySelector('[data-trace-button]');

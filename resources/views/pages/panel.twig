@@ -92,7 +92,7 @@
         </div>
         <div class="konva-shell panel-konva-shell">
             <div class="canvas-grid"></div>
-            <div class="konva-stage" data-panel-canvas data-patch-cord-label="{{ t('panel.patch_cord') }}" data-fiber-termination-label="{{ t('panel.fiber_termination') }}" data-rear-side-label="{{ t('panel.rear_side') }}" data-front-side-label="{{ t('panel.front_side') }}" role="img" aria-label="{{ t('panel.title') }}"></div>
+            <div class="konva-stage" data-panel-canvas data-patch-cord-label="{{ t('panel.patch_cord') }}" data-fiber-termination-label="{{ t('panel.fiber_termination') }}" data-rear-side-label="{{ t('panel.rear_side') }}" data-front-side-label="{{ t('panel.front_side') }}" data-status-occupied="{{ t('common.occupied') }}" data-status-available="{{ t('common.available') }}" data-status-reserved="{{ t('common.reserved') }}" data-status-blocked="{{ t('common.blocked') }}" data-status-damaged="{{ t('common.damaged') }}" role="img" aria-label="{{ t('panel.title') }}"></div>
             <div class="zoom-readout" data-zoom-readout>100%</div>
         </div>
         {% if panel.unterminated > 0 %}<div class="loose-fibers-callout"><span class="alert-icon">{{ icons.icon('alert', 18) }}</span><div><strong>{{ panel.unterminated }} {{ t('panel.loose_fibers')|lower }}</strong><p>{{ t('panel.loose_fibers_hint') }}</p></div><span class="fiber-range">{{ panel.terminated_ports + 1 }}–{{ panel.incoming_capacity }}</span></div>{% endif %}

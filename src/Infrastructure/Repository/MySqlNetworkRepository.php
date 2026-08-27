@@ -1033,7 +1033,7 @@ SQL;
                 "LC", "LC-UPC", "LC-APC",
                 "SC", "SC-UPC", "SC-APC", "SC-PC",
                 "E2000", "E2000-UPC", "E2000-APC",
-                "FC", "ST", "MPO", "OTHER"
+                "FC", "ST", "MPO", "INNE"
              ), code',
         )->fetchAll();
 

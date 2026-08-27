@@ -240,7 +240,7 @@ kbd { padding: 2px 6px; border: 1px solid var(--line); border-radius: 5px; color
 .page-hero h1 { margin-top: 9px; font-size: clamp(31px, 3.2vw, 46px); font-weight: 710; line-height: 1.08; }
 .page-hero p { max-width: 650px; margin-top: 11px; color: var(--text-soft); font-size: 14px; }
 .compact-hero { align-items: center; }
-.compact-hero h1 { font-size: clamp(29px, 2.6vw, 39px); }
+.compact-hero h1 { font-size: clamp(21px, 1.8vw, 28px); }
 .eyebrow { display: inline-flex; gap: 8px; align-items: center; color: var(--violet-bright); font-size: 10px; font-weight: 780; letter-spacing: .14em; text-transform: uppercase; }
 .pulse-dot { position: relative; width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 9px rgba(52,211,153,.7); }
 .pulse-dot::after { position: absolute; inset: -4px; border: 1px solid rgba(52,211,153,.5); border-radius: 50%; content: ""; animation: pulse 2s infinite; }
