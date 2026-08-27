@@ -1900,3 +1900,22 @@ body.sidebar-collapsed .user-avatar { width: 40px; height: 40px; }
 .port-inline-editor .field select,
 .port-inline-editor .field textarea { min-height: 42px; font-size: .82rem !important; }
 .port-inline-editor .field small { font-size: .68rem !important; line-height: 1.4; }
+
+/* Environmental sensors (hidden module) */
+.checkbox-field { flex-direction: row !important; align-items: center; gap: 10px !important; }
+.checkbox-field input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--blue); }
+.sensor-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.sensor-card { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+.sensor-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.sensor-card-head strong { display: block; color: var(--text); font-size: 15px; }
+.sensor-card-head small { color: var(--text-muted); font-size: 12px; }
+.sensor-ping-badge { flex: 0 0 auto; padding: 5px 10px; display: flex; align-items: center; gap: 5px; border-radius: 999px; color: var(--text-muted); background: var(--surface-2); font-size: 11px; font-weight: 600; }
+.sensor-ping-badge.ping-up { color: var(--green); background: color-mix(in srgb, var(--green) 14%, var(--surface-2)); }
+.sensor-ping-badge.ping-down { color: var(--red); background: color-mix(in srgb, var(--red) 14%, var(--surface-2)); }
+.sensor-readings { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.sensor-reading { padding: 10px 12px; display: flex; align-items: center; gap: 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); }
+.sensor-reading-icon { color: var(--blue); }
+.sensor-reading-label { display: block; color: var(--text-muted); font-size: 11px; }
+.sensor-reading strong { font-size: 15px; }
+.sensor-raw { margin: 0; color: var(--text-muted); font-family: var(--font-mono); font-size: 11px; }
+.sensor-card-actions { display: flex; justify-content: flex-end; gap: 6px; }

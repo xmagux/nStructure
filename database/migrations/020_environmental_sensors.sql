@@ -1,0 +1,18 @@
+CREATE TABLE environmental_sensors (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(160) NOT NULL,
+    model VARCHAR(80) NULL,
+    host VARCHAR(255) NOT NULL,
+    snmp_port SMALLINT UNSIGNED NOT NULL DEFAULT 161,
+    snmp_community VARCHAR(80) NOT NULL DEFAULT 'public',
+    temperature_oid VARCHAR(255) NULL,
+    temperature_divisor DECIMAL(10,4) NOT NULL DEFAULT 10,
+    humidity_oid VARCHAR(255) NULL,
+    humidity_divisor DECIMAL(10,4) NOT NULL DEFAULT 10,
+    ping_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    notes TEXT NULL,
+    archived_at TIMESTAMP NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT uq_environmental_sensors_name UNIQUE (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

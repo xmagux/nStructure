@@ -1,0 +1,86 @@
+{% extends 'layouts/app.twig' %}
+{% import 'components/icons.twig' as icons %}
+
+{% block content %}
+<section class="page-hero compact-hero">
+    <div><span class="eyebrow">{{ t('sensors.eyebrow') }}</span><h1>{{ t('sensors.title') }}</h1><p>{{ t('sensors.subtitle') }}</p></div>
+    <div class="hero-actions"><button class="button button-ghost" type="button" data-sensors-refresh>{{ icons.icon('refresh-cw') }}{{ t('action.refresh') }}</button><button class="button button-primary" type="button" data-sensor-modal-open>{{ icons.icon('plus') }}{{ t('action.add_sensor') }}</button></div>
+</section>
+
+<section class="sensor-grid" data-sensor-grid data-ping-up-label="{{ t('sensors.ping_up') }}" data-ping-down-label="{{ t('sensors.ping_down') }}" data-not-configured-label="{{ t('sensors.not_configured') }}">
+    {% for sensor in sensors %}
+    <article class="card sensor-card" data-sensor-card data-sensor-id="{{ sensor.id }}">
+        <div class="sensor-card-head">
+            <div><strong>{{ sensor.name }}</strong><small>{{ sensor.model ?: '—' }} · {{ sensor.host }}</small></div>
+            <span class="sensor-ping-badge" data-sensor-ping>{{ icons.icon('activity', 13) }}<span data-sensor-ping-text>{{ t('sensors.pending') }}</span></span>
+        </div>
+        <div class="sensor-readings">
+            <div class="sensor-reading" data-sensor-temperature>
+                <span class="sensor-reading-icon">{{ icons.icon('thermometer', 18) }}</span>
+                <div><span class="sensor-reading-label">{{ t('sensors.temperature') }}</span><strong data-sensor-reading-value>{{ t('sensors.pending') }}</strong></div>
+            </div>
+            <div class="sensor-reading" data-sensor-humidity>
+                <span class="sensor-reading-icon">{{ icons.icon('droplets', 18) }}</span>
+                <div><span class="sensor-reading-label">{{ t('sensors.humidity') }}</span><strong data-sensor-reading-value>{{ t('sensors.pending') }}</strong></div>
+            </div>
+        </div>
+        <p class="sensor-raw" data-sensor-raw hidden></p>
+        <div class="sensor-card-actions">
+            <button class="icon-button" type="button" aria-label="{{ t('action.edit') }}" title="{{ t('action.edit') }}" data-sensor-edit-open
+                data-sensor-id="{{ sensor.id }}" data-sensor-name="{{ sensor.name }}" data-sensor-model="{{ sensor.model }}" data-sensor-host="{{ sensor.host }}"
+                data-sensor-port="{{ sensor.snmp_port }}" data-sensor-community="{{ sensor.snmp_community }}"
+                data-sensor-temperature-oid="{{ sensor.temperature_oid }}" data-sensor-temperature-divisor="{{ sensor.temperature_divisor }}"
+                data-sensor-humidity-oid="{{ sensor.humidity_oid }}" data-sensor-humidity-divisor="{{ sensor.humidity_divisor }}"
+                data-sensor-ping-enabled="{{ sensor.ping_enabled ? '1' : '0' }}" data-sensor-notes="{{ sensor.notes }}">{{ icons.icon('edit', 15) }}</button>
+            <button class="icon-button danger" type="button" aria-label="{{ t('action.delete') }}" title="{{ t('action.delete') }}" data-delete-open data-delete-url="/api/v1/sensors/{{ sensor.id }}" data-delete-name="{{ sensor.name }}">{{ icons.icon('trash', 15) }}</button>
+        </div>
+    </article>
+    {% else %}
+    <div class="empty-state">{{ t('sensors.empty') }}</div>
+    {% endfor %}
+</section>
+
+<dialog class="modal entity-modal" id="sensor-modal">
+    <form class="modal-card modal-card-wide" data-sensor-form>
+        <div class="modal-head"><div><span class="eyebrow">{{ t('action.add_sensor') }}</span><h2>{{ t('modal.sensor_title') }}</h2><p>{{ t('modal.sensor_subtitle') }}</p></div><button class="icon-button" type="button" data-sensor-modal-close aria-label="{{ t('action.close') }}">{{ icons.icon('close') }}</button></div>
+        <div class="form-grid">
+            <label class="field field-wide"><span>{{ t('form.sensor_name') }}</span><input name="name" maxlength="160" required></label>
+            <label class="field"><span>{{ t('form.sensor_model') }}</span><input name="model" maxlength="80" placeholder="HWg-STE, STE2 Lite…"></label>
+            <label class="field"><span>{{ t('form.sensor_host') }}</span><input name="host" maxlength="255" placeholder="192.168.1.50" required></label>
+            <label class="field"><span>{{ t('form.sensor_port') }}</span><input name="snmp_port" type="number" min="1" max="65535" value="161" required></label>
+            <label class="field"><span>{{ t('form.sensor_community') }}</span><input name="snmp_community" maxlength="80" value="public" required></label>
+            <label class="field"><span>{{ t('form.sensor_temperature_oid') }}</span><input name="temperature_oid" maxlength="255" placeholder="1.3.6.1.4.1.21796.4.1.3.1.4.1"><small>{{ t('form.sensor_oid_hint') }}</small></label>
+            <label class="field"><span>{{ t('form.sensor_divisor') }}</span><input name="temperature_divisor" type="number" step="0.0001" value="10"></label>
+            <label class="field"><span>{{ t('form.sensor_humidity_oid') }}</span><input name="humidity_oid" maxlength="255" placeholder="1.3.6.1.4.1.21796.4.1.3.1.4.2"><small>{{ t('form.sensor_oid_hint') }}</small></label>
+            <label class="field"><span>{{ t('form.sensor_divisor') }}</span><input name="humidity_divisor" type="number" step="0.0001" value="10"></label>
+            <label class="field field-wide checkbox-field"><input name="ping_enabled" type="checkbox" value="1" checked><span>{{ t('form.sensor_ping_enabled') }}</span></label>
+            <label class="field field-wide"><span>{{ t('form.notes') }}</span><textarea name="notes" maxlength="2000" rows="3"></textarea></label>
+        </div>
+        <div class="form-note">{{ icons.icon('info', 16) }}<span>{{ t('form.sensor_oid_note') }}</span></div>
+        <p class="form-error" data-form-error hidden></p>
+        <div class="modal-actions"><button class="button button-ghost" type="button" data-sensor-modal-close>{{ t('action.cancel') }}</button><button class="button button-primary" type="submit">{{ icons.icon('plus') }}{{ t('action.create_sensor') }}</button></div>
+    </form>
+</dialog>
+
+<dialog class="modal entity-modal" id="sensor-edit-modal">
+    <form class="modal-card modal-card-wide" data-sensor-edit-form>
+        <input type="hidden" name="sensor_id">
+        <div class="modal-head"><div><span class="eyebrow">{{ t('action.edit') }}</span><h2>{{ t('modal.sensor_edit_title') }}</h2></div><button class="icon-button" type="button" data-sensor-edit-close aria-label="{{ t('action.close') }}">{{ icons.icon('close') }}</button></div>
+        <div class="form-grid">
+            <label class="field field-wide"><span>{{ t('form.sensor_name') }}</span><input name="name" maxlength="160" required></label>
+            <label class="field"><span>{{ t('form.sensor_model') }}</span><input name="model" maxlength="80"></label>
+            <label class="field"><span>{{ t('form.sensor_host') }}</span><input name="host" maxlength="255" required></label>
+            <label class="field"><span>{{ t('form.sensor_port') }}</span><input name="snmp_port" type="number" min="1" max="65535" required></label>
+            <label class="field"><span>{{ t('form.sensor_community') }}</span><input name="snmp_community" maxlength="80" required></label>
+            <label class="field"><span>{{ t('form.sensor_temperature_oid') }}</span><input name="temperature_oid" maxlength="255"><small>{{ t('form.sensor_oid_hint') }}</small></label>
+            <label class="field"><span>{{ t('form.sensor_divisor') }}</span><input name="temperature_divisor" type="number" step="0.0001"></label>
+            <label class="field"><span>{{ t('form.sensor_humidity_oid') }}</span><input name="humidity_oid" maxlength="255"><small>{{ t('form.sensor_oid_hint') }}</small></label>
+            <label class="field"><span>{{ t('form.sensor_divisor') }}</span><input name="humidity_divisor" type="number" step="0.0001"></label>
+            <label class="field field-wide checkbox-field"><input name="ping_enabled" type="checkbox" value="1"><span>{{ t('form.sensor_ping_enabled') }}</span></label>
+            <label class="field field-wide"><span>{{ t('form.notes') }}</span><textarea name="notes" maxlength="2000" rows="3"></textarea></label>
+        </div>
+        <p class="form-error" data-form-error hidden></p>
+        <div class="modal-actions"><button class="button button-ghost" type="button" data-sensor-edit-close>{{ t('action.cancel') }}</button><button class="button button-primary" type="submit">{{ icons.icon('save') }}{{ t('action.save') }}</button></div>
+    </form>
+</dialog>
+{% endblock %}

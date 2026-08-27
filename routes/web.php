@@ -7,6 +7,7 @@ use NStructure\Http\Controller\AuthController;
 use NStructure\Http\Controller\DashboardController;
 use NStructure\Http\Controller\AssetController;
 use NStructure\Http\Controller\PageController;
+use NStructure\Http\Controller\SensorController;
 use Slim\App;
 
 return static function (App $app): void {
@@ -16,6 +17,8 @@ return static function (App $app): void {
         $app->post('/login', [AuthController::class, 'login']);
         $app->post('/logout', [AuthController::class, 'logout'])->setName('logout');
         $app->get('/account', [AccountController::class, 'show'])->setName('account');
+        // Intentionally not linked from the main nav — visit directly.
+        $app->get('/tools/sensors', [SensorController::class, 'index'])->setName('sensors');
     }
     $app->get('/', DashboardController::class)->setName('dashboard');
     $app->get('/topology', [PageController::class, 'topology'])->setName('topology');

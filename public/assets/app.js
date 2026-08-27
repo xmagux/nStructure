@@ -2008,6 +2008,84 @@
         });
     });
 
+    const sensorGrid = document.querySelector('[data-sensor-grid]');
+    if (sensorGrid) {
+        const sensorLabels = sensorGrid.dataset;
+        const formatReading = (reading, unit) => {
+            if (!reading || !reading.configured) return sensorLabels.notConfiguredLabel || '—';
+            if (!reading.ok) return reading.error || '—';
+            return `${Number(reading.value).toFixed(1)}${unit}`;
+        };
+        const applySensorReadings = (sensor) => {
+            const card = sensorGrid.querySelector(`[data-sensor-card][data-sensor-id="${sensor.id}"]`);
+            if (!card) return;
+            const pingBadge = card.querySelector('[data-sensor-ping]');
+            const pingText = card.querySelector('[data-sensor-ping-text]');
+            if (sensor.ping) {
+                pingBadge.hidden = false;
+                pingBadge.classList.toggle('ping-up', sensor.ping.ok);
+                pingBadge.classList.toggle('ping-down', !sensor.ping.ok);
+                const latency = sensor.ping.ok && sensor.ping.latency_ms != null ? ` · ${sensor.ping.latency_ms}ms` : '';
+                pingText.textContent = (sensor.ping.ok ? sensorLabels.pingUpLabel : sensorLabels.pingDownLabel) + latency;
+            } else {
+                pingBadge.hidden = true;
+            }
+            const tempValue = card.querySelector('[data-sensor-temperature] [data-sensor-reading-value]');
+            const humidityValue = card.querySelector('[data-sensor-humidity] [data-sensor-reading-value]');
+            if (tempValue) tempValue.textContent = formatReading(sensor.temperature, ' °C');
+            if (humidityValue) humidityValue.textContent = formatReading(sensor.humidity, ' %');
+            const rawParts = [];
+            if (sensor.temperature?.raw != null) rawParts.push(`T: ${sensor.temperature.raw}`);
+            if (sensor.humidity?.raw != null) rawParts.push(`H: ${sensor.humidity.raw}`);
+            const rawElement = card.querySelector('[data-sensor-raw]');
+            if (rawElement) {
+                rawElement.textContent = rawParts.join(' · ');
+                rawElement.hidden = rawParts.length === 0;
+            }
+        };
+        const refreshSensors = async () => {
+            try {
+                const response = await fetch('/api/v1/sensors/poll', { headers: { Accept: 'application/json' } });
+                const payload = await response.json();
+                (payload.data || []).forEach(applySensorReadings);
+            } catch (error) {
+                showToast(body.dataset.toastError, 'error');
+            }
+        };
+        refreshSensors();
+        document.querySelector('[data-sensors-refresh]')?.addEventListener('click', refreshSensors);
+
+        const sensorModal = document.querySelector('#sensor-modal');
+        bindModal(sensorModal, '[data-sensor-modal-open]', '[data-sensor-modal-close]');
+        document.querySelector('[data-sensor-form]')?.addEventListener('submit', (event) => {
+            event.preventDefault();
+            submitEntityForm(event.currentTarget, '/api/v1/sensors', sensorModal);
+        });
+
+        const sensorEditModal = document.querySelector('#sensor-edit-modal');
+        bindModal(sensorEditModal, '[data-sensor-edit-open]', '[data-sensor-edit-close]', (button) => {
+            const form = sensorEditModal?.querySelector('[data-sensor-edit-form]');
+            if (!form) return;
+            form.elements.sensor_id.value = button.dataset.sensorId || '';
+            form.elements.name.value = button.dataset.sensorName || '';
+            form.elements.model.value = button.dataset.sensorModel || '';
+            form.elements.host.value = button.dataset.sensorHost || '';
+            form.elements.snmp_port.value = button.dataset.sensorPort || '161';
+            form.elements.snmp_community.value = button.dataset.sensorCommunity || 'public';
+            form.elements.temperature_oid.value = button.dataset.sensorTemperatureOid || '';
+            form.elements.temperature_divisor.value = button.dataset.sensorTemperatureDivisor || '10';
+            form.elements.humidity_oid.value = button.dataset.sensorHumidityOid || '';
+            form.elements.humidity_divisor.value = button.dataset.sensorHumidityDivisor || '10';
+            form.elements.ping_enabled.checked = button.dataset.sensorPingEnabled === '1';
+            form.elements.notes.value = button.dataset.sensorNotes || '';
+        });
+        document.querySelector('[data-sensor-edit-form]')?.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const form = event.currentTarget;
+            submitEntityForm(form, `/api/v1/sensors/${form.elements.sensor_id.value}`, sensorEditModal);
+        });
+    }
+
     updateThemeIcon();
     refreshIcons();
     initializeVisualizations();

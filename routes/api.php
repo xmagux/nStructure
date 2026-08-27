@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use NStructure\Http\Controller\ApiController;
 use NStructure\Http\Controller\AssetController;
+use NStructure\Http\Controller\SensorController;
 use NStructure\Http\Controller\UserController;
 use Slim\App;
 
@@ -50,6 +51,11 @@ return static function (App $app): void {
             $group->delete('/users/{id:[0-9]+}', [UserController::class, 'archive']);
             $group->post('/account/password', [UserController::class, 'changePassword']);
             $group->post('/account/profile', [UserController::class, 'updateProfile']);
+            $group->get('/sensors/poll', [SensorController::class, 'pollAll']);
+            $group->get('/sensors/{id:[0-9]+}/poll', [SensorController::class, 'poll']);
+            $group->post('/sensors', [SensorController::class, 'create']);
+            $group->post('/sensors/{id:[0-9]+}', [SensorController::class, 'update']);
+            $group->delete('/sensors/{id:[0-9]+}', [SensorController::class, 'archive']);
         }
         $group->post('/cables', [ApiController::class, 'createCable']);
         $group->post('/cables/{id:[0-9]+}', [ApiController::class, 'updateCable']);

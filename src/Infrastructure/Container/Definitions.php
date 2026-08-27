@@ -8,6 +8,7 @@ use NStructure\Application\Storage\AssetImageStorage;
 use NStructure\Application\Translation\Translator;
 use NStructure\Application\View\ViewContext;
 use NStructure\Domain\Repository\NetworkRepository;
+use NStructure\Domain\Repository\SensorRepository;
 use NStructure\Domain\Repository\UserRepository;
 use NStructure\Http\Middleware\AuthMiddleware;
 use NStructure\Http\Middleware\LocaleMiddleware;
@@ -15,7 +16,9 @@ use NStructure\Http\Middleware\SessionMiddleware;
 use NStructure\Infrastructure\Database\ConnectionFactory;
 use NStructure\Infrastructure\Repository\DemoNetworkRepository;
 use NStructure\Infrastructure\Repository\MySqlNetworkRepository;
+use NStructure\Infrastructure\Repository\MySqlSensorRepository;
 use NStructure\Infrastructure\Repository\MySqlUserRepository;
+use NStructure\Infrastructure\Snmp\SnmpClient;
 use PDO;
 use Slim\Views\Twig;
 use Twig\TwigFunction;
@@ -57,6 +60,11 @@ final class Definitions
             return $twig;
         });
         $container->set(UserRepository::class, static fn (Container $container): UserRepository => new MySqlUserRepository($container->get(PDO::class)));
+        $container->set(SnmpClient::class, static fn (): SnmpClient => new SnmpClient());
+        $container->set(SensorRepository::class, static fn (Container $container): SensorRepository => new MySqlSensorRepository(
+            $container->get(PDO::class),
+            $container->get(SnmpClient::class),
+        ));
         $container->set(SessionMiddleware::class, static fn (): SessionMiddleware => new SessionMiddleware($settings));
         $container->set(AuthMiddleware::class, static fn (): AuthMiddleware => new AuthMiddleware($settings));
         $container->set(LocaleMiddleware::class, static fn (Container $container): LocaleMiddleware => new LocaleMiddleware(
