@@ -2055,8 +2055,49 @@
         refreshSensors();
         document.querySelector('[data-sensors-refresh]')?.addEventListener('click', refreshSensors);
 
+        const SENSOR_MODEL_PRESETS = {
+            HWG_STE: { model: 'HWg-STE', temperatureOid: '1.3.6.1.4.1.21796.4.1.3.1.4.2', humidityOid: '1.3.6.1.4.1.21796.4.1.3.1.4.1' },
+            STE2_LITE: { model: 'STE2 Lite', temperatureOid: '1.3.6.1.4.1.21796.4.9.3.1.4.2', humidityOid: '1.3.6.1.4.1.21796.4.9.3.1.4.1' },
+        };
+        const sensorModelKeyForName = (name) => Object.keys(SENSOR_MODEL_PRESETS).find((key) => SENSOR_MODEL_PRESETS[key].model === name) || 'OTHER';
+        const syncSensorModelField = (form) => {
+            const select = form?.querySelector('[data-sensor-model-select]');
+            if (!select) return;
+            const customField = form.querySelector('[data-sensor-model-custom-field]');
+            const customInput = form.querySelector('[data-sensor-model-custom]');
+            const isOther = select.value === 'OTHER';
+            if (customField) customField.hidden = !isOther;
+            form.elements.model.value = isOther ? (customInput?.value || '') : (SENSOR_MODEL_PRESETS[select.value]?.model || '');
+        };
+        document.querySelectorAll('[data-sensor-model-select]').forEach((select) => {
+            const form = select.closest('form');
+            select.addEventListener('change', () => {
+                const preset = SENSOR_MODEL_PRESETS[select.value];
+                if (preset && form) {
+                    form.elements.temperature_oid.value = preset.temperatureOid;
+                    form.elements.humidity_oid.value = preset.humidityOid;
+                    form.elements.temperature_divisor.value = '1';
+                    form.elements.humidity_divisor.value = '1';
+                }
+                syncSensorModelField(form);
+            });
+        });
+        document.querySelectorAll('[data-sensor-model-custom]').forEach((input) => {
+            input.addEventListener('input', () => syncSensorModelField(input.closest('form')));
+        });
+
         const sensorModal = document.querySelector('#sensor-modal');
-        bindModal(sensorModal, '[data-sensor-modal-open]', '[data-sensor-modal-close]');
+        bindModal(sensorModal, '[data-sensor-modal-open]', '[data-sensor-modal-close]', () => {
+            const form = sensorModal?.querySelector('[data-sensor-form]');
+            if (!form) return;
+            form.reset();
+            const preset = SENSOR_MODEL_PRESETS.HWG_STE;
+            form.elements.temperature_oid.value = preset.temperatureOid;
+            form.elements.humidity_oid.value = preset.humidityOid;
+            form.elements.temperature_divisor.value = '1';
+            form.elements.humidity_divisor.value = '1';
+            syncSensorModelField(form);
+        });
         document.querySelector('[data-sensor-form]')?.addEventListener('submit', (event) => {
             event.preventDefault();
             submitEntityForm(event.currentTarget, '/api/v1/sensors', sensorModal);
@@ -2068,7 +2109,13 @@
             if (!form) return;
             form.elements.sensor_id.value = button.dataset.sensorId || '';
             form.elements.name.value = button.dataset.sensorName || '';
-            form.elements.model.value = button.dataset.sensorModel || '';
+            const modelName = button.dataset.sensorModel || '';
+            const modelKey = sensorModelKeyForName(modelName);
+            const modelSelect = form.querySelector('[data-sensor-model-select]');
+            if (modelSelect) modelSelect.value = modelKey;
+            const modelCustomInput = form.querySelector('[data-sensor-model-custom]');
+            if (modelCustomInput) modelCustomInput.value = modelKey === 'OTHER' ? modelName : '';
+            syncSensorModelField(form);
             form.elements.host.value = button.dataset.sensorHost || '';
             form.elements.snmp_port.value = button.dataset.sensorPort || '161';
             form.elements.snmp_community.value = button.dataset.sensorCommunity || 'public';
