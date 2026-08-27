@@ -17,11 +17,14 @@ use Throwable;
 
 final readonly class SensorController
 {
+    // VictoriaMetrics's Influx line-protocol ingestion names each series
+    // "<measurement>_<field>"; every point is written with field "value",
+    // so the daemon's measurement names all gain a "_value" suffix here.
     private const METRIC_NAMES = [
-        'temperature' => 'sensor_temperature_celsius',
-        'humidity' => 'sensor_humidity_percent',
-        'ping_latency' => 'sensor_ping_latency_ms',
-        'ping_up' => 'sensor_ping_up',
+        'temperature' => 'sensor_temperature_celsius_value',
+        'humidity' => 'sensor_humidity_percent_value',
+        'ping_latency' => 'sensor_ping_latency_ms_value',
+        'ping_up' => 'sensor_ping_up_value',
     ];
 
     private const RANGE_SECONDS = [
