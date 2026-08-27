@@ -96,6 +96,34 @@ sudo systemctl reload php8.4-fpm
 
 Database migrations are tracked and applied only once.
 
+## Environmental sensors (optional)
+
+nStructure can read temperature, humidity, and reachability from
+SNMP-capable sensors (HWgroup HWg-STE, STE2 Lite, and similar devices). The
+page lives at `/tools/sensors` and is intentionally not linked from the main
+navigation — visit the URL directly once logged in. It's excluded entirely
+in demo mode, since it lets a logged-in user make the server issue SNMP and
+ping traffic to any host they configure.
+
+No extra system packages are required — SNMP is implemented as a
+self-contained PHP client (no `php-snmp` extension or `net-snmp` tools
+needed). Reachability checks shell out to the system `ping` binary, present
+on virtually every Linux install by default.
+
+Opening the page (or clicking Refresh) always polls sensors live,
+server-side, regardless of whether anyone's browser is open. To keep a
+historical record even when nobody is looking at the page, add a cron job
+that polls on a schedule; every poll — interactive or scheduled — is stored
+in the `environmental_sensor_readings` table:
+
+```bash
+# crontab -e (as the user PHP-FPM/CLI runs as, or a dedicated service account)
+*/5 * * * * php /var/www/nstructure/bin/poll-sensors.php >> /var/log/nstructure-sensors.log 2>&1
+```
+
+Adjust the interval to taste — `bin/poll-sensors.php` polls every configured
+sensor once per invocation and prints a one-line summary per sensor.
+
 ## Verification
 
 ```bash

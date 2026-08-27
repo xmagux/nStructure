@@ -109,7 +109,32 @@ final class MySqlSensorRepository implements SensorRepository
         $sensor['ping'] = $sensor['ping_enabled'] ? $this->ping($sensor['host']) : null;
         $sensor['temperature'] = $this->readValue($sensor, 'temperature_oid', 'temperature_divisor');
         $sensor['humidity'] = $this->readValue($sensor, 'humidity_oid', 'humidity_divisor');
+        $this->recordReading($sensor);
         return $sensor;
+    }
+
+    private function recordReading(array $sensor): void
+    {
+        $statement = $this->pdo->prepare(
+            'INSERT INTO environmental_sensor_readings (
+                sensor_id, temperature, temperature_raw, temperature_ok,
+                humidity, humidity_raw, humidity_ok, ping_ok, ping_latency_ms
+             ) VALUES (
+                :sensor_id, :temperature, :temperature_raw, :temperature_ok,
+                :humidity, :humidity_raw, :humidity_ok, :ping_ok, :ping_latency_ms
+             )',
+        );
+        $statement->execute([
+            'sensor_id' => $sensor['id'],
+            'temperature' => $sensor['temperature']['ok'] ? $sensor['temperature']['value'] : null,
+            'temperature_raw' => $sensor['temperature']['raw'] !== null ? mb_substr((string) $sensor['temperature']['raw'], 0, 64) : null,
+            'temperature_ok' => $sensor['temperature']['ok'] ? 1 : 0,
+            'humidity' => $sensor['humidity']['ok'] ? $sensor['humidity']['value'] : null,
+            'humidity_raw' => $sensor['humidity']['raw'] !== null ? mb_substr((string) $sensor['humidity']['raw'], 0, 64) : null,
+            'humidity_ok' => $sensor['humidity']['ok'] ? 1 : 0,
+            'ping_ok' => $sensor['ping'] === null ? null : ($sensor['ping']['ok'] ? 1 : 0),
+            'ping_latency_ms' => $sensor['ping']['latency_ms'] ?? null,
+        ]);
     }
 
     private function readValue(array $sensor, string $oidField, string $divisorField): array
