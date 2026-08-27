@@ -140,10 +140,14 @@ slower SNMP poll above.
 
 The two arguments are the interval and the total run time in seconds
 (`5 55` above means "ping every 5s, stop after 55s" — leaving a safety
-margin before cron's next invocation). At a 5-second interval this is
-~17,000 rows per sensor per day in `environmental_sensor_pings`; there is no
-built-in retention/cleanup yet, so prune old rows periodically if disk space
-matters for a long-running installation.
+margin before cron's next invocation).
+
+Both `bin/ping-sensors.php` and `bin/poll-sensors.php` only write a new row
+when something actually changed since the last recorded one (reachability
+flips up/down, or a sensor's reported value changes) — a sensor sitting
+idle at the same reading, or reachable the whole time, does not grow the
+table on every single check. Growth is driven by how often things actually
+change, not by the polling interval.
 
 ## Verification
 

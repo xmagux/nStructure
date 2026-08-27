@@ -125,6 +125,28 @@ final class MySqlSensorRepository implements SensorRepository
 
     private function recordReading(array $sensor): void
     {
+        $temperatureOk = $sensor['temperature']['ok'] ? 1 : 0;
+        $temperatureRaw = $sensor['temperature']['raw'] !== null ? mb_substr((string) $sensor['temperature']['raw'], 0, 64) : null;
+        $humidityOk = $sensor['humidity']['ok'] ? 1 : 0;
+        $humidityRaw = $sensor['humidity']['raw'] !== null ? mb_substr((string) $sensor['humidity']['raw'], 0, 64) : null;
+        $pingOk = $sensor['ping'] === null ? null : ($sensor['ping']['ok'] ? 1 : 0);
+
+        $last = $this->pdo->prepare(
+            'SELECT temperature_raw, temperature_ok, humidity_raw, humidity_ok, ping_ok
+             FROM environmental_sensor_readings WHERE sensor_id = :sensor_id ORDER BY id DESC LIMIT 1',
+        );
+        $last->execute(['sensor_id' => $sensor['id']]);
+        $previous = $last->fetch();
+        if (is_array($previous)
+            && $previous['temperature_raw'] === $temperatureRaw
+            && (int) $previous['temperature_ok'] === $temperatureOk
+            && $previous['humidity_raw'] === $humidityRaw
+            && (int) $previous['humidity_ok'] === $humidityOk
+            && ($previous['ping_ok'] === null ? null : (int) $previous['ping_ok']) === $pingOk
+        ) {
+            return;
+        }
+
         $statement = $this->pdo->prepare(
             'INSERT INTO environmental_sensor_readings (
                 sensor_id, temperature, temperature_raw, temperature_ok,
@@ -137,24 +159,35 @@ final class MySqlSensorRepository implements SensorRepository
         $statement->execute([
             'sensor_id' => $sensor['id'],
             'temperature' => $sensor['temperature']['ok'] ? $sensor['temperature']['value'] : null,
-            'temperature_raw' => $sensor['temperature']['raw'] !== null ? mb_substr((string) $sensor['temperature']['raw'], 0, 64) : null,
-            'temperature_ok' => $sensor['temperature']['ok'] ? 1 : 0,
+            'temperature_raw' => $temperatureRaw,
+            'temperature_ok' => $temperatureOk,
             'humidity' => $sensor['humidity']['ok'] ? $sensor['humidity']['value'] : null,
-            'humidity_raw' => $sensor['humidity']['raw'] !== null ? mb_substr((string) $sensor['humidity']['raw'], 0, 64) : null,
-            'humidity_ok' => $sensor['humidity']['ok'] ? 1 : 0,
-            'ping_ok' => $sensor['ping'] === null ? null : ($sensor['ping']['ok'] ? 1 : 0),
+            'humidity_raw' => $humidityRaw,
+            'humidity_ok' => $humidityOk,
+            'ping_ok' => $pingOk,
             'ping_latency_ms' => $sensor['ping']['latency_ms'] ?? null,
         ]);
     }
 
     private function recordPing(int $sensorId, array $result): void
     {
+        $ok = $result['ok'] ? 1 : 0;
+
+        $last = $this->pdo->prepare(
+            'SELECT ok FROM environmental_sensor_pings WHERE sensor_id = :sensor_id ORDER BY id DESC LIMIT 1',
+        );
+        $last->execute(['sensor_id' => $sensorId]);
+        $previous = $last->fetch();
+        if (is_array($previous) && (int) $previous['ok'] === $ok) {
+            return;
+        }
+
         $statement = $this->pdo->prepare(
             'INSERT INTO environmental_sensor_pings (sensor_id, ok, latency_ms) VALUES (:sensor_id, :ok, :latency_ms)',
         );
         $statement->execute([
             'sensor_id' => $sensorId,
-            'ok' => $result['ok'] ? 1 : 0,
+            'ok' => $ok,
             'latency_ms' => $result['latency_ms'],
         ]);
     }
