@@ -954,6 +954,38 @@ final class DemoNetworkRepository implements NetworkRepository
         return $count;
     }
 
+    private function demoActiveDeviceInterfaces(int $deviceId): array
+    {
+        $panelIds = [1, 2, 3, 10];
+        foreach ($_SESSION['demo_panels'] ?? [] as $rackPanels) {
+            foreach ($rackPanels as $panel) {
+                $panelIds[] = (int) $panel['id'];
+            }
+        }
+        $interfaces = [];
+        foreach (array_unique($panelIds) as $panelId) {
+            $panel = $this->panel($panelId);
+            if ($panel === null) {
+                continue;
+            }
+            foreach ($panel['port_items'] as $port) {
+                $front = $port['front_connection'] ?? null;
+                if ((int) ($front['device_id'] ?? 0) !== $deviceId) {
+                    continue;
+                }
+                $interfaces[] = [
+                    'id' => (int) $front['interface_id'],
+                    'name' => $front['interface_name'],
+                    'interface_type' => $front['interface_type'],
+                    'speed_label' => $front['interface_speed'] ?? null,
+                    'destination' => sprintf('%s · %s · %s · Port %02d', $panel['location'], $panel['rack'], $panel['code'], (int) $port['number']),
+                    'port_id' => (int) $port['id'],
+                ];
+            }
+        }
+        return $interfaces;
+    }
+
     private function findDemoActiveDevice(int $activeDeviceId): ?array
     {
         $device = $this->demoActiveDeviceFixtures()[$activeDeviceId] ?? $_SESSION['demo_active_devices'][$activeDeviceId] ?? null;
@@ -976,7 +1008,7 @@ final class DemoNetworkRepository implements NetworkRepository
             if ($device === null || (int) $device['rack_id'] !== $rackId) {
                 continue;
             }
-            $connections = $this->demoActiveDeviceConnectionCount((int) $id);
+            $interfaces = $this->demoActiveDeviceInterfaces((int) $id);
             $devices[] = [
                 'id' => (int) $device['id'],
                 'code' => $device['code'],
@@ -986,8 +1018,9 @@ final class DemoNetworkRepository implements NetworkRepository
                 'model' => $device['model'] ?? null,
                 'management_address' => $device['management_address'] ?? null,
                 'notes' => $device['notes'] ?? null,
-                'interface_count' => $connections,
-                'connected_count' => $connections,
+                'interface_count' => count($interfaces),
+                'connected_count' => count($interfaces),
+                'interfaces' => $interfaces,
             ];
         }
         return $devices;
@@ -1061,6 +1094,45 @@ final class DemoNetworkRepository implements NetworkRepository
             }
         }
         return null;
+    }
+
+    public function disconnectActiveDeviceInterface(int $interfaceId): array
+    {
+        $panelIds = [1, 2, 3, 10];
+        foreach ($_SESSION['demo_panels'] ?? [] as $rackPanels) {
+            foreach ($rackPanels as $panel) {
+                $panelIds[] = (int) $panel['id'];
+            }
+        }
+        foreach (array_unique($panelIds) as $panelId) {
+            $panel = $this->panel($panelId);
+            if ($panel === null) {
+                continue;
+            }
+            foreach ($panel['port_items'] as $port) {
+                if ((int) ($port['front_connection']['interface_id'] ?? 0) !== $interfaceId) {
+                    continue;
+                }
+                $portId = (int) $port['id'];
+                $location = $this->findDemoPortLocation($portId);
+                if ($location !== null) {
+                    [$rackId, $panelIndex, $portIndex] = $location;
+                    $stored =& $_SESSION['demo_panels'][$rackId][$panelIndex]['port_items'][$portIndex];
+                    $stored['front_connection'] = null;
+                    $stored['front_destination'] = null;
+                    $stored['has_front_connection'] = false;
+                    $stored['destination'] = $stored['rear_destination'] ?? null;
+                    $stored['status'] = ($stored['has_patch_cord'] || $stored['has_termination']) ? 'occupied' : 'available';
+                    unset($stored);
+                } else {
+                    $update = $_SESSION['demo_port_updates'][$portId] ?? [];
+                    $update['front_connection'] = null;
+                    $_SESSION['demo_port_updates'][$portId] = $update;
+                }
+                return ['id' => $interfaceId, 'disconnected' => true];
+            }
+        }
+        throw new \RuntimeException('Device interface not found');
     }
 
     public function createRackItem(int $rackId, array $input): array

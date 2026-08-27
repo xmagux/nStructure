@@ -449,18 +449,49 @@ final readonly class MySqlNetworkRepository implements NetworkRepository
              ORDER BY ad.name',
         );
         $activeDevicesStatement->execute(['rack_id' => $id]);
-        $activeDevices = array_map(static fn (array $device): array => [
-            'id' => (int) $device['id'],
-            'code' => $device['code'],
-            'name' => $device['name'],
-            'device_type' => $device['device_type'],
-            'vendor' => $device['vendor'],
-            'model' => $device['model'],
-            'management_address' => $device['management_address'],
-            'notes' => $device['notes'],
-            'interface_count' => (int) $device['interface_count'],
-            'connected_count' => (int) $device['connected_count'],
-        ], $activeDevicesStatement->fetchAll());
+        $activeDeviceRows = $activeDevicesStatement->fetchAll();
+
+        $interfacesStatement = $this->pdo->prepare(
+            'SELECT adi.id, adi.active_device_id, adi.name, adi.interface_type, adi.speed_label,
+                CONCAT(l.name, " · ", sr.name, " · ", r.code, " · ", pp.code, " · Port ", LPAD(ppp.port_number, 2, "0")) AS destination
+             FROM active_device_interfaces adi
+             LEFT JOIN patch_panel_front_connections pfc ON pfc.active_device_interface_id = adi.id
+             LEFT JOIN patch_panel_ports ppp ON ppp.id = pfc.patch_panel_port_id
+             LEFT JOIN patch_panels pp ON pp.id = ppp.patch_panel_id
+             LEFT JOIN racks r ON r.id = pp.rack_id
+             LEFT JOIN server_rooms sr ON sr.id = r.server_room_id
+             LEFT JOIN locations l ON l.id = sr.location_id
+             WHERE adi.active_device_id IN (' . (empty($activeDeviceRows) ? '0' : implode(',', array_map(static fn (array $d): int => (int) $d['id'], $activeDeviceRows))) . ')
+             ORDER BY adi.name',
+        );
+        $interfacesStatement->execute();
+        $interfacesByDevice = [];
+        foreach ($interfacesStatement->fetchAll() as $interface) {
+            $interfacesByDevice[(int) $interface['active_device_id']][] = [
+                'id' => (int) $interface['id'],
+                'name' => $interface['name'],
+                'interface_type' => $interface['interface_type'],
+                'speed_label' => $interface['speed_label'],
+                'destination' => $interface['destination'],
+            ];
+        }
+
+        $activeDevices = array_map(static function (array $device) use ($interfacesByDevice): array {
+            $deviceId = (int) $device['id'];
+            return [
+                'id' => $deviceId,
+                'code' => $device['code'],
+                'name' => $device['name'],
+                'device_type' => $device['device_type'],
+                'vendor' => $device['vendor'],
+                'model' => $device['model'],
+                'management_address' => $device['management_address'],
+                'notes' => $device['notes'],
+                'interface_count' => (int) $device['interface_count'],
+                'connected_count' => (int) $device['connected_count'],
+                'interfaces' => $interfacesByDevice[$deviceId] ?? [],
+            ];
+        }, $activeDeviceRows);
 
         $used = array_sum(array_map(static fn (array $device): int => (int) $device['height'], $devices));
 
@@ -1748,6 +1779,32 @@ SQL;
             $this->recordArchiveAudit('ACTIVE_DEVICE', $activeDeviceId, $device);
             $this->pdo->commit();
             return ['id' => $activeDeviceId, 'code' => $device['code'], 'archived' => true];
+        } catch (\Throwable $exception) {
+            $this->pdo->rollBack();
+            throw $exception;
+        }
+    }
+
+    public function disconnectActiveDeviceInterface(int $interfaceId): array
+    {
+        $this->pdo->beginTransaction();
+        try {
+            $statement = $this->pdo->prepare(
+                'SELECT adi.id, adi.name, pfc.patch_panel_port_id
+                 FROM active_device_interfaces adi
+                 LEFT JOIN patch_panel_front_connections pfc ON pfc.active_device_interface_id = adi.id
+                 WHERE adi.id = :id FOR UPDATE',
+            );
+            $statement->execute(['id' => $interfaceId]);
+            $interface = $statement->fetch();
+            if (!is_array($interface)) {
+                throw new RuntimeException('Device interface not found');
+            }
+            $delete = $this->pdo->prepare('DELETE FROM patch_panel_front_connections WHERE active_device_interface_id = :id');
+            $delete->execute(['id' => $interfaceId]);
+            $this->recordAudit('ACTIVE_DEVICE_INTERFACE', $interfaceId, 'DISCONNECT', null, ['name' => $interface['name']]);
+            $this->pdo->commit();
+            return ['id' => $interfaceId, 'disconnected' => true];
         } catch (\Throwable $exception) {
             $this->pdo->rollBack();
             throw $exception;

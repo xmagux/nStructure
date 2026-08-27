@@ -41,6 +41,7 @@ return static function (App $app): void {
         $group->post('/patch-panel-ports/{id:[0-9]+}/connections', [ApiController::class, 'connectPorts']);
         $group->post('/active-devices/{id:[0-9]+}', [ApiController::class, 'updateActiveDevice']);
         $group->delete('/active-devices/{id:[0-9]+}', [ApiController::class, 'archiveActiveDevice']);
+        $group->delete('/active-device-interfaces/{id:[0-9]+}/connection', [ApiController::class, 'disconnectActiveDeviceInterface']);
         $group->post('/racks/{id:[0-9]+}/rack-items', [ApiController::class, 'createRackItem']);
         $group->post('/rack-items/{id:[0-9]+}', [ApiController::class, 'updateRackItem']);
         $group->delete('/rack-items/{id:[0-9]+}', [ApiController::class, 'archiveRackItem']);

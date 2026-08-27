@@ -42,6 +42,8 @@ interface NetworkRepository
 
     public function archiveActiveDevice(int $activeDeviceId): array;
 
+    public function disconnectActiveDeviceInterface(int $interfaceId): array;
+
     public function createRackItem(int $rackId, array $input): array;
 
     public function updateRackItem(int $rackItemId, array $input): array;

@@ -563,6 +563,24 @@
         submitEntityForm(form, `/api/v1/active-devices/${form.elements.active_device_id.value}`, activeDeviceEditModal);
     });
 
+    document.querySelectorAll('[data-device-interface-disconnect]').forEach((button) => button.addEventListener('click', async () => {
+        if (!window.confirm(body.dataset.confirmDisconnectInterface)) return;
+        button.disabled = true;
+        try {
+            const response = await fetch(`/api/v1/active-device-interfaces/${button.dataset.interfaceId}/connection`, {
+                method: 'DELETE',
+                headers: { Accept: 'application/json', 'X-CSRF-Token': csrfToken },
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.error || body.dataset.toastError);
+            showToast(body.dataset.toastSaved);
+            window.setTimeout(() => window.location.reload(), 500);
+        } catch (error) {
+            showToast(error.message || body.dataset.toastError, 'error');
+            button.disabled = false;
+        }
+    }));
+
     const rackItemModal = document.querySelector('#rack-item-modal');
     bindModal(rackItemModal, '[data-rack-item-modal-open]', '[data-rack-item-modal-close]');
     document.querySelector('[data-rack-item-form]')?.addEventListener('submit', (event) => {
@@ -1540,6 +1558,8 @@
         blue: '#3b82f6', indigo: '#6366f1', purple: '#a855f7', pink: '#ec4899',
     };
 
+    const PANEL_ROW_STRIDE = 100;
+
     const createCadController = (container, worldWidth, worldHeight, renderWorld) => {
         if (!window.Konva) return null;
         const workspace = container.closest('[data-konva-workspace]');
@@ -1787,12 +1807,13 @@
         result.replaceChildren();
     };
 
-    const renderPanelWorld = (panel, worldWidth) => (world, layer, stage) => {
+    const renderPanelWorld = (panel, worldWidth, worldHeight) => (world, layer, stage) => {
         const palette = themePalette();
         const panelCanvasLabels = document.querySelector('[data-panel-canvas]')?.dataset || {};
         const rows = Math.max(1, Number(panel.layout_rows || (panel.ports > 24 ? 2 : 1)));
         const columns = Math.max(1, Number(panel.layout_columns || Math.ceil(panel.ports / rows)));
-        const chassis = { x: 100, y: 175, width: worldWidth - 200, height: 330 };
+        const portAreaHeight = rows * PANEL_ROW_STRIDE;
+        const chassis = { x: 100, y: 175, width: worldWidth - 200, height: Math.max(330, 132 + portAreaHeight + 50) };
         world.add(new window.Konva.Rect({ ...chassis, cornerRadius: 22, fillLinearGradientStartPoint: { x: 0, y: 0 }, fillLinearGradientEndPoint: { x: 0, y: chassis.height }, fillLinearGradientColorStops: [0, palette.surfaceRaised, 0.5, palette.surface, 1, palette.surfaceMuted], stroke: palette.borderStrong, strokeWidth: 3, shadowColor: palette.shadow, shadowBlur: 34, shadowOpacity: 0.4, shadowOffsetY: 18 }));
         [chassis.x + 34, chassis.x + chassis.width - 34].forEach((x) => {
             world.add(new window.Konva.Rect({ x: x - 18, y: chassis.y + 24, width: 36, height: chassis.height - 48, cornerRadius: 8, fill: palette.surfaceMuted, stroke: palette.border, strokeWidth: 1 }));
@@ -1800,7 +1821,7 @@
         });
         world.add(new window.Konva.Text({ x: chassis.x + 90, y: chassis.y + 28, text: panel.code, fontFamily: 'Inter, sans-serif', fontSize: 30, fontStyle: 'bold', fill: palette.text }));
         world.add(new window.Konva.Text({ x: chassis.x + 90, y: chassis.y + 70, text: `${panel.connector}  ·  ${panel.ports} PORT  ·  ${panel.incoming}`, fontFamily: 'JetBrains Mono, monospace', fontSize: 18, fill: palette.muted }));
-        const portArea = { x: chassis.x + 90, y: chassis.y + 132, width: chassis.width - 180, height: 148 };
+        const portArea = { x: chassis.x + 90, y: chassis.y + 132, width: chassis.width - 180, height: portAreaHeight };
         const xStep = portArea.width / columns;
         const yStep = portArea.height / rows;
         let selectedGroup = null;
@@ -1851,8 +1872,7 @@
             group.add(new window.Konva.Circle({ radius: 15, fill: occupied || damaged || blocked || reserved ? accent : palette.surfaceMuted, stroke: occupied && port.color === 'white' ? palette.borderStrong : accent, strokeWidth: 2 }));
             group.add(new window.Konva.Circle({ radius: 6, fill: occupied || damaged || blocked || reserved ? palette.canvas : palette.border, opacity: 0.9 }));
             const portLabelSize = Math.max(14, Math.min(18, xStep * 0.24, yStep * 0.24));
-            const portLabelBelow = rows > 1 && row === rows - 1;
-            const portLabelY = portLabelBelow ? 42 : -64;
+            const portLabelY = -56;
             const portLabel = new window.Konva.Group({ x: -27, y: portLabelY, listening: false });
             portLabel.add(new window.Konva.Rect({ width: 54, height: 22, cornerRadius: 7, fill: palette.surfaceRaised, stroke: palette.border, strokeWidth: 1, opacity: 0.96 }));
             portLabel.add(new window.Konva.Text({ y: 2, width: 54, height: 18, align: 'center', verticalAlign: 'middle', text: String(port.number).padStart(2, '0'), fontFamily: 'JetBrains Mono, monospace', fontSize: portLabelSize, fontStyle: 'bold', fill: palette.muted }));
@@ -1940,7 +1960,8 @@
                 const panelRows = Math.max(1, Number(panel.layout_rows || (panel.ports > 24 ? 2 : 1)));
                 const panelColumns = Math.max(1, Number(panel.layout_columns || Math.ceil(panel.ports / panelRows)));
                 const panelWorldWidth = Math.max(1800, 380 + (panelColumns * 78));
-                createCadController(panelContainer, panelWorldWidth, 680, renderPanelWorld(panel, panelWorldWidth));
+                const panelWorldHeight = 680 + Math.max(0, panelRows - 2) * PANEL_ROW_STRIDE;
+                createCadController(panelContainer, panelWorldWidth, panelWorldHeight, renderPanelWorld(panel, panelWorldWidth, panelWorldHeight));
             }
         }
     };

@@ -279,6 +279,14 @@ final readonly class ApiController
         );
     }
 
+    public function disconnectActiveDeviceInterface(ServerRequestInterface $request, ResponseInterface $response, array $arguments): ResponseInterface
+    {
+        return $this->archiveResource(
+            $response,
+            fn (): array => $this->repository->disconnectActiveDeviceInterface((int) $arguments['id']),
+        );
+    }
+
     public function createRackItem(ServerRequestInterface $request, ResponseInterface $response, array $arguments): ResponseInterface
     {
         try {
