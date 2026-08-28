@@ -1913,32 +1913,40 @@ body.sidebar-collapsed .user-avatar { width: 40px; height: 40px; }
    every piece of text has overflow: hidden + ellipsis so a long name, a
    long "down" label, or a two-value reading line can never grow the tile
    or spill outside its box, no matter the content. */
-.sensor-grid { display: flex; flex-wrap: wrap; gap: 12px; }
-/* Continuous per-tile sizing via a single --tile-size custom property (set
-   inline per tile, dragged live by the resize handle, persisted per user)
-   — every scaled element below is a calc() off that one variable, so the
-   icon, box, and text all grow together instead of needing discrete
-   small/medium/large steps. Icon SVGs carry an inline width/height from
-   the icon macro, so the scaled size needs !important to win over that. */
-.sensor-tile { --tile-size: 130px; position: relative; flex: 0 0 auto; width: var(--tile-size); padding: calc(var(--tile-size) * .123) calc(var(--tile-size) * .077) calc(var(--tile-size) * .108); display: flex; flex-direction: column; align-items: center; gap: 5px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); cursor: pointer; text-align: center; transition: background .15s, border-color .15s, transform .15s, box-shadow .15s; }
+.sensor-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; }
+.sensor-tile { position: relative; padding: 16px 10px 14px; display: flex; flex-direction: column; align-items: center; gap: 5px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); cursor: pointer; text-align: center; transition: background .15s, border-color .15s, transform .15s, box-shadow .15s; }
 .sensor-tile:hover { border-color: var(--blue); box-shadow: 0 8px 20px color-mix(in srgb, var(--blue) 14%, transparent); transform: translateY(-1px); }
 .sensor-tile.dragging { opacity: .4; }
 .sensor-tile.drag-over { border-color: var(--blue); border-style: dashed; box-shadow: 0 0 0 2px color-mix(in srgb, var(--blue) 30%, transparent); }
 .sensor-tile.alarm .sensor-tile-visual { box-shadow: 0 0 0 2px var(--red); }
-.sensor-tile-badge { overflow: hidden; width: 100%; max-width: 100%; min-height: 13px; color: var(--text-muted); font-size: calc(var(--tile-size) * .069); font-weight: 700; line-height: 13px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+.sensor-tile-badge { overflow: hidden; width: 100%; max-width: 100%; min-height: 13px; color: var(--text-muted); font-size: 9px; font-weight: 700; line-height: 13px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
 .sensor-tile-badge.down { border-radius: 5px; color: #fff; background: var(--red); }
-.sensor-tile-visual { width: calc(var(--tile-size) * .446); height: calc(var(--tile-size) * .446); display: grid; place-items: center; border-radius: calc(var(--tile-size) * .108); color: var(--blue); background: var(--surface-2); }
-.sensor-tile-visual svg { width: calc(var(--tile-size) * .246) !important; height: calc(var(--tile-size) * .246) !important; }
+.sensor-tile-visual { width: 58px; height: 58px; display: grid; place-items: center; border-radius: 14px; color: var(--blue); background: var(--surface-2); }
+.sensor-tile-visual svg { width: 32px; height: 32px; }
 .sensor-tile.sensor-tile-down .sensor-tile-visual { color: var(--red); background: color-mix(in srgb, var(--red) 16%, var(--surface-2)); }
-.sensor-tile-status { overflow: hidden; width: 100%; margin-top: 1px; color: var(--text-muted); font-size: calc(var(--tile-size) * .065); font-weight: 700; letter-spacing: .05em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+.sensor-tile-status { overflow: hidden; width: 100%; margin-top: 1px; color: var(--text-muted); font-size: 8.5px; font-weight: 700; letter-spacing: .05em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
 .sensor-tile-status.down { color: var(--red); }
-.sensor-tile-name { display: -webkit-box; overflow: hidden; width: 100%; margin-top: 3px; color: var(--text); font-size: calc(var(--tile-size) * .0885); font-weight: 600; line-height: 1.3; word-break: break-word; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-.sensor-tile-resize-handle { position: absolute; right: 2px; bottom: 2px; width: 14px; height: 14px; cursor: nwse-resize; opacity: 0; transition: opacity .15s; touch-action: none; }
-.sensor-tile:hover .sensor-tile-resize-handle { opacity: .5; }
-.sensor-tile-resize-handle:hover { opacity: 1 !important; }
-.sensor-tile-resize-handle::before { content: ''; position: absolute; right: 3px; bottom: 3px; width: 7px; height: 7px; border-right: 2px solid var(--text-muted); border-bottom: 2px solid var(--text-muted); border-radius: 0 0 2px 0; }
-.sensor-tile.resizing { transition: none; z-index: 1; }
-.sensor-tile-values { overflow: hidden; width: 100%; min-height: 13px; color: var(--text-muted); font-size: calc(var(--tile-size) * .077); text-overflow: ellipsis; white-space: nowrap; }
+.sensor-tile-name { display: -webkit-box; overflow: hidden; width: 100%; margin-top: 3px; color: var(--text); font-size: 11.5px; font-weight: 600; line-height: 1.3; word-break: break-word; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+
+/* Per-user tile sizing (persisted server-side) — small/medium/large.
+   Icon SVGs carry an inline width/height from the icon macro, so the
+   size overrides need !important to actually win over that. */
+.sensor-tile.size-small .sensor-tile-visual { width: 42px; height: 42px; }
+.sensor-tile.size-small .sensor-tile-visual svg { width: 22px !important; height: 22px !important; }
+.sensor-tile.size-small .sensor-tile-name { font-size: 9.5px; }
+.sensor-tile.size-small .sensor-tile-badge,
+.sensor-tile.size-small .sensor-tile-status,
+.sensor-tile.size-small .sensor-tile-values,
+.sensor-tile.size-small .sensor-tile-input-group { font-size: 8px; }
+.sensor-tile.size-large { grid-column: span 2; padding: 20px 14px 18px; }
+.sensor-tile.size-large .sensor-tile-visual { width: 84px; height: 84px; border-radius: 18px; }
+.sensor-tile.size-large .sensor-tile-visual svg { width: 44px !important; height: 44px !important; }
+.sensor-tile.size-large .sensor-tile-name { font-size: 14px; }
+.sensor-tile.size-large .sensor-tile-badge,
+.sensor-tile.size-large .sensor-tile-status { font-size: 10px; }
+.sensor-tile.size-large .sensor-tile-values,
+.sensor-tile.size-large .sensor-tile-input-group { font-size: 12px; }
+.sensor-tile-values { overflow: hidden; width: 100%; min-height: 13px; color: var(--text-muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .sensor-tile-values span:empty { display: none; }
 .sensor-tile-values span[data-sensor-value-temperature]:not(:empty) + span[data-sensor-value-humidity]:not(:empty)::before { content: ' · '; }
 .sensor-tile-values .value-alarm { color: var(--amber); font-weight: 700; }
@@ -1946,7 +1954,7 @@ body.sidebar-collapsed .user-avatar { width: 40px; height: 40px; }
    of temperature/humidity — one small badge per input group, red for the
    more critical group (grid power), amber for the other (generator). */
 .sensor-tile-input-groups { display: flex; gap: 4px; width: 100%; min-height: 13px; }
-.sensor-tile-input-group { flex: 1; overflow: hidden; padding: 1px 4px; border-radius: 5px; color: var(--text-muted); background: var(--surface-2); font-size: calc(var(--tile-size) * .065); font-weight: 700; line-height: 13px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+.sensor-tile-input-group { flex: 1; overflow: hidden; padding: 1px 4px; border-radius: 5px; color: var(--text-muted); background: var(--surface-2); font-size: 8.5px; font-weight: 700; line-height: 13px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
 .sensor-tile-input-group.alarm { color: #fff; background: var(--red); }
 .sensor-tile-input-group.agregat-alarm { color: #fff; background: var(--amber); }
 

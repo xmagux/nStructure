@@ -438,19 +438,19 @@ final class MySqlSensorRepository implements SensorRepository
         $decoded = json_decode((string) $raw, true) ?: [];
         return [
             'order' => array_map('intval', $decoded['order'] ?? []),
-            'sizes' => array_map('intval', $decoded['sizes'] ?? []),
+            'sizes' => array_map('strval', $decoded['sizes'] ?? []),
         ];
     }
 
     public function saveTileLayout(int $userId, array $order, array $sizes): void
     {
+        $allowedSizes = ['small', 'medium', 'large'];
         $cleanOrder = array_values(array_unique(array_map('intval', $order)));
         $cleanSizes = [];
         foreach ($sizes as $sensorId => $size) {
             $sensorId = (int) $sensorId;
-            $pixels = filter_var($size, FILTER_VALIDATE_INT);
-            if ($sensorId > 0 && $pixels !== false && $pixels >= 90 && $pixels <= 280) {
-                $cleanSizes[(string) $sensorId] = $pixels;
+            if ($sensorId > 0 && in_array($size, $allowedSizes, true)) {
+                $cleanSizes[(string) $sensorId] = $size;
             }
         }
         $layout = json_encode(['order' => $cleanOrder, 'sizes' => $cleanSizes], JSON_THROW_ON_ERROR);
