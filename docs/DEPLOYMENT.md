@@ -120,6 +120,24 @@ does not require: the `php-snmp` extension, the `fping` binary, and a
 running VictoriaMetrics instance. All are free to install and license-clear
 for commercial use.
 
+### Automated install
+
+`deploy/install.sh` installs and configures all three in one idempotent
+run — safe to re-run any time (e.g. after pulling an update that changes
+one of the systemd units). From the deployed application directory, as
+root:
+
+```bash
+sudo bash deploy/install.sh
+```
+
+It installs `php-snmp` and `fping` via `apt`, creates the unprivileged
+`victoriametrics` system account and data directory, downloads the latest
+VictoriaMetrics release binary if one isn't already installed, deploys both
+systemd units from `deploy/`, and enables/restarts both services. The
+sections below explain what each step does and how to run them by hand if
+you'd rather not run a root script from the repo blind.
+
 ### 1. php-snmp and fping
 
 ```bash
@@ -127,22 +145,20 @@ sudo apt install php8.4-snmp fping   # adjust the PHP version suffix to match yo
 sudo systemctl restart php8.4-fpm    # only needed if php-fpm also loads snmp (it doesn't have to)
 ```
 
-`fping` needs to open raw ICMP sockets, which isn't available to an
-unprivileged user by default. Rather than running the daemon as root, grant
-the capability directly to the binary once:
-
-```bash
-sudo setcap cap_net_raw+ep "$(command -v fping)"
-```
-
-This is a one-time step outside of any config file — re-run it if the
-`fping` package is ever upgraded (upgrades can replace the binary and drop
-the capability).
+`fping` needs to open raw ICMP sockets. The collector daemon's systemd unit
+(`deploy/nstructure-sensors-daemon.service`) already grants this via
+`AmbientCapabilities=CAP_NET_RAW`, so **no `setcap` step on the `fping`
+binary itself is needed** — and using `setcap` alone would not work anyway,
+since the unit also sets `NoNewPrivileges=true`, which makes the kernel
+ignore file capabilities on anything the service execs. Ambient
+capabilities are the mechanism designed to coexist with
+`NoNewPrivileges`, which is why the unit grants it that way instead.
 
 ### 2. VictoriaMetrics
 
-Single static Go binary, no Docker required. Download the latest release for
-your architecture from the
+Single static Go binary, no Docker required. `deploy/install.sh` downloads
+the latest release automatically; to do it by hand instead, get the
+appropriate archive for your architecture from the
 [VictoriaMetrics releases page](https://github.com/VictoriaMetrics/VictoriaMetrics/releases)
 and install it as its own unprivileged user:
 
@@ -204,14 +220,19 @@ POST per tick using the Influx line protocol. It exits cleanly with
 roughly 15-20 minutes) so systemd's `Restart=always` periodically restarts
 it — this bounds any per-process resource growth without needing cron.
 
-Deploy `deploy/nstructure-sensors-daemon.service` to
-`/etc/systemd/system/` and enable it:
+`deploy/install.sh` deploys this unit too (see above). By hand:
 
 ```bash
 sudo cp deploy/nstructure-sensors-daemon.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now nstructure-sensors-daemon
 ```
+
+After deploying a code update that touches the daemon or either systemd
+unit, re-run `sudo bash deploy/install.sh` (or just `daemon-reload` +
+`restart` by hand) — the daemon does not pick up code changes to itself
+until it restarts, since it's a single long-running process rather than a
+per-request script.
 
 Tune the daemon's polling interval, hysteresis thresholds, and keepalive via
 the `SENSOR_DAEMON_*` variables in `.env` — see `.env.example` for the full

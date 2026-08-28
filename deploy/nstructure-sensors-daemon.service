@@ -2,10 +2,6 @@
 Description=nStructure environmental sensors collector
 After=network-online.target mysql.service
 Wants=network-online.target
-# fping needs raw ICMP sockets. It cannot get them unprivileged out of the
-# box; run once as root before starting this unit (not something a systemd
-# directive can do for you):
-#   sudo setcap cap_net_raw+ep "$(command -v fping)"
 
 [Service]
 Type=simple
@@ -25,6 +21,13 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
+# fping (spawned by the daemon) needs raw ICMP sockets. With
+# NoNewPrivileges=true above, the kernel ignores file capabilities set via
+# `setcap` on the fping binary itself — ambient capabilities are the only
+# thing that still works together with NoNewPrivileges, so CAP_NET_RAW is
+# granted here instead. No manual setcap step is needed.
+AmbientCapabilities=CAP_NET_RAW
+CapabilityBoundingSet=CAP_NET_RAW
 # The daemon only reads from /var/www/nstructure (code/config) and writes
 # to its private /tmp (lock file) and /dev/shm (heartbeat file, excluded
 # from ProtectSystem=strict by default) — no extra ReadWritePaths needed.
