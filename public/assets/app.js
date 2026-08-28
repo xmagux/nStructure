@@ -2017,20 +2017,26 @@
             humidity: 'alarmHumidityLabel',
         };
         const applySensorReadings = (sensor) => {
-            const alarmActive = sensor.alarm?.active === true;
             const card = sensorGrid.querySelector(`[data-sensor-card][data-sensor-id="${sensor.id}"]`);
             if (!card) return;
-            const pingDown = sensor.ping != null && !sensor.ping.ok;
+            const disabled = sensor.monitoring_enabled === false;
+            const reasons = sensor.alarm?.reasons || [];
+            const alarmActive = !disabled && sensor.alarm?.active === true;
+            const pingDown = !disabled && sensor.ping != null && !sensor.ping.ok;
+            const noData = !disabled && !sensor.temperature?.ok && !sensor.humidity?.ok;
+
+            card.classList.toggle('sensor-tile-disabled', disabled);
             card.classList.toggle('alarm', alarmActive);
             card.classList.toggle('sensor-tile-down', pingDown);
+            card.classList.toggle('sensor-tile-no-data', !disabled && noData);
             card.title = alarmActive
-                ? `${sensor.name} — ${(sensor.alarm.reasons || []).map((reason) => sensorLabels[ALARM_REASON_LABELS[reason]] || reason).join(' · ')}`
+                ? `${sensor.name} — ${reasons.map((reason) => sensorLabels[ALARM_REASON_LABELS[reason]] || reason).join(' · ')}`
                 : `${sensor.name} · ${sensor.model || '—'} · ${sensor.host}`;
 
             const badge = card.querySelector('[data-sensor-ping-badge]');
             if (badge) {
                 badge.classList.toggle('down', pingDown);
-                badge.textContent = pingDown
+                badge.textContent = disabled ? '' : pingDown
                     ? (sensorLabels.pingDownLabel || '')
                     : (sensor.ping?.ok && sensor.ping.latency_ms != null ? `${Math.round(sensor.ping.latency_ms)}ms` : '');
             }
@@ -2038,12 +2044,15 @@
             const protocol = card.querySelector('[data-sensor-protocol]');
             if (protocol) protocol.classList.toggle('down', pingDown);
 
-            const valuesLine = card.querySelector('[data-sensor-values]');
-            if (valuesLine) {
-                const parts = [];
-                if (sensor.temperature?.ok) parts.push(`${Number(sensor.temperature.value).toFixed(1)}°C`);
-                if (sensor.humidity?.ok) parts.push(`${Number(sensor.humidity.value).toFixed(1)}%`);
-                valuesLine.textContent = parts.join(' · ');
+            const tempValue = card.querySelector('[data-sensor-value-temperature]');
+            if (tempValue) {
+                tempValue.textContent = !disabled && sensor.temperature?.ok ? `${Number(sensor.temperature.value).toFixed(1)}°C` : '';
+                tempValue.classList.toggle('value-alarm', reasons.includes('temperature'));
+            }
+            const humidityValue = card.querySelector('[data-sensor-value-humidity]');
+            if (humidityValue) {
+                humidityValue.textContent = !disabled && sensor.humidity?.ok ? `${Number(sensor.humidity.value).toFixed(1)}%` : '';
+                humidityValue.classList.toggle('value-alarm', reasons.includes('humidity'));
             }
         };
         const refreshSensors = async () => {
@@ -2141,6 +2150,7 @@
             form.elements.humidity_min.value = button.dataset.sensorHumidityMin || '';
             form.elements.humidity_max.value = button.dataset.sensorHumidityMax || '';
             form.elements.ping_enabled.checked = button.dataset.sensorPingEnabled === '1';
+            form.elements.monitoring_enabled.checked = button.dataset.sensorMonitoringEnabled === '1';
             form.elements.notes.value = button.dataset.sensorNotes || '';
         });
         document.querySelector('[data-sensor-edit-form]')?.addEventListener('submit', (event) => {

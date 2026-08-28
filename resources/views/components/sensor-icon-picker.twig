@@ -1,5 +1,5 @@
 {% import 'components/icons.twig' as icons %}
-{% set sensor_icon_picker_options = ['sensor-thermometer', 'sensor-droplet', 'sensor-server', 'sensor-router', 'sensor-wifi', 'sensor-cpu', 'sensor-wind', 'sensor-snowflake', 'sensor-zap', 'sensor-siren', 'sensor-radio-tower', 'sensor-gauge'] %}
+{% set sensor_icon_picker_options = ['sensor-thermometer', 'sensor-droplet', 'sensor-gauge', 'sensor-scan', 'sensor-zap', 'sensor-siren', 'sensor-server', 'sensor-cabinet', 'sensor-building', 'sensor-warehouse', 'sensor-door', 'sensor-home'] %}
 {% set sensor_icon_picker_current = selected|default('sensor-server') %}
 <div class="icon-picker" data-icon-picker>
     <input type="hidden" name="icon" value="{{ sensor_icon_picker_current }}">

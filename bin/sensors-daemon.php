@@ -84,7 +84,7 @@ $loadSensors = static function () use ($pdo): array {
     $statement = $pdo->query(
         'SELECT id, name, host, snmp_port, snmp_community,
             temperature_oid, temperature_divisor, humidity_oid, humidity_divisor, ping_enabled
-         FROM environmental_sensors WHERE archived_at IS NULL',
+         FROM environmental_sensors WHERE archived_at IS NULL AND monitoring_enabled = 1',
     );
     return array_map(static fn (array $row): array => [
         'id' => (int) $row['id'],

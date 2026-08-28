@@ -1903,7 +1903,11 @@ body.sidebar-collapsed .user-avatar { width: 40px; height: 40px; }
 
 /* Environmental sensors (hidden module) */
 .checkbox-field { flex-direction: row !important; align-items: center; gap: 10px !important; }
-.checkbox-field input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--blue); }
+/* .field input's generic text-input styling (min-height, border, background)
+   clobbers Tailwind's own checked-state checkmark rendering at equal CSS
+   specificity — the checkbox was toggling underneath but never showing it.
+   Restoring native appearance sidesteps that fight entirely. */
+.checkbox-field input[type="checkbox"] { appearance: auto; width: 18px; height: 18px; min-height: 0; border: none; background: none; accent-color: var(--blue); }
 
 /* Sensor list: compact icon-first tiles (network-monitoring-tool style) —
    every piece of text has overflow: hidden + ellipsis so a long name, a
@@ -1922,10 +1926,22 @@ body.sidebar-collapsed .user-avatar { width: 40px; height: 40px; }
 .sensor-tile-status.down { color: var(--red); }
 .sensor-tile-name { display: -webkit-box; overflow: hidden; width: 100%; margin-top: 3px; color: var(--text); font-size: 11px; font-weight: 600; line-height: 1.3; word-break: break-word; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .sensor-tile-values { overflow: hidden; width: 100%; min-height: 13px; color: var(--text-muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.sensor-tile-values span:empty { display: none; }
+.sensor-tile-values span[data-sensor-value-temperature]:not(:empty) + span[data-sensor-value-humidity]:not(:empty)::before { content: ' · '; }
+.sensor-tile-values .value-alarm { color: var(--amber); font-weight: 700; }
 .sensor-tile-actions { position: absolute; top: 6px; right: 6px; display: flex; gap: 3px; opacity: 0; transition: opacity .15s; }
 .sensor-tile:hover .sensor-tile-actions { opacity: 1; }
 .sensor-tile-actions .icon-button { width: 22px; height: 22px; border-radius: 6px; }
 .sensor-tile-actions .icon-button svg { width: 12px; height: 12px; }
+
+/* Monitoring intentionally off: mute the whole tile so it reads as
+   "parked", never red — a disabled sensor isn't a broken one. */
+.sensor-tile.sensor-tile-disabled { opacity: .5; filter: grayscale(.6); }
+.sensor-tile.sensor-tile-disabled:hover { opacity: .75; }
+/* No temperature/humidity reading at all (unconfigured OIDs or a
+   persistently failing read) — a quiet dashed outline, not an alarm. */
+.sensor-tile.sensor-tile-no-data { border-style: dashed; border-color: color-mix(in srgb, var(--text-muted) 45%, var(--line)); }
+.sensor-tile.sensor-tile-no-data .sensor-tile-visual { opacity: .6; }
 
 /* Sensor tabs */
 .sensor-tabs { margin: 4px 0 10px; display: inline-flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); }

@@ -29,7 +29,12 @@
 
 <section class="sensor-grid" data-sensor-grid data-sensor-panel="list" data-ping-down-label="{{ t('sensors.ping_down') }}" data-alarm-ping-label="{{ t('sensors.alarm_ping') }}" data-alarm-temperature-label="{{ t('sensors.alarm_temperature') }}" data-alarm-humidity-label="{{ t('sensors.alarm_humidity') }}">
     {% for sensor in sensors %}
-    <article class="card sensor-tile" data-sensor-card data-sensor-id="{{ sensor.id }}" title="{{ sensor.name }} · {{ sensor.model ?: '—' }} · {{ sensor.host }}">
+    {% set temp_alarm = sensor.last_temperature is not null and ((sensor.temperature_min is not null and sensor.last_temperature < sensor.temperature_min) or (sensor.temperature_max is not null and sensor.last_temperature > sensor.temperature_max)) %}
+    {% set humidity_alarm = sensor.last_humidity is not null and ((sensor.humidity_min is not null and sensor.last_humidity < sensor.humidity_min) or (sensor.humidity_max is not null and sensor.last_humidity > sensor.humidity_max)) %}
+    {% set is_down = sensor.monitoring_enabled and sensor.last_ping_ok is not null and not sensor.last_ping_ok %}
+    {% set is_alarm = sensor.monitoring_enabled and (temp_alarm or humidity_alarm or is_down) %}
+    {% set is_no_data = sensor.monitoring_enabled and sensor.last_temperature is null and sensor.last_humidity is null %}
+    <article class="card sensor-tile{{ is_alarm ? ' alarm' : '' }}{{ is_down ? ' sensor-tile-down' : '' }}{{ not sensor.monitoring_enabled ? ' sensor-tile-disabled' : (is_no_data ? ' sensor-tile-no-data' : '') }}" data-sensor-card data-sensor-id="{{ sensor.id }}" title="{{ sensor.name }} · {{ sensor.model ?: '—' }} · {{ sensor.host }}">
         <div class="sensor-tile-actions">
             <button class="icon-button" type="button" aria-label="{{ t('action.edit') }}" title="{{ t('action.edit') }}" data-sensor-edit-open
                 data-sensor-id="{{ sensor.id }}" data-sensor-name="{{ sensor.name }}" data-sensor-model="{{ sensor.model }}" data-sensor-icon="{{ sensor.icon ?: 'sensor-server' }}" data-sensor-host="{{ sensor.host }}"
@@ -38,14 +43,14 @@
                 data-sensor-temperature-min="{{ sensor.temperature_min }}" data-sensor-temperature-max="{{ sensor.temperature_max }}"
                 data-sensor-humidity-oid="{{ sensor.humidity_oid }}" data-sensor-humidity-divisor="{{ sensor.humidity_divisor }}"
                 data-sensor-humidity-min="{{ sensor.humidity_min }}" data-sensor-humidity-max="{{ sensor.humidity_max }}"
-                data-sensor-ping-enabled="{{ sensor.ping_enabled ? '1' : '0' }}" data-sensor-notes="{{ sensor.notes }}">{{ icons.icon('edit', 12) }}</button>
+                data-sensor-ping-enabled="{{ sensor.ping_enabled ? '1' : '0' }}" data-sensor-monitoring-enabled="{{ sensor.monitoring_enabled ? '1' : '0' }}" data-sensor-notes="{{ sensor.notes }}">{{ icons.icon('edit', 12) }}</button>
             <button class="icon-button danger" type="button" aria-label="{{ t('action.delete') }}" title="{{ t('action.delete') }}" data-delete-open data-delete-url="/api/v1/sensors/{{ sensor.id }}" data-delete-name="{{ sensor.name }}">{{ icons.icon('trash', 12) }}</button>
         </div>
-        <span class="sensor-tile-badge" data-sensor-ping-badge></span>
+        <span class="sensor-tile-badge{{ is_down ? ' down' : '' }}" data-sensor-ping-badge>{% if is_down %}{{ t('sensors.ping_down') }}{% elseif sensor.last_ping_ok and sensor.last_ping_latency_ms is not null %}{{ sensor.last_ping_latency_ms|round }}ms{% endif %}</span>
         <div class="sensor-tile-visual">{{ icons.icon(sensor.icon ?: 'sensor-server', 26) }}</div>
-        <span class="sensor-tile-status" data-sensor-protocol>SNMP</span>
+        <span class="sensor-tile-status{{ is_down ? ' down' : '' }}" data-sensor-protocol>SNMP</span>
         <strong class="sensor-tile-name">{{ sensor.name }}</strong>
-        <small class="sensor-tile-values" data-sensor-values></small>
+        <small class="sensor-tile-values" data-sensor-values><span class="{{ temp_alarm ? 'value-alarm' : '' }}" data-sensor-value-temperature>{{ sensor.last_temperature is not null ? sensor.last_temperature|number_format(1) ~ '°C' : '' }}</span><span class="{{ humidity_alarm ? 'value-alarm' : '' }}" data-sensor-value-humidity>{{ sensor.last_humidity is not null ? sensor.last_humidity|number_format(1) ~ '%' : '' }}</span></small>
     </article>
     {% else %}
     <div class="empty-state">{{ t('sensors.empty') }}</div>
@@ -93,6 +98,7 @@
             <label class="field"><span>{{ t('form.sensor_divisor') }}</span><input name="humidity_divisor" type="number" step="0.0001" value="1"></label>
             {{ sensor_threshold_fields }}
             <label class="field field-wide checkbox-field"><input name="ping_enabled" type="checkbox" value="1" checked><span>{{ t('form.sensor_ping_enabled') }}</span></label>
+            <label class="field field-wide checkbox-field"><input name="monitoring_enabled" type="checkbox" value="1" checked><span>{{ t('form.sensor_monitoring_enabled') }}</span></label>
             <label class="field field-wide"><span>{{ t('form.notes') }}</span><textarea name="notes" maxlength="2000" rows="3"></textarea></label>
         </div>
         <div class="form-note">{{ icons.icon('info', 16) }}<span>{{ t('form.sensor_oid_note') }}</span></div>
@@ -118,6 +124,7 @@
             <label class="field"><span>{{ t('form.sensor_divisor') }}</span><input name="humidity_divisor" type="number" step="0.0001"></label>
             {{ sensor_threshold_fields }}
             <label class="field field-wide checkbox-field"><input name="ping_enabled" type="checkbox" value="1"><span>{{ t('form.sensor_ping_enabled') }}</span></label>
+            <label class="field field-wide checkbox-field"><input name="monitoring_enabled" type="checkbox" value="1"><span>{{ t('form.sensor_monitoring_enabled') }}</span></label>
             <label class="field field-wide"><span>{{ t('form.notes') }}</span><textarea name="notes" maxlength="2000" rows="3"></textarea></label>
         </div>
         <p class="form-error" data-form-error hidden></p>

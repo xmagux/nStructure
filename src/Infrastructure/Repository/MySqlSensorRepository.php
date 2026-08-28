@@ -43,12 +43,12 @@ final class MySqlSensorRepository implements SensorRepository
                 name, model, icon, host, snmp_port, snmp_community,
                 temperature_oid, temperature_divisor, temperature_min, temperature_max,
                 humidity_oid, humidity_divisor, humidity_min, humidity_max,
-                ping_enabled, notes
+                ping_enabled, monitoring_enabled, notes
              ) VALUES (
                 :name, :model, :icon, :host, :snmp_port, :snmp_community,
                 :temperature_oid, :temperature_divisor, :temperature_min, :temperature_max,
                 :humidity_oid, :humidity_divisor, :humidity_min, :humidity_max,
-                :ping_enabled, :notes
+                :ping_enabled, :monitoring_enabled, :notes
              )',
         );
         $statement->execute($record);
@@ -68,7 +68,7 @@ final class MySqlSensorRepository implements SensorRepository
                 temperature_min = :temperature_min, temperature_max = :temperature_max,
                 humidity_oid = :humidity_oid, humidity_divisor = :humidity_divisor,
                 humidity_min = :humidity_min, humidity_max = :humidity_max,
-                ping_enabled = :ping_enabled, notes = :notes
+                ping_enabled = :ping_enabled, monitoring_enabled = :monitoring_enabled, notes = :notes
              WHERE id = :id AND archived_at IS NULL',
         );
         $statement->execute($record);
@@ -110,7 +110,10 @@ final class MySqlSensorRepository implements SensorRepository
 
     public function pingAll(): array
     {
-        $sensors = array_values(array_filter($this->all(), static fn (array $sensor): bool => $sensor['ping_enabled']));
+        $sensors = array_values(array_filter(
+            $this->all(),
+            static fn (array $sensor): bool => $sensor['ping_enabled'] && $sensor['monitoring_enabled'],
+        ));
         return array_map(function (array $sensor): array {
             $result = $this->ping($sensor['host']);
             return ['id' => $sensor['id'], 'name' => $sensor['name'], 'ping' => $result];
@@ -119,6 +122,14 @@ final class MySqlSensorRepository implements SensorRepository
 
     private function pollSensor(array $sensor): array
     {
+        if (!$sensor['monitoring_enabled']) {
+            $sensor['ping'] = null;
+            $sensor['temperature'] = ['configured' => false, 'ok' => false, 'raw' => null, 'value' => null, 'error' => null];
+            $sensor['humidity'] = ['configured' => false, 'ok' => false, 'raw' => null, 'value' => null, 'error' => null];
+            $sensor['alarm'] = ['active' => false, 'reasons' => []];
+            return $sensor;
+        }
+
         $sensor['ping'] = $sensor['ping_enabled'] ? $this->ping($sensor['host']) : null;
         $sensor['temperature'] = $this->readValue($sensor, 'temperature_oid', 'temperature_divisor');
         $sensor['humidity'] = $this->readValue($sensor, 'humidity_oid', 'humidity_divisor');
@@ -135,7 +146,37 @@ final class MySqlSensorRepository implements SensorRepository
         }
         $sensor['alarm'] = $reasons !== [] ? ['active' => true, 'reasons' => $reasons] : ['active' => false, 'reasons' => []];
 
+        $this->cacheReading($sensor);
+
         return $sensor;
+    }
+
+    /**
+     * Write-through cache so the next page load can render last-known
+     * readings immediately instead of waiting on a fresh live SNMP/ping
+     * round trip. Temperature/humidity only overwrite the cache on a
+     * successful read (a transient failure keeps showing the last good
+     * value); ping status always overwrites, since "down" is itself
+     * meaningful information worth surfacing immediately.
+     */
+    private function cacheReading(array $sensor): void
+    {
+        $statement = $this->pdo->prepare(
+            'UPDATE environmental_sensors SET
+                last_temperature = COALESCE(:last_temperature, last_temperature),
+                last_humidity = COALESCE(:last_humidity, last_humidity),
+                last_ping_ok = COALESCE(:last_ping_ok, last_ping_ok),
+                last_ping_latency_ms = COALESCE(:last_ping_latency_ms, last_ping_latency_ms),
+                last_read_at = CURRENT_TIMESTAMP
+             WHERE id = :id',
+        );
+        $statement->execute([
+            'id' => $sensor['id'],
+            'last_temperature' => $sensor['temperature']['ok'] ? $sensor['temperature']['value'] : null,
+            'last_humidity' => $sensor['humidity']['ok'] ? $sensor['humidity']['value'] : null,
+            'last_ping_ok' => $sensor['ping'] !== null ? ($sensor['ping']['ok'] ? 1 : 0) : null,
+            'last_ping_latency_ms' => ($sensor['ping']['ok'] ?? false) ? $sensor['ping']['latency_ms'] : null,
+        ]);
     }
 
     private function outOfRange(float $value, ?float $min, ?float $max): bool
@@ -225,6 +266,7 @@ final class MySqlSensorRepository implements SensorRepository
             'humidity_min' => $this->nullableFloat($input['humidity_min'] ?? null),
             'humidity_max' => $this->nullableFloat($input['humidity_max'] ?? null),
             'ping_enabled' => !empty($input['ping_enabled']) ? 1 : 0,
+            'monitoring_enabled' => !empty($input['monitoring_enabled']) ? 1 : 0,
             'notes' => trim((string) ($input['notes'] ?? '')) ?: null,
         ];
     }
@@ -256,6 +298,12 @@ final class MySqlSensorRepository implements SensorRepository
             'humidity_min' => $row['humidity_min'] !== null ? (float) $row['humidity_min'] : null,
             'humidity_max' => $row['humidity_max'] !== null ? (float) $row['humidity_max'] : null,
             'ping_enabled' => (bool) $row['ping_enabled'],
+            'monitoring_enabled' => (bool) $row['monitoring_enabled'],
+            'last_temperature' => $row['last_temperature'] !== null ? (float) $row['last_temperature'] : null,
+            'last_humidity' => $row['last_humidity'] !== null ? (float) $row['last_humidity'] : null,
+            'last_ping_ok' => $row['last_ping_ok'] !== null ? (bool) $row['last_ping_ok'] : null,
+            'last_ping_latency_ms' => $row['last_ping_latency_ms'] !== null ? (float) $row['last_ping_latency_ms'] : null,
+            'last_read_at' => $row['last_read_at'],
             'notes' => $row['notes'],
         ];
     }
