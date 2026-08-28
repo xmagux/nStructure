@@ -23,7 +23,7 @@ interface SensorRepository
     public function pingAll(): array;
 
     /**
-     * @return array{order: int[], sizes: array<string, string>}
+     * @return array{order: int[], sizes: array<string, int>}
      */
     public function getTileLayout(int $userId): array;
 

@@ -2247,15 +2247,17 @@
             });
         });
 
-        // Per-user tile layout: drag to reorder, a resize button to cycle
-        // small/medium/large. Persisted server-side (not localStorage) so
-        // each account keeps its own arrangement across devices.
-        const SENSOR_TILE_SIZES = ['small', 'medium', 'large'];
+        // Per-user tile layout: drag to reorder, drag the corner handle to
+        // resize (icon/text scale continuously with it via the --tile-size
+        // custom property in CSS). Persisted server-side, not localStorage,
+        // so each account keeps its own arrangement across devices.
+        const MIN_TILE_SIZE = 90;
+        const MAX_TILE_SIZE = 280;
         const persistSensorLayout = () => {
             const cards = Array.from(sensorGrid.querySelectorAll('[data-sensor-card]'));
             const order = cards.map((card) => card.dataset.sensorId);
             const sizes = {};
-            cards.forEach((card) => { sizes[card.dataset.sensorId] = card.dataset.size || 'medium'; });
+            cards.forEach((card) => { sizes[card.dataset.sensorId] = Number(card.dataset.size) || 130; });
             fetch('/api/v1/sensors/layout', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-Token': csrfToken },
@@ -2265,7 +2267,8 @@
 
         let draggedSensorId = null;
         document.querySelectorAll('[data-sensor-card]').forEach((card) => {
-            card.addEventListener('dragstart', () => {
+            card.addEventListener('dragstart', (event) => {
+                if (event.target.closest('[data-sensor-resize-handle]')) { event.preventDefault(); return; }
                 draggedSensorId = card.dataset.sensorId;
                 card.classList.add('dragging');
             });
@@ -2291,16 +2294,46 @@
             });
         });
 
-        document.querySelectorAll('[data-sensor-resize]').forEach((button) => {
-            button.addEventListener('click', () => {
-                const card = button.closest('[data-sensor-card]');
+        document.querySelectorAll('[data-sensor-resize-handle]').forEach((handle) => {
+            const beginResize = (startX, startY) => {
+                const card = handle.closest('[data-sensor-card]');
                 if (!card) return;
-                const current = card.dataset.size || 'medium';
-                const next = SENSOR_TILE_SIZES[(SENSOR_TILE_SIZES.indexOf(current) + 1) % SENSOR_TILE_SIZES.length];
-                card.dataset.size = next;
-                SENSOR_TILE_SIZES.forEach((size) => card.classList.toggle(`size-${size}`, size === next));
-                persistSensorLayout();
+                const startSize = Number(card.dataset.size) || 130;
+                card.classList.add('resizing');
+                const applySize = (clientX, clientY) => {
+                    const delta = Math.max(clientX - startX, clientY - startY);
+                    const size = Math.min(MAX_TILE_SIZE, Math.max(MIN_TILE_SIZE, Math.round(startSize + delta)));
+                    card.style.setProperty('--tile-size', `${size}px`);
+                    card.dataset.size = String(size);
+                };
+                const onMouseMove = (event) => applySize(event.clientX, event.clientY);
+                const onTouchMove = (event) => {
+                    const touch = event.touches[0];
+                    if (touch) applySize(touch.clientX, touch.clientY);
+                };
+                const stop = () => {
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', stop);
+                    document.removeEventListener('touchmove', onTouchMove);
+                    document.removeEventListener('touchend', stop);
+                    card.classList.remove('resizing');
+                    persistSensorLayout();
+                };
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', stop);
+                document.addEventListener('touchmove', onTouchMove, { passive: true });
+                document.addEventListener('touchend', stop);
+            };
+            handle.addEventListener('mousedown', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                beginResize(event.clientX, event.clientY);
             });
+            handle.addEventListener('touchstart', (event) => {
+                event.stopPropagation();
+                const touch = event.touches[0];
+                if (touch) beginResize(touch.clientX, touch.clientY);
+            }, { passive: true });
         });
 
         window.addEventListener('beforeunload', () => chartsController?.pause());
