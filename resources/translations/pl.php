@@ -105,6 +105,7 @@ return [
     'action.create_connection' => 'Połącz porty',
     'action.save' => 'Zapisz zmiany',
     'action.edit' => 'Edytuj',
+    'action.resize' => 'Zmień rozmiar kafelka',
     'action.edit_location' => 'Edytuj lokalizację',
     'action.edit_room' => 'Edytuj serwerownię',
     'action.edit_rack' => 'Edytuj szafę',

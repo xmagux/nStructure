@@ -49,8 +49,51 @@ final readonly class SensorController
 
     public function index(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
-        $data = $this->context->make('page.sensors', 'sensors', ['sensors' => $this->repository->all()]);
+        $sensors = $this->repository->all();
+        $layout = ['order' => [], 'sizes' => []];
+        $userId = $_SESSION['user_id'] ?? null;
+        if ($userId !== null) {
+            $layout = $this->repository->getTileLayout((int) $userId);
+            $sensors = $this->applyTileOrder($sensors, $layout['order']);
+        }
+        $data = $this->context->make('page.sensors', 'sensors', [
+            'sensors' => $sensors,
+            'sensor_sizes' => $layout['sizes'],
+        ]);
         return $this->view->render($response, 'pages/sensors.twig', $data);
+    }
+
+    public function saveLayout(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        $userId = $_SESSION['user_id'] ?? null;
+        if ($userId === null) {
+            return $this->json($response->withStatus(401), ['error' => 'Not authenticated']);
+        }
+        $input = (array) ($request->getParsedBody() ?? []);
+        $order = is_array($input['order'] ?? null) ? $input['order'] : [];
+        $sizes = is_array($input['sizes'] ?? null) ? $input['sizes'] : [];
+        $this->repository->saveTileLayout((int) $userId, $order, $sizes);
+        return $this->json($response, ['data' => ['ok' => true]]);
+    }
+
+    /**
+     * Sorts sensors by the user's saved tile order, with any sensor not in
+     * that list (newly added since they last arranged things) appended at
+     * the end in its default name-sorted position.
+     */
+    private function applyTileOrder(array $sensors, array $order): array
+    {
+        if ($order === []) {
+            return $sensors;
+        }
+        $positions = array_flip($order);
+        $indexed = array_values($sensors);
+        usort($indexed, static function (array $a, array $b) use ($positions): int {
+            $posA = $positions[$a['id']] ?? PHP_INT_MAX;
+            $posB = $positions[$b['id']] ?? PHP_INT_MAX;
+            return $posA <=> $posB;
+        });
+        return $indexed;
     }
 
     public function pollAll(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface

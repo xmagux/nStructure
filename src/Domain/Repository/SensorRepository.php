@@ -21,4 +21,11 @@ interface SensorRepository
     public function pollAll(): array;
 
     public function pingAll(): array;
+
+    /**
+     * @return array{order: int[], sizes: array<string, string>}
+     */
+    public function getTileLayout(int $userId): array;
+
+    public function saveTileLayout(int $userId, array $order, array $sizes): void;
 }

@@ -1,0 +1,7 @@
+CREATE TABLE user_sensor_tile_layout (
+    user_id BIGINT UNSIGNED NOT NULL PRIMARY KEY,
+    layout JSON NOT NULL,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_user_sensor_tile_layout_user FOREIGN KEY (user_id)
+        REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

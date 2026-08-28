@@ -56,6 +56,7 @@ return static function (App $app): void {
             $group->get('/sensors/{id:[0-9]+}/history', [SensorController::class, 'history']);
             $group->get('/sensors/metrics-status', [SensorController::class, 'metricsStatus']);
             $group->post('/sensors/heartbeat', [SensorController::class, 'heartbeat']);
+            $group->post('/sensors/layout', [SensorController::class, 'saveLayout']);
             $group->post('/sensors', [SensorController::class, 'create']);
             $group->post('/sensors/{id:[0-9]+}', [SensorController::class, 'update']);
             $group->delete('/sensors/{id:[0-9]+}', [SensorController::class, 'archive']);

@@ -2079,6 +2079,11 @@
         const SENSOR_MODEL_PRESETS = {
             HWG_STE: { model: 'HWg-STE', temperatureOid: '1.3.6.1.4.1.21796.4.1.3.1.4.1', humidityOid: '1.3.6.1.4.1.21796.4.1.3.1.4.2' },
             STE2_LITE: { model: 'STE2 Lite', temperatureOid: '1.3.6.1.4.1.21796.4.9.3.1.4.1', humidityOid: '1.3.6.1.4.1.21796.4.9.3.1.4.2' },
+            // HWg-PWR reports dry-contact inputs (grid/generator presence,
+            // etc.), not temperature/humidity — clears those OID fields
+            // rather than leaving a stale preset from the previous
+            // selection. Its inputs aren't configurable from this form yet.
+            HWG_PWR: { model: 'HWg-PWR', temperatureOid: '', humidityOid: '' },
         };
         const sensorModelKeyForName = (name) => Object.keys(SENSOR_MODEL_PRESETS).find((key) => SENSOR_MODEL_PRESETS[key].model === name) || 'OTHER';
         const syncSensorModelField = (form) => {
@@ -2241,6 +2246,63 @@
                 if (chartsController) chartsController.selectSensor(card.dataset.sensorId);
             });
         });
+
+        // Per-user tile layout: drag to reorder, a resize button to cycle
+        // small/medium/large. Persisted server-side (not localStorage) so
+        // each account keeps its own arrangement across devices.
+        const SENSOR_TILE_SIZES = ['small', 'medium', 'large'];
+        const persistSensorLayout = () => {
+            const cards = Array.from(sensorGrid.querySelectorAll('[data-sensor-card]'));
+            const order = cards.map((card) => card.dataset.sensorId);
+            const sizes = {};
+            cards.forEach((card) => { sizes[card.dataset.sensorId] = card.dataset.size || 'medium'; });
+            fetch('/api/v1/sensors/layout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-Token': csrfToken },
+                body: JSON.stringify({ order, sizes }),
+            }).catch(() => {});
+        };
+
+        let draggedSensorId = null;
+        document.querySelectorAll('[data-sensor-card]').forEach((card) => {
+            card.addEventListener('dragstart', () => {
+                draggedSensorId = card.dataset.sensorId;
+                card.classList.add('dragging');
+            });
+            card.addEventListener('dragend', () => {
+                card.classList.remove('dragging');
+                sensorGrid.querySelectorAll('.drag-over').forEach((el) => el.classList.remove('drag-over'));
+                draggedSensorId = null;
+            });
+            card.addEventListener('dragover', (event) => {
+                if (!draggedSensorId || card.dataset.sensorId === draggedSensorId) return;
+                event.preventDefault();
+                card.classList.add('drag-over');
+            });
+            card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
+            card.addEventListener('drop', (event) => {
+                event.preventDefault();
+                card.classList.remove('drag-over');
+                if (!draggedSensorId || card.dataset.sensorId === draggedSensorId) return;
+                const draggedCard = sensorGrid.querySelector(`[data-sensor-card][data-sensor-id="${draggedSensorId}"]`);
+                if (!draggedCard) return;
+                card.before(draggedCard);
+                persistSensorLayout();
+            });
+        });
+
+        document.querySelectorAll('[data-sensor-resize]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const card = button.closest('[data-sensor-card]');
+                if (!card) return;
+                const current = card.dataset.size || 'medium';
+                const next = SENSOR_TILE_SIZES[(SENSOR_TILE_SIZES.indexOf(current) + 1) % SENSOR_TILE_SIZES.length];
+                card.dataset.size = next;
+                SENSOR_TILE_SIZES.forEach((size) => card.classList.toggle(`size-${size}`, size === next));
+                persistSensorLayout();
+            });
+        });
+
         window.addEventListener('beforeunload', () => chartsController?.pause());
     }
 

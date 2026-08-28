@@ -427,6 +427,40 @@ final class MySqlSensorRepository implements SensorRepository
         ];
     }
 
+    public function getTileLayout(int $userId): array
+    {
+        $statement = $this->pdo->prepare('SELECT layout FROM user_sensor_tile_layout WHERE user_id = :user_id');
+        $statement->execute(['user_id' => $userId]);
+        $raw = $statement->fetchColumn();
+        if ($raw === false) {
+            return ['order' => [], 'sizes' => []];
+        }
+        $decoded = json_decode((string) $raw, true) ?: [];
+        return [
+            'order' => array_map('intval', $decoded['order'] ?? []),
+            'sizes' => array_map('strval', $decoded['sizes'] ?? []),
+        ];
+    }
+
+    public function saveTileLayout(int $userId, array $order, array $sizes): void
+    {
+        $allowedSizes = ['small', 'medium', 'large'];
+        $cleanOrder = array_values(array_unique(array_map('intval', $order)));
+        $cleanSizes = [];
+        foreach ($sizes as $sensorId => $size) {
+            $sensorId = (int) $sensorId;
+            if ($sensorId > 0 && in_array($size, $allowedSizes, true)) {
+                $cleanSizes[(string) $sensorId] = $size;
+            }
+        }
+        $layout = json_encode(['order' => $cleanOrder, 'sizes' => $cleanSizes], JSON_THROW_ON_ERROR);
+        $statement = $this->pdo->prepare(
+            'INSERT INTO user_sensor_tile_layout (user_id, layout) VALUES (:user_id, :layout)
+             ON DUPLICATE KEY UPDATE layout = VALUES(layout)',
+        );
+        $statement->execute(['user_id' => $userId, 'layout' => $layout]);
+    }
+
     private function recordAudit(string $entityType, int $entityId, string $action, array $after): void
     {
         $statement = $this->pdo->prepare(

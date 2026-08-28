@@ -105,6 +105,7 @@ return [
     'action.create_connection' => 'Connect ports',
     'action.save' => 'Save changes',
     'action.edit' => 'Edit',
+    'action.resize' => 'Resize tile',
     'action.edit_location' => 'Edit location',
     'action.edit_room' => 'Edit server room',
     'action.edit_rack' => 'Edit rack',

@@ -7,6 +7,7 @@
 <label class="field"><span>{{ t('form.sensor_model') }}</span><select data-sensor-model-select>
     <option value="HWG_STE">HWg-STE</option>
     <option value="STE2_LITE">STE2 Lite</option>
+    <option value="HWG_PWR">HWg-PWR</option>
     <option value="OTHER">{{ t('sensors.other_model') }}</option>
 </select></label>
 <label class="field" data-sensor-model-custom-field hidden><span>{{ t('form.sensor_model_custom') }}</span><input type="text" maxlength="80" data-sensor-model-custom placeholder="HWg-PWR, Poseidon2…"></label>
@@ -39,8 +40,10 @@
     {% set has_input_data = sensor.inputs|filter(i => i.last_alarm_state is not null)|length > 0 %}
     {% set is_alarm = sensor.monitoring_enabled and (temp_alarm or humidity_alarm or is_down or miasto_alarm) %}
     {% set is_no_data = sensor.monitoring_enabled and sensor.last_temperature is null and sensor.last_humidity is null and not has_input_data %}
-    <article class="card sensor-tile{{ is_alarm ? ' alarm' : '' }}{{ is_down ? ' sensor-tile-down' : '' }}{{ not sensor.monitoring_enabled ? ' sensor-tile-disabled' : (is_no_data ? ' sensor-tile-no-data' : '') }}" data-sensor-card data-sensor-id="{{ sensor.id }}" data-sensor-has-inputs="{{ sensor.inputs|length ? '1' : '0' }}" title="{{ sensor.name }} · {{ sensor.model ?: '—' }} · {{ sensor.host }}">
+    {% set sensor_size = sensor_sizes[sensor.id] ?? 'medium' %}
+    <article class="card sensor-tile size-{{ sensor_size }}{{ is_alarm ? ' alarm' : '' }}{{ is_down ? ' sensor-tile-down' : '' }}{{ not sensor.monitoring_enabled ? ' sensor-tile-disabled' : (is_no_data ? ' sensor-tile-no-data' : '') }}" data-sensor-card data-sensor-id="{{ sensor.id }}" data-sensor-has-inputs="{{ sensor.inputs|length ? '1' : '0' }}" data-size="{{ sensor_size }}" draggable="true" title="{{ sensor.name }} · {{ sensor.model ?: '—' }} · {{ sensor.host }}">
         <div class="sensor-tile-actions">
+            <button class="icon-button" type="button" aria-label="{{ t('action.resize') }}" title="{{ t('action.resize') }}" data-sensor-resize>{{ icons.icon('maximize', 12) }}</button>
             <button class="icon-button" type="button" aria-label="{{ t('action.edit') }}" title="{{ t('action.edit') }}" data-sensor-edit-open
                 data-sensor-id="{{ sensor.id }}" data-sensor-name="{{ sensor.name }}" data-sensor-model="{{ sensor.model }}" data-sensor-icon="{{ sensor.icon ?: 'sensor-server' }}" data-sensor-host="{{ sensor.host }}"
                 data-sensor-port="{{ sensor.snmp_port }}" data-sensor-community="{{ sensor.snmp_community }}"
