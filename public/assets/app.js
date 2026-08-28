@@ -2011,27 +2011,6 @@
     const sensorGrid = document.querySelector('[data-sensor-grid]');
     if (sensorGrid) {
         const sensorLabels = sensorGrid.dataset;
-        // Long backend error strings ("Nie skonfigurowano OID", raw SNMP
-        // failure messages, …) don't fit a small card — show a compact
-        // marker instead and put the real message in the title tooltip.
-        const applyReading = (element, reading, unit) => {
-            if (!element) return;
-            if (!reading || !reading.configured) {
-                element.textContent = '—';
-                element.title = sensorLabels.notConfiguredLabel || '';
-                element.classList.remove('reading-warning');
-                return;
-            }
-            if (!reading.ok) {
-                element.textContent = '⚠';
-                element.title = reading.error || '';
-                element.classList.add('reading-warning');
-                return;
-            }
-            element.textContent = `${Number(reading.value).toFixed(1)}${unit}`;
-            element.title = '';
-            element.classList.remove('reading-warning');
-        };
         const ALARM_REASON_LABELS = {
             ping: 'alarmPingLabel',
             temperature: 'alarmTemperatureLabel',
@@ -2040,23 +2019,31 @@
         const applySensorReadings = (sensor) => {
             const alarmActive = sensor.alarm?.active === true;
             const card = sensorGrid.querySelector(`[data-sensor-card][data-sensor-id="${sensor.id}"]`);
-            if (card) {
-                card.classList.toggle('alarm', alarmActive);
-                const pingBadge = card.querySelector('[data-sensor-ping]');
-                const pingText = card.querySelector('[data-sensor-ping-text]');
-                if (sensor.ping) {
-                    pingBadge.hidden = false;
-                    pingBadge.classList.toggle('ping-up', sensor.ping.ok);
-                    pingBadge.classList.toggle('ping-down', !sensor.ping.ok);
-                    const latency = sensor.ping.ok && sensor.ping.latency_ms != null ? ` · ${sensor.ping.latency_ms}ms` : '';
-                    pingText.textContent = (sensor.ping.ok ? sensorLabels.pingUpLabel : sensorLabels.pingDownLabel) + latency;
-                } else {
-                    pingBadge.hidden = true;
-                }
-                const tempValue = card.querySelector('[data-sensor-temperature] [data-sensor-reading-value]');
-                const humidityValue = card.querySelector('[data-sensor-humidity] [data-sensor-reading-value]');
-                applyReading(tempValue, sensor.temperature, ' °C');
-                applyReading(humidityValue, sensor.humidity, ' %');
+            if (!card) return;
+            const pingDown = sensor.ping != null && !sensor.ping.ok;
+            card.classList.toggle('alarm', alarmActive);
+            card.classList.toggle('sensor-tile-down', pingDown);
+            card.title = alarmActive
+                ? `${sensor.name} — ${(sensor.alarm.reasons || []).map((reason) => sensorLabels[ALARM_REASON_LABELS[reason]] || reason).join(' · ')}`
+                : `${sensor.name} · ${sensor.model || '—'} · ${sensor.host}`;
+
+            const badge = card.querySelector('[data-sensor-ping-badge]');
+            if (badge) {
+                badge.classList.toggle('down', pingDown);
+                badge.textContent = pingDown
+                    ? (sensorLabels.pingDownLabel || '')
+                    : (sensor.ping?.ok && sensor.ping.latency_ms != null ? `${Math.round(sensor.ping.latency_ms)}ms` : '');
+            }
+
+            const protocol = card.querySelector('[data-sensor-protocol]');
+            if (protocol) protocol.classList.toggle('down', pingDown);
+
+            const valuesLine = card.querySelector('[data-sensor-values]');
+            if (valuesLine) {
+                const parts = [];
+                if (sensor.temperature?.ok) parts.push(`${Number(sensor.temperature.value).toFixed(1)}°C`);
+                if (sensor.humidity?.ok) parts.push(`${Number(sensor.humidity.value).toFixed(1)}%`);
+                valuesLine.textContent = parts.join(' · ');
             }
         };
         const refreshSensors = async () => {
@@ -2176,7 +2163,7 @@
         });
         document.querySelectorAll('[data-sensor-card]').forEach((card) => {
             card.addEventListener('click', (event) => {
-                if (event.target.closest('.sensor-card-actions')) return;
+                if (event.target.closest('.sensor-tile-actions')) return;
                 document.querySelector('[data-sensor-tab="charts"]')?.click();
                 if (chartsController) chartsController.selectSensor(card.dataset.sensorId);
             });

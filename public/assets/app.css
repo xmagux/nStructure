@@ -1904,30 +1904,34 @@ body.sidebar-collapsed .user-avatar { width: 40px; height: 40px; }
 /* Environmental sensors (hidden module) */
 .checkbox-field { flex-direction: row !important; align-items: center; gap: 10px !important; }
 .checkbox-field input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--blue); }
-.sensor-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 8px; }
-.sensor-card { padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; cursor: pointer; transition: border-color .15s, box-shadow .15s, transform .15s; }
-.sensor-card:hover { border-color: var(--blue); box-shadow: 0 6px 18px color-mix(in srgb, var(--blue) 14%, transparent); transform: translateY(-1px); }
-.sensor-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; }
-.sensor-card-head strong { display: block; overflow: hidden; color: var(--text); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-.sensor-card-head small { display: block; overflow: hidden; color: var(--text-muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
-.sensor-ping-badge { flex: 0 0 auto; padding: 2px 6px; display: flex; align-items: center; gap: 3px; border-radius: 999px; color: var(--text-muted); background: var(--surface-2); font-size: 9px; font-weight: 600; }
-.sensor-ping-badge.ping-up { color: var(--green); background: color-mix(in srgb, var(--green) 14%, var(--surface-2)); }
-.sensor-ping-badge.ping-down { color: var(--red); background: color-mix(in srgb, var(--red) 14%, var(--surface-2)); }
-.sensor-readings { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
-.sensor-reading { padding: 4px 6px; display: flex; align-items: center; gap: 5px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); }
-.sensor-reading-icon { color: var(--blue); }
-.sensor-reading-icon svg { width: 12px; height: 12px; }
-.sensor-reading-label { display: block; color: var(--text-muted); font-size: 9px; }
-.sensor-reading strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-.sensor-reading strong.reading-warning { color: var(--amber); font-size: 13px; cursor: help; }
-.sensor-card-actions { display: flex; justify-content: flex-end; gap: 4px; }
+
+/* Sensor list: compact icon-first tiles (network-monitoring-tool style) —
+   every piece of text has overflow: hidden + ellipsis so a long name, a
+   long "down" label, or a two-value reading line can never grow the tile
+   or spill outside its box, no matter the content. */
+.sensor-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 2px; }
+.sensor-tile { position: relative; padding: 10px 4px 8px; display: flex; flex-direction: column; align-items: center; gap: 2px; border: 1px solid transparent; border-radius: 12px; cursor: pointer; text-align: center; transition: background .15s, border-color .15s; }
+.sensor-tile:hover { border-color: var(--line); background: var(--surface-2); }
+.sensor-tile.alarm .sensor-tile-visual { box-shadow: 0 0 0 2px var(--red); }
+.sensor-tile-badge { overflow: hidden; width: 100%; max-width: 100%; min-height: 12px; color: var(--text-muted); font-size: 8px; font-weight: 700; line-height: 12px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+.sensor-tile-badge.down { border-radius: 5px; color: #fff; background: var(--red); }
+.sensor-tile-visual { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 10px; color: var(--blue); background: var(--surface-2); }
+.sensor-tile-visual svg { width: 24px; height: 24px; }
+.sensor-tile.sensor-tile-down .sensor-tile-visual { color: var(--red); background: color-mix(in srgb, var(--red) 16%, var(--surface-2)); }
+.sensor-tile-status { overflow: hidden; width: 100%; color: var(--text-muted); font-size: 8px; font-weight: 700; letter-spacing: .05em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+.sensor-tile-status.down { color: var(--red); }
+.sensor-tile-name { display: -webkit-box; overflow: hidden; width: 100%; margin-top: 2px; color: var(--text); font-size: 10.5px; font-weight: 600; line-height: 1.25; word-break: break-word; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.sensor-tile-values { overflow: hidden; width: 100%; min-height: 12px; color: var(--text-muted); font-size: 9.5px; text-overflow: ellipsis; white-space: nowrap; }
+.sensor-tile-actions { position: absolute; top: 4px; right: 4px; display: flex; gap: 2px; opacity: 0; transition: opacity .15s; }
+.sensor-tile:hover .sensor-tile-actions { opacity: 1; }
+.sensor-tile-actions .icon-button { width: 20px; height: 20px; border-radius: 6px; }
+.sensor-tile-actions .icon-button svg { width: 11px; height: 11px; }
 
 /* Sensor tabs */
 .sensor-tabs { margin: 4px 0 10px; display: inline-flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); }
 .sensor-tab { padding: 8px 16px; display: inline-flex; align-items: center; gap: 6px; border: 0; border-radius: 999px; color: var(--text-muted); background: transparent; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: color .15s, background .15s; }
 .sensor-tab:hover { color: var(--text); }
 .sensor-tab.active { color: #fff; background: var(--blue); }
-.sensor-card.alarm { border-color: var(--red); box-shadow: 0 0 0 1px var(--red), 0 10px 26px color-mix(in srgb, var(--red) 22%, transparent); }
 
 /* Sensors page: trade the usual page chrome for room to show many cards
    at once without scrolling — the search command palette is still

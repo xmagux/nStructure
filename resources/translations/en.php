@@ -536,7 +536,7 @@ return [
     'sensors.humidity' => 'Humidity',
     'sensors.empty' => 'No sensors added yet.',
     'sensors.ping_up' => 'Online',
-    'sensors.ping_down' => 'No response',
+    'sensors.ping_down' => 'Down',
     'sensors.not_configured' => 'OID not configured',
     'sensors.other_model' => 'Other',
     'sensors.tab_list' => 'List',

@@ -536,7 +536,7 @@ return [
     'sensors.humidity' => 'Wilgotność',
     'sensors.empty' => 'Nie dodano jeszcze żadnego czujnika.',
     'sensors.ping_up' => 'Online',
-    'sensors.ping_down' => 'Brak odpowiedzi',
+    'sensors.ping_down' => 'Nie działa',
     'sensors.not_configured' => 'Nie skonfigurowano OID',
     'sensors.other_model' => 'Inny',
     'sensors.tab_list' => 'Lista',

@@ -27,24 +27,10 @@
     <button class="sensor-tab" type="button" data-sensor-tab="charts">{{ icons.icon('activity', 15) }}{{ t('sensors.tab_charts') }}</button>
 </div>
 
-<section class="sensor-grid" data-sensor-grid data-sensor-panel="list" data-ping-up-label="{{ t('sensors.ping_up') }}" data-ping-down-label="{{ t('sensors.ping_down') }}" data-not-configured-label="{{ t('sensors.not_configured') }}" data-alarm-ping-label="{{ t('sensors.alarm_ping') }}" data-alarm-temperature-label="{{ t('sensors.alarm_temperature') }}" data-alarm-humidity-label="{{ t('sensors.alarm_humidity') }}" data-ok-label="{{ t('sensors.ok') }}">
+<section class="sensor-grid" data-sensor-grid data-sensor-panel="list" data-ping-down-label="{{ t('sensors.ping_down') }}" data-alarm-ping-label="{{ t('sensors.alarm_ping') }}" data-alarm-temperature-label="{{ t('sensors.alarm_temperature') }}" data-alarm-humidity-label="{{ t('sensors.alarm_humidity') }}">
     {% for sensor in sensors %}
-    <article class="card sensor-card" data-sensor-card data-sensor-id="{{ sensor.id }}">
-        <div class="sensor-card-head">
-            <div><strong>{{ sensor.name }}</strong><small>{{ sensor.model ?: '—' }} · {{ sensor.host }}</small></div>
-            <span class="sensor-ping-badge" data-sensor-ping>{{ icons.icon('activity', 13) }}<span data-sensor-ping-text>{{ t('sensors.pending') }}</span></span>
-        </div>
-        <div class="sensor-readings">
-            <div class="sensor-reading" data-sensor-temperature>
-                <span class="sensor-reading-icon">{{ icons.icon('thermometer', 18) }}</span>
-                <div><span class="sensor-reading-label">{{ t('sensors.temperature') }}</span><strong data-sensor-reading-value>{{ t('sensors.pending') }}</strong></div>
-            </div>
-            <div class="sensor-reading" data-sensor-humidity>
-                <span class="sensor-reading-icon">{{ icons.icon('droplets', 18) }}</span>
-                <div><span class="sensor-reading-label">{{ t('sensors.humidity') }}</span><strong data-sensor-reading-value>{{ t('sensors.pending') }}</strong></div>
-            </div>
-        </div>
-        <div class="sensor-card-actions">
+    <article class="card sensor-tile" data-sensor-card data-sensor-id="{{ sensor.id }}" title="{{ sensor.name }} · {{ sensor.model ?: '—' }} · {{ sensor.host }}">
+        <div class="sensor-tile-actions">
             <button class="icon-button" type="button" aria-label="{{ t('action.edit') }}" title="{{ t('action.edit') }}" data-sensor-edit-open
                 data-sensor-id="{{ sensor.id }}" data-sensor-name="{{ sensor.name }}" data-sensor-model="{{ sensor.model }}" data-sensor-host="{{ sensor.host }}"
                 data-sensor-port="{{ sensor.snmp_port }}" data-sensor-community="{{ sensor.snmp_community }}"
@@ -52,9 +38,14 @@
                 data-sensor-temperature-min="{{ sensor.temperature_min }}" data-sensor-temperature-max="{{ sensor.temperature_max }}"
                 data-sensor-humidity-oid="{{ sensor.humidity_oid }}" data-sensor-humidity-divisor="{{ sensor.humidity_divisor }}"
                 data-sensor-humidity-min="{{ sensor.humidity_min }}" data-sensor-humidity-max="{{ sensor.humidity_max }}"
-                data-sensor-ping-enabled="{{ sensor.ping_enabled ? '1' : '0' }}" data-sensor-notes="{{ sensor.notes }}">{{ icons.icon('edit', 15) }}</button>
-            <button class="icon-button danger" type="button" aria-label="{{ t('action.delete') }}" title="{{ t('action.delete') }}" data-delete-open data-delete-url="/api/v1/sensors/{{ sensor.id }}" data-delete-name="{{ sensor.name }}">{{ icons.icon('trash', 15) }}</button>
+                data-sensor-ping-enabled="{{ sensor.ping_enabled ? '1' : '0' }}" data-sensor-notes="{{ sensor.notes }}">{{ icons.icon('edit', 12) }}</button>
+            <button class="icon-button danger" type="button" aria-label="{{ t('action.delete') }}" title="{{ t('action.delete') }}" data-delete-open data-delete-url="/api/v1/sensors/{{ sensor.id }}" data-delete-name="{{ sensor.name }}">{{ icons.icon('trash', 12) }}</button>
         </div>
+        <span class="sensor-tile-badge" data-sensor-ping-badge></span>
+        <div class="sensor-tile-visual">{{ icons.icon('server', 26) }}</div>
+        <span class="sensor-tile-status" data-sensor-protocol>SNMP</span>
+        <strong class="sensor-tile-name">{{ sensor.name }}</strong>
+        <small class="sensor-tile-values" data-sensor-values></small>
     </article>
     {% else %}
     <div class="empty-state">{{ t('sensors.empty') }}</div>
