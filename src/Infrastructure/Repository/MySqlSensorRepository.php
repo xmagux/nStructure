@@ -244,7 +244,11 @@ final class MySqlSensorRepository implements SensorRepository
             if ($sensor['humidity']['ok'] && $this->outOfRange($sensor['humidity']['value'], $sensor['humidity_min'], $sensor['humidity_max'])) {
                 $reasons[] = 'humidity';
             }
-            if (array_filter($sensor['inputs'], static fn (array $i): bool => $i['last_alarm_state'] === 2) !== []) {
+            // The "agregat" (generator) group gets its own amber badge on
+            // the tile but doesn't escalate to the general red alarm ring —
+            // mirroring how the list view prioritizes grid-power loss
+            // ("miasto") as the more critical condition of the two.
+            if (array_filter($sensor['inputs'], static fn (array $i): bool => $i['last_alarm_state'] === 2 && $i['group'] !== 'agregat') !== []) {
                 $reasons[] = 'inputs';
             }
             $sensor['alarm'] = $reasons !== [] ? ['active' => true, 'reasons' => $reasons] : ['active' => false, 'reasons' => []];
