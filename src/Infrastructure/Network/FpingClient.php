@@ -29,7 +29,12 @@ final class FpingClient
             $results[$host] = ['ok' => false, 'latency_ms' => null];
         }
 
-        $command = array_merge(['fping', '-e', '-t', (string) $timeoutMs], $validHosts);
+        // fping retries an unreachable host 3 times by default — harmless
+        // for the daemon's background cadence, but costly (up to 3x the
+        // timeout per dead host) for an interactive "poll everything now"
+        // call. One retry matches the SNMP client's own timeout+1 policy;
+        // a single missed reply just gets caught on the next check anyway.
+        $command = array_merge(['fping', '-e', '-r', '1', '-t', (string) $timeoutMs], $validHosts);
         $descriptors = [1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
         $process = @proc_open($command, $descriptors, $pipes);
         if (!is_resource($process)) {
