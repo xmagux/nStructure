@@ -32,7 +32,7 @@
     <article class="card sensor-tile" data-sensor-card data-sensor-id="{{ sensor.id }}" title="{{ sensor.name }} · {{ sensor.model ?: '—' }} · {{ sensor.host }}">
         <div class="sensor-tile-actions">
             <button class="icon-button" type="button" aria-label="{{ t('action.edit') }}" title="{{ t('action.edit') }}" data-sensor-edit-open
-                data-sensor-id="{{ sensor.id }}" data-sensor-name="{{ sensor.name }}" data-sensor-model="{{ sensor.model }}" data-sensor-host="{{ sensor.host }}"
+                data-sensor-id="{{ sensor.id }}" data-sensor-name="{{ sensor.name }}" data-sensor-model="{{ sensor.model }}" data-sensor-icon="{{ sensor.icon ?: 'sensor-server' }}" data-sensor-host="{{ sensor.host }}"
                 data-sensor-port="{{ sensor.snmp_port }}" data-sensor-community="{{ sensor.snmp_community }}"
                 data-sensor-temperature-oid="{{ sensor.temperature_oid }}" data-sensor-temperature-divisor="{{ sensor.temperature_divisor }}"
                 data-sensor-temperature-min="{{ sensor.temperature_min }}" data-sensor-temperature-max="{{ sensor.temperature_max }}"
@@ -42,7 +42,7 @@
             <button class="icon-button danger" type="button" aria-label="{{ t('action.delete') }}" title="{{ t('action.delete') }}" data-delete-open data-delete-url="/api/v1/sensors/{{ sensor.id }}" data-delete-name="{{ sensor.name }}">{{ icons.icon('trash', 12) }}</button>
         </div>
         <span class="sensor-tile-badge" data-sensor-ping-badge></span>
-        <div class="sensor-tile-visual">{{ icons.icon('server', 26) }}</div>
+        <div class="sensor-tile-visual">{{ icons.icon(sensor.icon ?: 'sensor-server', 26) }}</div>
         <span class="sensor-tile-status" data-sensor-protocol>SNMP</span>
         <strong class="sensor-tile-name">{{ sensor.name }}</strong>
         <small class="sensor-tile-values" data-sensor-values></small>
@@ -83,6 +83,7 @@
         <div class="form-grid">
             <label class="field field-wide"><span>{{ t('form.sensor_name') }}</span><input name="name" maxlength="160" required></label>
             {{ sensor_model_field }}
+            <label class="field field-wide"><span>{{ t('form.sensor_icon') }}</span>{% include 'components/sensor-icon-picker.twig' %}</label>
             <label class="field"><span>{{ t('form.sensor_host') }}</span><input name="host" maxlength="255" placeholder="192.168.1.50" required></label>
             <label class="field"><span>{{ t('form.sensor_port') }}</span><input name="snmp_port" type="number" min="1" max="65535" value="161" required></label>
             <label class="field"><span>{{ t('form.sensor_community') }}</span><input name="snmp_community" maxlength="80" value="public" required></label>
@@ -107,6 +108,7 @@
         <div class="form-grid">
             <label class="field field-wide"><span>{{ t('form.sensor_name') }}</span><input name="name" maxlength="160" required></label>
             {{ sensor_model_field }}
+            <label class="field field-wide"><span>{{ t('form.sensor_icon') }}</span>{% include 'components/sensor-icon-picker.twig' %}</label>
             <label class="field"><span>{{ t('form.sensor_host') }}</span><input name="host" maxlength="255" required></label>
             <label class="field"><span>{{ t('form.sensor_port') }}</span><input name="snmp_port" type="number" min="1" max="65535" required></label>
             <label class="field"><span>{{ t('form.sensor_community') }}</span><input name="snmp_community" maxlength="80" required></label>

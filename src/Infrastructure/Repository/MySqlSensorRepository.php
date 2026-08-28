@@ -40,12 +40,12 @@ final class MySqlSensorRepository implements SensorRepository
         $record = $this->sensorRecord($input);
         $statement = $this->pdo->prepare(
             'INSERT INTO environmental_sensors (
-                name, model, host, snmp_port, snmp_community,
+                name, model, icon, host, snmp_port, snmp_community,
                 temperature_oid, temperature_divisor, temperature_min, temperature_max,
                 humidity_oid, humidity_divisor, humidity_min, humidity_max,
                 ping_enabled, notes
              ) VALUES (
-                :name, :model, :host, :snmp_port, :snmp_community,
+                :name, :model, :icon, :host, :snmp_port, :snmp_community,
                 :temperature_oid, :temperature_divisor, :temperature_min, :temperature_max,
                 :humidity_oid, :humidity_divisor, :humidity_min, :humidity_max,
                 :ping_enabled, :notes
@@ -63,7 +63,7 @@ final class MySqlSensorRepository implements SensorRepository
         $record = $this->sensorRecord($input) + ['id' => $id];
         $statement = $this->pdo->prepare(
             'UPDATE environmental_sensors SET
-                name = :name, model = :model, host = :host, snmp_port = :snmp_port, snmp_community = :snmp_community,
+                name = :name, model = :model, icon = :icon, host = :host, snmp_port = :snmp_port, snmp_community = :snmp_community,
                 temperature_oid = :temperature_oid, temperature_divisor = :temperature_divisor,
                 temperature_min = :temperature_min, temperature_max = :temperature_max,
                 humidity_oid = :humidity_oid, humidity_divisor = :humidity_divisor,
@@ -212,6 +212,7 @@ final class MySqlSensorRepository implements SensorRepository
         return [
             'name' => $name,
             'model' => trim((string) ($input['model'] ?? '')) ?: null,
+            'icon' => trim((string) ($input['icon'] ?? '')) ?: null,
             'host' => $host,
             'snmp_port' => $port,
             'snmp_community' => trim((string) ($input['snmp_community'] ?? '')) ?: 'public',
@@ -242,6 +243,7 @@ final class MySqlSensorRepository implements SensorRepository
             'id' => (int) $row['id'],
             'name' => $row['name'],
             'model' => $row['model'],
+            'icon' => $row['icon'],
             'host' => $row['host'],
             'snmp_port' => (int) $row['snmp_port'],
             'snmp_community' => $row['snmp_community'],

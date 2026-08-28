@@ -2089,6 +2089,14 @@
             input.addEventListener('input', () => syncSensorModelField(input.closest('form')));
         });
 
+        const setSensorIconPicker = (form, value) => {
+            const picker = form?.querySelector('[data-icon-picker]');
+            if (!picker) return;
+            const hidden = picker.querySelector('input[type="hidden"]');
+            if (hidden) hidden.value = value;
+            picker.querySelectorAll('[data-icon-value]').forEach((button) => button.classList.toggle('selected', button.dataset.iconValue === value));
+        };
+
         const sensorModal = document.querySelector('#sensor-modal');
         bindModal(sensorModal, '[data-sensor-modal-open]', '[data-sensor-modal-close]', () => {
             const form = sensorModal?.querySelector('[data-sensor-form]');
@@ -2099,6 +2107,7 @@
             form.elements.humidity_oid.value = preset.humidityOid;
             form.elements.temperature_divisor.value = '1';
             form.elements.humidity_divisor.value = '1';
+            setSensorIconPicker(form, 'sensor-server');
             syncSensorModelField(form);
         });
         document.querySelector('[data-sensor-form]')?.addEventListener('submit', (event) => {
@@ -2119,6 +2128,7 @@
             const modelCustomInput = form.querySelector('[data-sensor-model-custom]');
             if (modelCustomInput) modelCustomInput.value = modelKey === 'OTHER' ? modelName : '';
             syncSensorModelField(form);
+            setSensorIconPicker(form, button.dataset.sensorIcon || 'sensor-server');
             form.elements.host.value = button.dataset.sensorHost || '';
             form.elements.snmp_port.value = button.dataset.sensorPort || '161';
             form.elements.snmp_community.value = button.dataset.sensorCommunity || 'public';
