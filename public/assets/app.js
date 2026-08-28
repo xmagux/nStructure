@@ -2178,9 +2178,44 @@
             { key: 'humidity', metric: 'humidity', unit: ' %', color: '#14b8a6' },
             { key: 'ping_latency', metric: 'ping_latency', unit: ' ms', color: '#a855f7' },
         ];
+        // Chart chrome (axes, toolbox, dataZoom/slider) is set up exactly
+        // once per instance. Every later update only touches series data via
+        // updateInstanceData() — repeating the full option on every refresh
+        // was resetting the toolbox's zoom-select toggle and any in-progress
+        // drag before it could be used, which is why the toolbox icons
+        // looked like they did nothing.
         const instances = chartConfigs.map((config) => {
             const element = container.querySelector(`[data-chart="${config.key}"]`);
-            return element ? { config, chart: window.echarts.init(element), data: [], lastTimestampMs: 0 } : null;
+            if (!element) return null;
+            const chart = window.echarts.init(element);
+            chart.setOption({
+                grid: { left: 48, right: 16, top: 16, bottom: 56 },
+                tooltip: { trigger: 'axis', valueFormatter: (value) => `${Number(value).toFixed(1)}${config.unit}` },
+                toolbox: {
+                    show: true,
+                    right: 8,
+                    top: 0,
+                    feature: {
+                        dataZoom: { yAxisIndex: 'none', title: { zoom: 'Zoom', back: 'Reset zoom' } },
+                    },
+                },
+                xAxis: { type: 'time' },
+                yAxis: { type: 'value', axisLabel: { formatter: `{value}${config.unit}` } },
+                dataZoom: [
+                    { type: 'inside', xAxisIndex: 0 },
+                    { type: 'slider', xAxisIndex: 0, height: 18, bottom: 4 },
+                ],
+                series: [{
+                    type: 'line',
+                    showSymbol: false,
+                    smooth: true,
+                    areaStyle: { opacity: 0.08 },
+                    lineStyle: { color: config.color, width: 2 },
+                    itemStyle: { color: config.color },
+                    data: [],
+                }],
+            });
+            return { config, chart, data: [], lastTimestampMs: 0 };
         }).filter(Boolean);
         if (!instances.length) return null;
 
@@ -2191,40 +2226,13 @@
         let heartbeatTimer = null;
         let refreshTimer = null;
         const HEARTBEAT_INTERVAL_MS = 5000;
+        const LIVE_RANGE = '5m';
+        const LIVE_REFRESH_INTERVAL_MS = 1000;
         const REFRESH_INTERVAL_MS = 2000;
+        const currentRefreshIntervalMs = () => (currentRange === LIVE_RANGE ? LIVE_REFRESH_INTERVAL_MS : REFRESH_INTERVAL_MS);
 
-        const renderInstance = (instance) => {
-            // dataZoom start/end are deliberately omitted below so a user's
-            // interactive zoom/pan survives the next call — this function
-            // runs on every incremental refresh (every couple seconds), and
-            // specifying start/end here would snap the view back each time.
-            instance.chart.setOption({
-                grid: { left: 48, right: 16, top: 16, bottom: 56 },
-                tooltip: { trigger: 'axis', valueFormatter: (value) => `${Number(value).toFixed(1)}${instance.config.unit}` },
-                toolbox: {
-                    show: true,
-                    right: 8,
-                    top: 0,
-                    feature: {
-                        dataZoom: { yAxisIndex: 'none', title: { zoom: 'Zoom', back: 'Reset' } },
-                    },
-                },
-                xAxis: { type: 'time' },
-                yAxis: { type: 'value', axisLabel: { formatter: `{value}${instance.config.unit}` } },
-                dataZoom: [
-                    { type: 'inside', xAxisIndex: 0 },
-                    { type: 'slider', xAxisIndex: 0, height: 18, bottom: 4 },
-                ],
-                series: [{
-                    type: 'line',
-                    showSymbol: false,
-                    smooth: true,
-                    areaStyle: { opacity: 0.08 },
-                    lineStyle: { color: instance.config.color, width: 2 },
-                    itemStyle: { color: instance.config.color },
-                    data: instance.data,
-                }],
-            });
+        const updateInstanceData = (instance) => {
+            instance.chart.setOption({ series: [{ data: instance.data }] });
         };
 
         const loadFull = async () => {
@@ -2238,7 +2246,12 @@
                     const points = payload.data || [];
                     instance.data = points.map((point) => [point.timestampMs, point.value]);
                     instance.lastTimestampMs = points.length ? points[points.length - 1].timestampMs : 0;
-                    renderInstance(instance);
+                    updateInstanceData(instance);
+                    // A real navigation (new sensor/range) should reset any
+                    // leftover zoom from before — dispatchAction here so the
+                    // dataZoom/toolbox component definitions never get
+                    // re-specified outside chart setup.
+                    instance.chart.dispatchAction({ type: 'dataZoom', start: 0, end: 100 });
                 } catch (error) {
                     anyFailed = true;
                 }
@@ -2273,7 +2286,7 @@
                     instance.data = (hasBaseline ? instance.data.concat(points.map((point) => [point.timestampMs, point.value])) : points.map((point) => [point.timestampMs, point.value]))
                         .filter((pair) => pair[0] >= cutoff);
                     instance.lastTimestampMs = points[points.length - 1].timestampMs;
-                    renderInstance(instance);
+                    updateInstanceData(instance);
                 } catch (error) {
                     // keep showing the last known data; the warning banner covers VM outages
                 }
@@ -2300,7 +2313,7 @@
             stopTimers();
             sendHeartbeat();
             heartbeatTimer = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL_MS);
-            refreshTimer = setInterval(loadIncremental, REFRESH_INTERVAL_MS);
+            refreshTimer = setInterval(loadIncremental, currentRefreshIntervalMs());
         };
 
         sensorSelect?.addEventListener('change', () => { loadFull(); startTimers(); });
@@ -2308,6 +2321,7 @@
             rangeButtons.forEach((btn) => btn.classList.toggle('active', btn === button));
             currentRange = button.dataset.chartRange;
             loadFull();
+            startTimers();
         }));
         document.addEventListener('visibilitychange', () => {
             if (container.hidden) return;
