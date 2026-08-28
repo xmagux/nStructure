@@ -1913,7 +1913,7 @@ body.sidebar-collapsed .user-avatar { width: 40px; height: 40px; }
    every piece of text has overflow: hidden + ellipsis so a long name, a
    long "down" label, or a two-value reading line can never grow the tile
    or spill outside its box, no matter the content. */
-.sensor-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: 12px; }
+.sensor-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); grid-auto-flow: dense; gap: 12px; }
 .sensor-tile { position: relative; aspect-ratio: 1 / 1; padding: 16px 10px 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); cursor: pointer; text-align: center; transition: background .15s, border-color .15s, transform .15s, box-shadow .15s; }
 .sensor-tile:hover { border-color: var(--blue); box-shadow: 0 8px 20px color-mix(in srgb, var(--blue) 14%, transparent); transform: translateY(-1px); }
 .sensor-tile.dragging { opacity: .4; }
@@ -1938,7 +1938,7 @@ body.sidebar-collapsed .user-avatar { width: 40px; height: 40px; }
 .sensor-tile.size-small .sensor-tile-status,
 .sensor-tile.size-small .sensor-tile-values,
 .sensor-tile.size-small .sensor-tile-input-group { font-size: 8px; }
-.sensor-tile.size-large { grid-column: span 2; padding: 20px 14px 18px; }
+.sensor-tile.size-large { grid-column: span 2; grid-row: span 2; padding: 20px 14px 18px; }
 .sensor-tile.size-large .sensor-tile-visual { width: 84px; height: 84px; border-radius: 18px; }
 .sensor-tile.size-large .sensor-tile-visual svg { width: 44px !important; height: 44px !important; }
 .sensor-tile.size-large .sensor-tile-name { font-size: 15px; }

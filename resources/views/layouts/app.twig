@@ -9,7 +9,7 @@
     <meta name="description" content="Fiber infrastructure management and visualization platform">
     <title>{{ page_title }} · {{ app_name }}</title>
     <link rel="stylesheet" href="/assets/tailwind.css?v=20260822p">
-    <link rel="stylesheet" href="/assets/app.css?v=20260828l">
+    <link rel="stylesheet" href="/assets/app.css?v=20260828m">
     <script src="/assets/vendor/preline.js?v=20260822p" defer></script>
     <script src="/assets/vendor/lucide.min.js?v=20260822p" defer></script>
     <script src="/assets/vendor/cytoscape.min.js?v=20260822p" defer></script>
@@ -40,6 +40,7 @@
             <span class="nav-label">{{ t('nav.operations') }}</span>
             <a class="nav-item {{ section == 'dashboard' ? 'active' : '' }}" href="/" data-nav-label="{{ t('nav.overview') }}" aria-label="{{ t('nav.overview') }}">{{ icons.icon('grid') }}<span>{{ t('nav.overview') }}</span></a>
             <a class="nav-item {{ section == 'topology' ? 'active' : '' }}" href="/topology" data-nav-label="{{ t('nav.topology') }}" aria-label="{{ t('nav.topology') }}">{{ icons.icon('topology') }}<span>{{ t('nav.topology') }}</span><span class="nav-live"></span></a>
+            {% if not demo_mode %}<a class="nav-item {{ section == 'sensors' ? 'active' : '' }}" href="/tools/sensors" data-nav-label="{{ t('nav.sensors') }}" aria-label="{{ t('nav.sensors') }}">{{ icons.icon('activity') }}<span>{{ t('nav.sensors') }}</span></a>{% endif %}
             <span class="nav-label nav-label-spaced">{{ t('nav.inventory') }}</span>
             <a class="nav-item {{ section == 'locations' ? 'active' : '' }}" href="/locations" data-nav-label="{{ t('nav.locations') }}" aria-label="{{ t('nav.locations') }}">{{ icons.icon('building') }}<span>{{ t('nav.locations') }}</span></a>
             <a class="nav-item {{ section == 'cables' ? 'active' : '' }}" href="/cables" data-nav-label="{{ t('nav.cables') }}" aria-label="{{ t('nav.cables') }}">{{ icons.icon('cable') }}<span>{{ t('nav.cables') }}</span></a>

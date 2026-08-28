@@ -100,10 +100,10 @@ Database migrations are tracked and applied only once.
 
 nStructure can read temperature, humidity, and reachability from
 SNMP-capable sensors (HWgroup HWg-STE, STE2 Lite, and similar devices). The
-page lives at `/tools/sensors` and is intentionally not linked from the main
-navigation — visit the URL directly once logged in. It's excluded entirely
-in demo mode, since it lets a logged-in user make the server issue SNMP and
-ping traffic to any host they configure.
+page lives at `/tools/sensors` and appears in the main navigation once
+logged in. It's excluded entirely in demo mode — both the nav link and the
+routes — since it lets a logged-in user make the server issue SNMP and ping
+traffic to any host they configure.
 
 History is collected by a standalone daemon (`bin/sensors-daemon.php`) and
 stored in [VictoriaMetrics](https://victoriametrics.com/), a single-node
