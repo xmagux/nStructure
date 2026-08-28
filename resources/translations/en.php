@@ -595,4 +595,10 @@ return [
     'form.sensor_oid_note' => 'HWgroup devices default to the 1.3.6.1.4.1.21796 branch — the exact number depends on model and firmware, so feel free to type it in by hand. The raw SNMP reply is shown on the sensor card to help you pick the right OID and divisor.',
     'form.sensor_ping_enabled' => 'Check reachability (ping)',
     'form.sensor_monitoring_enabled' => 'Monitoring enabled',
+    'form.sensor_channels' => 'Extra probes',
+    'form.sensor_channels_hint' => 'For devices with more than one temperature/humidity probe (e.g. an STE2 with 3 temperature probes) — the temperature/humidity OID field above covers the first probe; add the rest here.',
+    'form.sensor_channel_label' => 'Probe name',
+    'sensors.channel_temperature' => 'Temperature',
+    'sensors.channel_humidity' => 'Humidity',
+    'action.add_channel' => 'Add probe',
 ];

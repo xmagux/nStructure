@@ -595,4 +595,10 @@ return [
     'form.sensor_oid_note' => 'Domyślny OID dla urządzeń HWgroup to gałąź 1.3.6.1.4.1.21796 — dokładny numer zależy od modelu i firmware, dlatego można go swobodnie wpisać ręcznie. Surowa odpowiedź SNMP jest pokazywana na karcie czujnika, żeby ułatwić dobranie właściwego OID i dzielnika.',
     'form.sensor_ping_enabled' => 'Sprawdzaj dostępność (ping)',
     'form.sensor_monitoring_enabled' => 'Monitorowanie włączone',
+    'form.sensor_channels' => 'Dodatkowe sondy',
+    'form.sensor_channels_hint' => 'Dla urządzeń z więcej niż jedną sondą temperatury/wilgotności (np. STE2 z 3 sondami temp.) — pole OID temperatury/wilgotności wyżej odpowiada pierwszej sondzie, kolejne dodaj tutaj.',
+    'form.sensor_channel_label' => 'Nazwa sondy',
+    'sensors.channel_temperature' => 'Temperatura',
+    'sensors.channel_humidity' => 'Wilgotność',
+    'action.add_channel' => 'Dodaj sondę',
 ];

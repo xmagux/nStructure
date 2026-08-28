@@ -24,7 +24,7 @@ final class MySqlSensorRepository implements SensorRepository
         $statement = $this->pdo->query(
             'SELECT * FROM environmental_sensors WHERE archived_at IS NULL ORDER BY name',
         );
-        return $this->attachInputs(array_map($this->normalize(...), $statement->fetchAll()));
+        return $this->attachChannels($this->attachInputs(array_map($this->normalize(...), $statement->fetchAll())));
     }
 
     public function find(int $id): ?array
@@ -37,7 +37,89 @@ final class MySqlSensorRepository implements SensorRepository
         if (!is_array($row)) {
             return null;
         }
-        return $this->attachInputs([$this->normalize($row)])[0];
+        return $this->attachChannels($this->attachInputs([$this->normalize($row)]))[0];
+    }
+
+    /**
+     * Attaches each sensor's extra analog channels — devices like the STE2
+     * (its generic sensor table can carry any number of probes) that report
+     * more than one temperature or humidity reading. The primary
+     * temperature_oid/humidity_oid pair stays the "main" reading shown on
+     * the tile and used for alarm thresholds; channels are supplemental
+     * probes shown alongside it and charted separately.
+     */
+    private function attachChannels(array $sensors): array
+    {
+        if ($sensors === []) {
+            return $sensors;
+        }
+        $ids = array_column($sensors, 'id');
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $statement = $this->pdo->prepare(
+            "SELECT id, sensor_id, position, label, channel_type, value_oid, value_divisor, last_reading, last_read_at
+             FROM environmental_sensor_channels WHERE sensor_id IN ($placeholders) ORDER BY sensor_id, position",
+        );
+        $statement->execute($ids);
+
+        $bySensor = [];
+        foreach ($statement->fetchAll() as $row) {
+            $bySensor[(int) $row['sensor_id']][] = [
+                'id' => (int) $row['id'],
+                'position' => (int) $row['position'],
+                'label' => $row['label'],
+                'channel_type' => $row['channel_type'],
+                'value_oid' => $row['value_oid'],
+                'value_divisor' => (float) $row['value_divisor'],
+                'last_value' => $row['last_reading'] !== null ? (float) $row['last_reading'] : null,
+                'last_read_at' => $row['last_read_at'],
+            ];
+        }
+
+        foreach ($sensors as &$sensor) {
+            $sensor['channels'] = $bySensor[$sensor['id']] ?? [];
+        }
+        unset($sensor);
+
+        return $sensors;
+    }
+
+    /**
+     * Replaces the full set of extra channels for a sensor in one go —
+     * simplest correct behavior for a short, form-edited list: delete
+     * whatever was there and re-insert what the form submitted, rather than
+     * diffing row by row. Only called when the form actually included a
+     * `channels` field, so API callers that omit it leave existing channels
+     * untouched.
+     */
+    private function replaceChannels(int $sensorId, array $channels): void
+    {
+        $deleteStatement = $this->pdo->prepare('DELETE FROM environmental_sensor_channels WHERE sensor_id = :sensor_id');
+        $deleteStatement->execute(['sensor_id' => $sensorId]);
+        if ($channels === []) {
+            return;
+        }
+        $insertStatement = $this->pdo->prepare(
+            'INSERT INTO environmental_sensor_channels (sensor_id, position, label, channel_type, value_oid, value_divisor)
+             VALUES (:sensor_id, :position, :label, :channel_type, :value_oid, :value_divisor)',
+        );
+        $position = 1;
+        foreach ($channels as $channel) {
+            $label = trim((string) ($channel['label'] ?? ''));
+            $type = (string) ($channel['channel_type'] ?? '');
+            $oid = trim((string) ($channel['value_oid'] ?? ''));
+            if ($label === '' || $oid === '' || !in_array($type, ['temperature', 'humidity'], true)) {
+                continue;
+            }
+            $divisor = (float) ($channel['value_divisor'] ?? 1);
+            $insertStatement->execute([
+                'sensor_id' => $sensorId,
+                'position' => $position++,
+                'label' => $label,
+                'channel_type' => $type,
+                'value_oid' => $oid,
+                'value_divisor' => $divisor > 0 ? $divisor : 1,
+            ]);
+        }
     }
 
     /**
@@ -146,6 +228,9 @@ final class MySqlSensorRepository implements SensorRepository
         $statement->execute($record);
         $id = (int) $this->pdo->lastInsertId();
         $this->seedHwgPwrInputsIfNeeded($id, $record['model']);
+        if (array_key_exists('channels', $input)) {
+            $this->replaceChannels($id, $this->decodeChannels($input['channels']));
+        }
         $sensor = $this->find($id) ?? throw new RuntimeException('Sensor could not be loaded');
         $this->recordAudit('ENVIRONMENTAL_SENSOR', $id, 'CREATE', $sensor);
         return $sensor;
@@ -166,12 +251,33 @@ final class MySqlSensorRepository implements SensorRepository
         );
         $statement->execute($record);
         $this->seedHwgPwrInputsIfNeeded($id, $record['model']);
+        if (array_key_exists('channels', $input)) {
+            $this->replaceChannels($id, $this->decodeChannels($input['channels']));
+        }
         $sensor = $this->find($id);
         if ($sensor === null) {
             throw new RuntimeException('Sensor not found');
         }
         $this->recordAudit('ENVIRONMENTAL_SENSOR', $id, 'UPDATE', $sensor);
         return $sensor;
+    }
+
+    /**
+     * The generic form-submit helper flattens every field through
+     * FormData → Object.fromEntries, which can only carry one value per
+     * key — so the channel list crosses the wire as a single JSON-encoded
+     * string field rather than a real nested array.
+     */
+    private function decodeChannels(mixed $raw): array
+    {
+        if (is_array($raw)) {
+            return $raw;
+        }
+        if (!is_string($raw) || trim($raw) === '') {
+            return [];
+        }
+        $decoded = json_decode($raw, true);
+        return is_array($decoded) ? $decoded : [];
     }
 
     public function archive(int $id): array
@@ -257,6 +363,16 @@ final class MySqlSensorRepository implements SensorRepository
                     ];
                 }
             }
+            foreach ($sensor['channels'] as $channel) {
+                if (($channel['value_oid'] ?? '') !== '') {
+                    $snmpRequests['channel:' . $channel['id']] = [
+                        'host' => (string) $sensor['host'],
+                        'port' => (int) $sensor['snmp_port'],
+                        'community' => (string) $sensor['snmp_community'],
+                        'oid' => $channel['value_oid'],
+                    ];
+                }
+            }
         }
         $snmpResults = $snmpRequests !== [] ? $this->snmp->getMany($snmpRequests) : [];
         $pingResults = $this->fping->collectBatch($pingBatch);
@@ -282,6 +398,18 @@ final class MySqlSensorRepository implements SensorRepository
                 }
             }
             unset($input);
+
+            foreach ($sensor['channels'] as &$channel) {
+                $result = $snmpResults['channel:' . $channel['id']] ?? null;
+                $value = $result !== null && $result['ok']
+                    ? $this->scaleValue((string) $result['value'], (string) $result['type'], $channel['value_divisor'])
+                    : null;
+                if ($value !== null) {
+                    $channel['last_value'] = $value;
+                    $this->cacheChannelReading($channel['id'], $value);
+                }
+            }
+            unset($channel);
 
             $reasons = [];
             if ($sensor['ping'] !== null && !$sensor['ping']['ok']) {
@@ -314,6 +442,14 @@ final class MySqlSensorRepository implements SensorRepository
             'UPDATE environmental_sensor_inputs SET last_alarm_state = :state, last_read_at = CURRENT_TIMESTAMP WHERE id = :id',
         );
         $statement->execute(['id' => $inputId, 'state' => $alarmState]);
+    }
+
+    private function cacheChannelReading(int $channelId, float $value): void
+    {
+        $statement = $this->pdo->prepare(
+            'UPDATE environmental_sensor_channels SET last_reading = :value, last_read_at = CURRENT_TIMESTAMP WHERE id = :id',
+        );
+        $statement->execute(['id' => $channelId, 'value' => $value]);
     }
 
     /**

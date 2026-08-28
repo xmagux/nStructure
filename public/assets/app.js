@@ -2083,6 +2083,21 @@
             // (the opposite way round; they're different MIB branches, so
             // assuming they'd match was the bug, not a safe inference).
             STE2_LITE: { model: 'STE2 Lite', temperatureOid: '1.3.6.1.4.1.21796.4.9.3.1.4.2', humidityOid: '1.3.6.1.4.1.21796.4.9.3.1.4.1' },
+            // Same generic multi-probe sensor table as STE2 Lite, but a full
+            // STE2 can carry more than the 2 probes the form has dedicated
+            // fields for — confirmed live against a real 4-probe unit
+            // (humidity at index 1, temperature at indices 2-4). Only the
+            // first temperature probe fits the primary field; the rest seed
+            // extra channel rows below.
+            STE2: {
+                model: 'STE2',
+                temperatureOid: '1.3.6.1.4.1.21796.4.9.3.1.4.2',
+                humidityOid: '1.3.6.1.4.1.21796.4.9.3.1.4.1',
+                extraChannels: [
+                    { channel_type: 'temperature', label: 'Temp #2', value_oid: '1.3.6.1.4.1.21796.4.9.3.1.4.3', value_divisor: '1' },
+                    { channel_type: 'temperature', label: 'Temp #3', value_oid: '1.3.6.1.4.1.21796.4.9.3.1.4.4', value_divisor: '1' },
+                ],
+            },
             // HWg-PWR reports dry-contact inputs (grid/generator presence,
             // etc.), not temperature/humidity — clears those OID fields
             // rather than leaving a stale preset from the previous
@@ -2099,6 +2114,47 @@
             if (customField) customField.hidden = !isOther;
             form.elements.model.value = isOther ? (customInput?.value || '') : (SENSOR_MODEL_PRESETS[select.value]?.model || '');
         };
+        // Extra analog channels (a device like STE2 that carries more probes
+        // than the form's single temperature/humidity pair): each row is a
+        // clone of the shared <template>, kept in sync with a hidden JSON
+        // field since the generic submit helper can only carry flat string
+        // values, not a nested array.
+        const syncChannelsJson = (form) => {
+            const jsonField = form?.querySelector('[data-sensor-channels-json]');
+            if (!jsonField) return;
+            const channels = Array.from(form.querySelectorAll('[data-sensor-channel-row]')).map((row) => ({
+                channel_type: row.querySelector('[data-channel-type]').value,
+                label: row.querySelector('[data-channel-label]').value.trim(),
+                value_oid: row.querySelector('[data-channel-oid]').value.trim(),
+                value_divisor: row.querySelector('[data-channel-divisor]').value || '1',
+            })).filter((channel) => channel.label && channel.value_oid);
+            jsonField.value = JSON.stringify(channels);
+        };
+        const addChannelRow = (form, values = {}) => {
+            const template = document.querySelector('[data-sensor-channel-row-template]');
+            const container = form?.querySelector('[data-sensor-channel-rows]');
+            if (!template || !container) return;
+            const row = template.content.firstElementChild.cloneNode(true);
+            row.querySelector('[data-channel-type]').value = values.channel_type || 'temperature';
+            row.querySelector('[data-channel-label]').value = values.label || '';
+            row.querySelector('[data-channel-oid]').value = values.value_oid || '';
+            row.querySelector('[data-channel-divisor]').value = values.value_divisor ?? '1';
+            row.querySelector('[data-sensor-channel-remove]').addEventListener('click', () => {
+                row.remove();
+                syncChannelsJson(form);
+            });
+            row.querySelectorAll('input, select').forEach((field) => field.addEventListener('input', () => syncChannelsJson(form)));
+            container.appendChild(row);
+            syncChannelsJson(form);
+        };
+        const clearChannelRows = (form) => {
+            form?.querySelector('[data-sensor-channel-rows]')?.replaceChildren();
+            syncChannelsJson(form);
+        };
+        document.querySelectorAll('[data-sensor-channel-add]').forEach((button) => {
+            button.addEventListener('click', () => addChannelRow(button.closest('form')));
+        });
+
         document.querySelectorAll('[data-sensor-model-select]').forEach((select) => {
             const form = select.closest('form');
             select.addEventListener('change', () => {
@@ -2108,6 +2164,8 @@
                     form.elements.humidity_oid.value = preset.humidityOid;
                     form.elements.temperature_divisor.value = '1';
                     form.elements.humidity_divisor.value = '1';
+                    clearChannelRows(form);
+                    (preset.extraChannels || []).forEach((channel) => addChannelRow(form, channel));
                 }
                 syncSensorModelField(form);
             });
@@ -2134,11 +2192,13 @@
             form.elements.humidity_oid.value = preset.humidityOid;
             form.elements.temperature_divisor.value = '1';
             form.elements.humidity_divisor.value = '1';
+            clearChannelRows(form);
             setSensorIconPicker(form, 'sensor-server');
             syncSensorModelField(form);
         });
         document.querySelector('[data-sensor-form]')?.addEventListener('submit', (event) => {
             event.preventDefault();
+            syncChannelsJson(event.currentTarget);
             submitEntityForm(event.currentTarget, '/api/v1/sensors', sensorModal);
         });
 
@@ -2170,10 +2230,18 @@
             form.elements.ping_enabled.checked = button.dataset.sensorPingEnabled === '1';
             form.elements.monitoring_enabled.checked = button.dataset.sensorMonitoringEnabled === '1';
             form.elements.notes.value = button.dataset.sensorNotes || '';
+            clearChannelRows(form);
+            try {
+                const channels = JSON.parse(button.dataset.sensorChannels || '[]');
+                channels.forEach((channel) => addChannelRow(form, channel));
+            } catch (error) {
+                // malformed/missing channel data — leave the editor empty
+            }
         });
         document.querySelector('[data-sensor-edit-form]')?.addEventListener('submit', (event) => {
             event.preventDefault();
             const form = event.currentTarget;
+            syncChannelsJson(form);
             submitEntityForm(form, `/api/v1/sensors/${form.elements.sensor_id.value}`, sensorEditModal);
         });
 
@@ -2310,11 +2378,17 @@
         const sensorSelect = container.querySelector('[data-chart-sensor-select]');
         const rangeButtons = container.querySelectorAll('[data-chart-range]');
         const warning = container.querySelector('[data-vm-warning]');
+        // channelType links a chart to the extra analog channels (see
+        // SENSOR_MODEL_PRESETS.STE2) that share its unit — a sensor with
+        // several temperature probes gets one extra line per probe on the
+        // temperature chart instead of a separate chart each. ping_latency
+        // has no channelType since only temperature/humidity channels exist.
         const chartConfigs = [
-            { key: 'temperature', metric: 'temperature', unit: ' °C', color: '#3b82f6' },
-            { key: 'humidity', metric: 'humidity', unit: ' %', color: '#14b8a6' },
-            { key: 'ping_latency', metric: 'ping_latency', unit: ' ms', color: '#a855f7' },
+            { key: 'temperature', metric: 'temperature', unit: ' °C', color: '#3b82f6', channelType: 'temperature', label: container.dataset.chartTemperatureLabel || 'Temperature' },
+            { key: 'humidity', metric: 'humidity', unit: ' %', color: '#14b8a6', channelType: 'humidity', label: container.dataset.chartHumidityLabel || 'Humidity' },
+            { key: 'ping_latency', metric: 'ping_latency', unit: ' ms', color: '#a855f7', channelType: null, label: container.dataset.chartPingLatencyLabel || 'Ping latency' },
         ];
+        const CHANNEL_COLORS = ['#f97316', '#22c55e', '#eab308', '#ec4899', '#06b6d4'];
         // Chart chrome (axes, toolbox, dataZoom/slider) is set up exactly
         // once per instance. Every later update only touches series data via
         // updateInstanceData() — repeating the full option on every refresh
@@ -2328,25 +2402,70 @@
             chart.setOption({
                 grid: { left: 48, right: 16, top: 16, bottom: 56 },
                 tooltip: { trigger: 'axis', valueFormatter: (value) => `${Number(value).toFixed(1)}${config.unit}` },
+                legend: { show: false },
                 xAxis: { type: 'time' },
                 yAxis: { type: 'value', axisLabel: { formatter: `{value}${config.unit}` } },
                 dataZoom: [
                     { type: 'inside', xAxisIndex: 0 },
                     { type: 'slider', xAxisIndex: 0, height: 18, bottom: 4 },
                 ],
-                series: [{
-                    type: 'line',
-                    showSymbol: false,
-                    smooth: true,
-                    areaStyle: { opacity: 0.08 },
-                    lineStyle: { color: config.color, width: 2 },
-                    itemStyle: { color: config.color },
-                    data: [],
-                }],
+                series: [],
             });
-            return { config, chart, data: [], lastTimestampMs: 0 };
+            return { config, chart, series: [], state: {} };
         }).filter(Boolean);
         if (!instances.length) return null;
+
+        // Builds the list of lines a chart instance should show for the
+        // currently selected sensor: its own primary reading plus one line
+        // per extra channel of the matching type (embedded as JSON on the
+        // selected <option> — see sensors.twig).
+        const buildSeriesList = (instance) => {
+            const list = [{ key: 'primary', metric: instance.config.metric, label: instance.config.label, color: instance.config.color }];
+            const sensorOption = sensorSelect?.selectedOptions?.[0];
+            if (instance.config.channelType && sensorOption) {
+                try {
+                    const channels = JSON.parse(sensorOption.dataset.channels || '[]');
+                    channels
+                        .filter((channel) => channel.channel_type === instance.config.channelType)
+                        .forEach((channel, index) => {
+                            list.push({ key: `channel:${channel.id}`, metric: 'channel', channelId: channel.id, label: channel.label, color: CHANNEL_COLORS[index % CHANNEL_COLORS.length] });
+                        });
+                } catch (error) {
+                    // malformed/missing channel data — fall back to just the primary line
+                }
+            }
+            return list;
+        };
+
+        const updateInstanceData = (instance) => {
+            const seriesOption = instance.series.map((s) => ({
+                type: 'line',
+                name: s.label,
+                showSymbol: false,
+                smooth: true,
+                areaStyle: instance.series.length === 1 ? { opacity: 0.08 } : undefined,
+                lineStyle: { color: s.color, width: 2 },
+                itemStyle: { color: s.color },
+                data: instance.state[s.key]?.data || [],
+            }));
+            instance.chart.setOption({ series: seriesOption }, { replaceMerge: ['series'] });
+        };
+
+        // Rebuilds the series list (and resets its data) for the currently
+        // selected sensor — called on every sensor change so a switch from
+        // a multi-probe sensor to a single-probe one doesn't leave stale
+        // extra lines behind.
+        const rebuildSeries = (instance) => {
+            const list = buildSeriesList(instance);
+            instance.series = list;
+            instance.state = {};
+            list.forEach((s) => { instance.state[s.key] = { data: [], lastTimestampMs: 0 }; });
+            instance.chart.setOption({
+                grid: { top: list.length > 1 ? 34 : 16 },
+                legend: list.length > 1 ? { show: true, top: 4, itemWidth: 14, itemHeight: 8, textStyle: { fontSize: 11 } } : { show: false },
+            });
+            updateInstanceData(instance);
+        };
 
         const resizeObserver = new ResizeObserver(() => instances.forEach(({ chart }) => chart.resize()));
         resizeObserver.observe(container);
@@ -2374,31 +2493,35 @@
         const REFRESH_INTERVAL_MS = 2000;
         const currentRefreshIntervalMs = () => (currentRange === LIVE_RANGE ? LIVE_REFRESH_INTERVAL_MS : REFRESH_INTERVAL_MS);
 
-        const updateInstanceData = (instance) => {
-            instance.chart.setOption({ series: [{ data: instance.data }] });
-        };
+        const historyUrl = (sensorId, s, extra = '') =>
+            s.metric === 'channel'
+                ? `/api/v1/sensors/${sensorId}/history?metric=channel&channel_id=${s.channelId}&range=${currentRange}${extra}`
+                : `/api/v1/sensors/${sensorId}/history?metric=${s.metric}&range=${currentRange}${extra}`;
 
         const loadFull = async () => {
             const sensorId = sensorSelect?.value;
             if (!sensorId) return;
+            instances.forEach((instance) => rebuildSeries(instance));
             let anyFailed = false;
-            await Promise.all(instances.map(async (instance) => {
+            await Promise.all(instances.flatMap((instance) => instance.series.map(async (s) => {
                 try {
-                    const response = await fetch(`/api/v1/sensors/${sensorId}/history?metric=${instance.config.metric}&range=${currentRange}`, { headers: { Accept: 'application/json' } });
+                    const response = await fetch(historyUrl(sensorId, s), { headers: { Accept: 'application/json' } });
                     const payload = await response.json();
                     const points = payload.data || [];
-                    instance.data = points.map((point) => [point.timestampMs, point.value]);
-                    instance.lastTimestampMs = points.length ? points[points.length - 1].timestampMs : 0;
-                    updateInstanceData(instance);
-                    // A real navigation (new sensor/range) should reset any
-                    // leftover zoom from before — dispatchAction here so the
-                    // dataZoom/toolbox component definitions never get
-                    // re-specified outside chart setup.
-                    instance.chart.dispatchAction({ type: 'dataZoom', start: 0, end: 100 });
+                    instance.state[s.key].data = points.map((point) => [point.timestampMs, point.value]);
+                    instance.state[s.key].lastTimestampMs = points.length ? points[points.length - 1].timestampMs : 0;
                 } catch (error) {
                     anyFailed = true;
                 }
-            }));
+            })));
+            instances.forEach((instance) => {
+                updateInstanceData(instance);
+                // A real navigation (new sensor/range) should reset any
+                // leftover zoom from before — dispatchAction here so the
+                // dataZoom/toolbox component definitions never get
+                // re-specified outside chart setup.
+                instance.chart.dispatchAction({ type: 'dataZoom', start: 0, end: 100 });
+            });
             if (warning) warning.hidden = !anyFailed;
         };
 
@@ -2411,29 +2534,28 @@
             const sensorId = sensorSelect?.value;
             if (!sensorId) return;
             const cutoff = Date.now() - rangeWindowMs();
-            await Promise.all(instances.map(async (instance) => {
+            await Promise.all(instances.flatMap((instance) => instance.series.map(async (s) => {
+                const seriesState = instance.state[s.key];
                 // No prior data (e.g. this series had nothing yet on the last full
                 // load) — re-fetch the whole range instead of skipping forever, so
                 // a chart that starts empty self-heals once data shows up.
-                const hasBaseline = Boolean(instance.lastTimestampMs);
-                const url = hasBaseline
-                    ? `/api/v1/sensors/${sensorId}/history?metric=${instance.config.metric}&range=${currentRange}&since=${instance.lastTimestampMs}`
-                    : `/api/v1/sensors/${sensorId}/history?metric=${instance.config.metric}&range=${currentRange}`;
+                const hasBaseline = Boolean(seriesState.lastTimestampMs);
+                const url = historyUrl(sensorId, s, hasBaseline ? `&since=${seriesState.lastTimestampMs}` : '');
                 try {
                     const response = await fetch(url, { headers: { Accept: 'application/json' } });
                     const payload = await response.json();
                     const points = hasBaseline
-                        ? (payload.data || []).filter((point) => point.timestampMs > instance.lastTimestampMs)
+                        ? (payload.data || []).filter((point) => point.timestampMs > seriesState.lastTimestampMs)
                         : (payload.data || []);
                     if (!points.length) return;
-                    instance.data = (hasBaseline ? instance.data.concat(points.map((point) => [point.timestampMs, point.value])) : points.map((point) => [point.timestampMs, point.value]))
+                    seriesState.data = (hasBaseline ? seriesState.data.concat(points.map((point) => [point.timestampMs, point.value])) : points.map((point) => [point.timestampMs, point.value]))
                         .filter((pair) => pair[0] >= cutoff);
-                    instance.lastTimestampMs = points[points.length - 1].timestampMs;
-                    updateInstanceData(instance);
+                    seriesState.lastTimestampMs = points[points.length - 1].timestampMs;
                 } catch (error) {
                     // keep showing the last known data; the warning banner covers VM outages
                 }
-            }));
+            })));
+            instances.forEach((instance) => updateInstanceData(instance));
         };
 
         const sendHeartbeat = () => {
@@ -2481,7 +2603,7 @@
         return {
             resume() {
                 refreshVmStatus();
-                if (!instances[0].data.length) loadFull();
+                if (!instances[0].state.primary?.data.length) loadFull();
                 startTimers();
             },
             pause() {
@@ -2490,7 +2612,6 @@
             selectSensor(sensorId) {
                 if (!sensorSelect || sensorSelect.value === sensorId) return;
                 sensorSelect.value = sensorId;
-                instances.forEach((instance) => { instance.data = []; instance.lastTimestampMs = 0; });
                 loadFull();
                 startTimers();
             },

@@ -158,7 +158,12 @@ final readonly class SensorController
         $query = $request->getQueryParams();
         $metricKey = (string) ($query['metric'] ?? 'temperature');
         $rangeKey = (string) ($query['range'] ?? '24h');
-        if (!isset(self::METRIC_NAMES[$metricKey])) {
+        if ($metricKey === 'channel') {
+            $channelId = filter_var($query['channel_id'] ?? null, FILTER_VALIDATE_INT);
+            if ($channelId === false || $channelId === null) {
+                return $this->json($response->withStatus(422), ['error' => 'channel_id is required']);
+            }
+        } elseif (!isset(self::METRIC_NAMES[$metricKey])) {
             return $this->json($response->withStatus(422), ['error' => 'Unknown metric']);
         }
         if (!isset(self::RANGE_SECONDS[$rangeKey])) {
@@ -174,7 +179,9 @@ final readonly class SensorController
         $windowSeconds = max(1, $end - $start);
         $step = $this->formatStepDuration(max(1, (int) ceil($windowSeconds / self::MAX_POINTS)));
 
-        $promql = sprintf('%s{sensor_id="%d"}', self::METRIC_NAMES[$metricKey], $sensorId);
+        $promql = $metricKey === 'channel'
+            ? sprintf('sensor_channel_value_value{sensor_id="%d",channel_id="%d"}', $sensorId, $channelId)
+            : sprintf('%s{sensor_id="%d"}', self::METRIC_NAMES[$metricKey], $sensorId);
         $points = $this->metrics->queryRange($promql, $start, $end, $step);
 
         return $this->json($response, ['data' => $points]);
@@ -240,6 +247,43 @@ final readonly class SensorController
             }
             if ($min !== '' && $min !== null && $max !== '' && $max !== null && (float) $min > (float) $max) {
                 throw new InvalidArgumentException(sprintf('%s cannot be greater than %s', $minField, $maxField));
+            }
+        }
+        $this->validateChannels($input['channels'] ?? null);
+    }
+
+    /**
+     * The form ships extra channels as a JSON-encoded string (the shared
+     * submit helper can only carry flat string fields), so this both
+     * decodes and validates each row before it ever reaches the repository.
+     */
+    private function validateChannels(mixed $raw): void
+    {
+        if ($raw === null || $raw === '') {
+            return;
+        }
+        $channels = is_array($raw) ? $raw : json_decode((string) $raw, true);
+        if (!is_array($channels)) {
+            throw new InvalidArgumentException('Channels must be a list');
+        }
+        foreach ($channels as $channel) {
+            if (!is_array($channel)) {
+                throw new InvalidArgumentException('Each channel must be an object');
+            }
+            $label = trim((string) ($channel['label'] ?? ''));
+            if ($label === '' || mb_strlen($label) > 80) {
+                throw new InvalidArgumentException('Channel label must contain 1-80 characters');
+            }
+            if (!in_array($channel['channel_type'] ?? null, ['temperature', 'humidity'], true)) {
+                throw new InvalidArgumentException('Channel type must be temperature or humidity');
+            }
+            $oid = trim((string) ($channel['value_oid'] ?? ''));
+            if ($oid === '' || !preg_match('/^\.?\d+(\.\d+)+$/', $oid)) {
+                throw new InvalidArgumentException('Channel OID must look like 1.3.6.1.4.1.21796.4.9.3.1.4.3');
+            }
+            $divisor = $channel['value_divisor'] ?? '';
+            if ($divisor !== '' && $divisor !== null && filter_var($divisor, FILTER_VALIDATE_FLOAT) === false) {
+                throw new InvalidArgumentException('Channel divisor must be a number');
             }
         }
     }

@@ -7,6 +7,7 @@
 <label class="field"><span>{{ t('form.sensor_model') }}</span><select data-sensor-model-select>
     <option value="HWG_STE">HWg-STE</option>
     <option value="STE2_LITE">STE2 Lite</option>
+    <option value="STE2">STE2 (3× temp. + wilg.)</option>
     <option value="HWG_PWR">HWg-PWR</option>
     <option value="OTHER">{{ t('sensors.other_model') }}</option>
 </select></label>
@@ -18,6 +19,27 @@
 <label class="field"><span>{{ t('form.sensor_humidity_min') }}</span><input name="humidity_min" type="number" step="0.01" placeholder="{{ t('form.sensor_no_limit') }}"></label>
 <label class="field"><span>{{ t('form.sensor_humidity_max') }}</span><input name="humidity_max" type="number" step="0.01" placeholder="{{ t('form.sensor_no_limit') }}"></label>
 {% endset %}
+{% set sensor_channels_field %}
+<div class="field field-wide sensor-channels-field">
+    <span>{{ t('form.sensor_channels') }}</span>
+    <div class="sensor-channel-rows" data-sensor-channel-rows></div>
+    <button type="button" class="button button-ghost button-small" data-sensor-channel-add>{{ icons.icon('plus', 13) }}{{ t('action.add_channel') }}</button>
+    <input type="hidden" name="channels" data-sensor-channels-json>
+    <small>{{ t('form.sensor_channels_hint') }}</small>
+</div>
+{% endset %}
+<template data-sensor-channel-row-template>
+    <div class="sensor-channel-row" data-sensor-channel-row>
+        <select data-channel-type>
+            <option value="temperature">{{ t('sensors.channel_temperature') }}</option>
+            <option value="humidity">{{ t('sensors.channel_humidity') }}</option>
+        </select>
+        <input type="text" maxlength="80" placeholder="{{ t('form.sensor_channel_label') }}" data-channel-label>
+        <input type="text" maxlength="255" placeholder="1.3.6.1.4.1.21796.4.9.3.1.4.3" data-channel-oid>
+        <input type="number" step="0.0001" value="1" placeholder="{{ t('form.sensor_divisor') }}" data-channel-divisor>
+        <button type="button" class="icon-button danger" data-sensor-channel-remove aria-label="{{ t('action.delete') }}">{{ icons.icon('trash', 12) }}</button>
+    </div>
+</template>
 <section class="page-hero compact-hero">
     <div><span class="eyebrow">{{ t('sensors.eyebrow') }}</span><h1>{{ t('sensors.title') }}</h1><p>{{ t('sensors.subtitle') }}</p></div>
     <div class="hero-actions"><button class="button button-ghost" type="button" data-sensors-refresh>{{ icons.icon('refresh-cw') }}{{ t('action.refresh') }}</button><button class="button button-primary" type="button" data-sensor-modal-open>{{ icons.icon('plus') }}{{ t('action.add_sensor') }}</button></div>
@@ -51,7 +73,8 @@
                 data-sensor-temperature-min="{{ sensor.temperature_min }}" data-sensor-temperature-max="{{ sensor.temperature_max }}"
                 data-sensor-humidity-oid="{{ sensor.humidity_oid }}" data-sensor-humidity-divisor="{{ sensor.humidity_divisor }}"
                 data-sensor-humidity-min="{{ sensor.humidity_min }}" data-sensor-humidity-max="{{ sensor.humidity_max }}"
-                data-sensor-ping-enabled="{{ sensor.ping_enabled ? '1' : '0' }}" data-sensor-monitoring-enabled="{{ sensor.monitoring_enabled ? '1' : '0' }}" data-sensor-notes="{{ sensor.notes }}">{{ icons.icon('edit', 12) }}</button>
+                data-sensor-ping-enabled="{{ sensor.ping_enabled ? '1' : '0' }}" data-sensor-monitoring-enabled="{{ sensor.monitoring_enabled ? '1' : '0' }}" data-sensor-notes="{{ sensor.notes }}"
+                data-sensor-channels="{{ sensor.channels|json_encode }}">{{ icons.icon('edit', 12) }}</button>
             <button class="icon-button danger" type="button" aria-label="{{ t('action.delete') }}" title="{{ t('action.delete') }}" data-delete-open data-delete-url="/api/v1/sensors/{{ sensor.id }}" data-delete-name="{{ sensor.name }}">{{ icons.icon('trash', 12) }}</button>
         </div>
         <span class="sensor-tile-badge{{ is_down ? ' down' : '' }}" data-sensor-ping-badge>{% if is_down %}{{ t('sensors.ping_down') }}{% elseif sensor.last_ping_ok and sensor.last_ping_latency_ms is not null %}{{ sensor.last_ping_latency_ms|round }}ms{% endif %}</span>
@@ -65,6 +88,11 @@
         </div>
         {% else %}
         <small class="sensor-tile-values" data-sensor-values><span class="{{ temp_alarm ? 'value-alarm' : '' }}" data-sensor-value-temperature>{{ sensor.last_temperature is not null ? sensor.last_temperature|number_format(1) ~ '°C' : '' }}</span><span class="{{ humidity_alarm ? 'value-alarm' : '' }}" data-sensor-value-humidity>{{ sensor.last_humidity is not null ? sensor.last_humidity|number_format(1) ~ '%' : '' }}</span></small>
+        {% if sensor.channels|length %}
+        <small class="sensor-tile-channels" data-sensor-channels-values>
+            {% for channel in sensor.channels %}<span title="{{ channel.label }}">{{ channel.label }}: {{ channel.last_value is not null ? channel.last_value|number_format(1) ~ (channel.channel_type == 'humidity' ? '%' : '°C') : '—' }}</span>{% endfor %}
+        </small>
+        {% endif %}
         {% endif %}
     </article>
     {% else %}
@@ -75,7 +103,7 @@
 <section class="sensor-charts" data-sensor-charts data-sensor-panel="charts" hidden data-vm-unreachable-label="{{ t('sensors.vm_unreachable') }}" data-chart-temperature-label="{{ t('sensors.temperature') }}" data-chart-humidity-label="{{ t('sensors.humidity') }}" data-chart-ping-latency-label="{{ t('sensors.ping_latency') }}">
     {% if sensors|length %}
     <div class="sensor-charts-controls">
-        <label class="field"><span>{{ t('sensors.chart_sensor') }}</span><select data-chart-sensor-select>{% for sensor in sensors %}<option value="{{ sensor.id }}">{{ sensor.name }}</option>{% endfor %}</select></label>
+        <label class="field"><span>{{ t('sensors.chart_sensor') }}</span><select data-chart-sensor-select>{% for sensor in sensors %}<option value="{{ sensor.id }}" data-channels="{{ sensor.channels|json_encode }}">{{ sensor.name }}</option>{% endfor %}</select></label>
         <div class="sensor-range-buttons" data-chart-range-buttons>
             <button class="sensor-range-btn" type="button" data-chart-range="5m">5m</button>
             <button class="sensor-range-btn" type="button" data-chart-range="1h">1h</button>
@@ -112,6 +140,7 @@
             <label class="field"><span>{{ t('form.sensor_humidity_oid') }}</span><input name="humidity_oid" maxlength="255" value="1.3.6.1.4.1.21796.4.1.3.1.4.2" placeholder="1.3.6.1.4.1.21796.4.1.3.1.4.2"><small>{{ t('form.sensor_oid_hint') }}</small></label>
             <label class="field"><span>{{ t('form.sensor_divisor') }}</span><input name="humidity_divisor" type="number" step="0.0001" value="1"></label>
             {{ sensor_threshold_fields }}
+            {{ sensor_channels_field }}
             <label class="field field-wide checkbox-field"><input name="ping_enabled" type="checkbox" value="1" checked><span>{{ t('form.sensor_ping_enabled') }}</span></label>
             <label class="field field-wide checkbox-field"><input name="monitoring_enabled" type="checkbox" value="1" checked><span>{{ t('form.sensor_monitoring_enabled') }}</span></label>
             <label class="field field-wide"><span>{{ t('form.notes') }}</span><textarea name="notes" maxlength="2000" rows="3"></textarea></label>
@@ -138,6 +167,7 @@
             <label class="field"><span>{{ t('form.sensor_humidity_oid') }}</span><input name="humidity_oid" maxlength="255"><small>{{ t('form.sensor_oid_hint') }}</small></label>
             <label class="field"><span>{{ t('form.sensor_divisor') }}</span><input name="humidity_divisor" type="number" step="0.0001"></label>
             {{ sensor_threshold_fields }}
+            {{ sensor_channels_field }}
             <label class="field field-wide checkbox-field"><input name="ping_enabled" type="checkbox" value="1"><span>{{ t('form.sensor_ping_enabled') }}</span></label>
             <label class="field field-wide checkbox-field"><input name="monitoring_enabled" type="checkbox" value="1"><span>{{ t('form.sensor_monitoring_enabled') }}</span></label>
             <label class="field field-wide"><span>{{ t('form.notes') }}</span><textarea name="notes" maxlength="2000" rows="3"></textarea></label>

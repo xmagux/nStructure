@@ -78,7 +78,8 @@ if (function_exists('pcntl_signal')) {
 /**
  * @return array<int, array{id: int, host: string, snmp_port: int, snmp_community: string,
  *     temperature_oid: ?string, temperature_divisor: float, humidity_oid: ?string,
- *     humidity_divisor: float, ping_enabled: bool, name: string}>
+ *     humidity_divisor: float, ping_enabled: bool, name: string,
+ *     channels: array<int, array{id: int, label: string, channel_type: string, value_oid: string, value_divisor: float}>}>
  */
 $loadSensors = static function () use ($pdo): array {
     $statement = $pdo->query(
@@ -86,7 +87,7 @@ $loadSensors = static function () use ($pdo): array {
             temperature_oid, temperature_divisor, humidity_oid, humidity_divisor, ping_enabled
          FROM environmental_sensors WHERE archived_at IS NULL AND monitoring_enabled = 1',
     );
-    return array_map(static fn (array $row): array => [
+    $sensors = array_map(static fn (array $row): array => [
         'id' => (int) $row['id'],
         'name' => (string) $row['name'],
         'host' => (string) $row['host'],
@@ -97,7 +98,34 @@ $loadSensors = static function () use ($pdo): array {
         'humidity_oid' => $row['humidity_oid'],
         'humidity_divisor' => (float) $row['humidity_divisor'],
         'ping_enabled' => (bool) $row['ping_enabled'],
+        'channels' => [],
     ], $statement->fetchAll());
+    $byId = [];
+    foreach ($sensors as &$sensor) {
+        $byId[$sensor['id']] = &$sensor;
+    }
+    unset($sensor);
+
+    if ($byId !== []) {
+        $channelStatement = $pdo->query(
+            'SELECT sensor_id, id, label, channel_type, value_oid, value_divisor FROM environmental_sensor_channels',
+        );
+        foreach ($channelStatement->fetchAll() as $row) {
+            $sensorId = (int) $row['sensor_id'];
+            if (!isset($byId[$sensorId])) {
+                continue;
+            }
+            $byId[$sensorId]['channels'][] = [
+                'id' => (int) $row['id'],
+                'label' => (string) $row['label'],
+                'channel_type' => (string) $row['channel_type'],
+                'value_oid' => (string) $row['value_oid'],
+                'value_divisor' => (float) $row['value_divisor'],
+            ];
+        }
+    }
+
+    return $sensors;
 };
 
 $scaleValue = static function (string $raw, float $divisor): ?float {
@@ -230,6 +258,24 @@ while ($iteration < $maxIterations && !$shouldExit) {
                             $seriesState->recordSent($valueKey, $value, $now);
                         }
                     }
+                }
+            }
+
+            foreach ($sensor['channels'] as $channel) {
+                $result = $snmp->get($sensor['host'], $sensor['snmp_port'], $sensor['snmp_community'], $channel['value_oid'], $snmpTimeoutMicroseconds, $snmpRetries);
+                if (!$result['ok']) {
+                    continue;
+                }
+                $value = $scaleValue((string) $result['value'], $channel['value_divisor']);
+                if ($value === null) {
+                    continue;
+                }
+                $channelKey = 'channel:' . $channel['id'];
+                $hysteresis = $channel['channel_type'] === 'humidity' ? $humidityHysteresis : $temperatureHysteresis;
+                if ($seriesState->shouldSend($channelKey, $value, $hysteresis, $keepalive, $now)) {
+                    $channelTags = $tags + ['channel_id' => (string) $channel['id'], 'channel' => $channel['label'], 'channel_type' => $channel['channel_type']];
+                    $builder->addPoint('sensor_channel_value', $channelTags, $value, $timestampMs);
+                    $seriesState->recordSent($channelKey, $value, $now);
                 }
             }
         }

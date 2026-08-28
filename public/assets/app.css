@@ -1957,6 +1957,19 @@ body.sidebar-collapsed .user-avatar { width: 40px; height: 40px; }
 .sensor-tile-input-group { flex: 1; overflow: hidden; padding: 1px 4px; border-radius: 5px; color: var(--text-muted); background: var(--surface-2); font-size: 8.5px; font-weight: 700; line-height: 13px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
 .sensor-tile-input-group.alarm { color: #fff; background: var(--red); }
 .sensor-tile-input-group.agregat-alarm { color: #fff; background: var(--amber); }
+/* Extra analog probes beyond the primary temperature/humidity pair
+   (e.g. a multi-probe STE2) — small secondary readout line under the
+   main values. */
+.sensor-tile-channels { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 6px; width: 100%; color: var(--text-muted); font-size: 9px; }
+
+/* Extra channels editor (sensor create/edit forms) */
+.sensor-channels-field { gap: 8px; }
+.sensor-channel-rows { display: flex; flex-direction: column; gap: 6px; }
+.sensor-channel-row { display: grid; grid-template-columns: 1fr 1.4fr 2fr 0.8fr auto; gap: 6px; align-items: center; }
+.sensor-channel-row select, .sensor-channel-row input { min-height: 34px; padding: 0 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); color: var(--text); font-size: 12px; }
+@media (max-width: 640px) {
+    .sensor-channel-row { grid-template-columns: 1fr 1fr; }
+}
 
 /* Digital-inputs detail modal */
 .sensor-inputs-table { margin-top: 16px; display: flex; flex-direction: column; gap: 6px; max-height: 60vh; overflow-y: auto; }
