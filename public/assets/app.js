@@ -2151,6 +2151,11 @@
                 } else {
                     chartsController?.pause();
                 }
+                if (target === 'list' && sidebarMedia.matches && !body.classList.contains('sidebar-collapsed')) {
+                    body.classList.add('sidebar-collapsed');
+                    localStorage.setItem(sidebarStorageKey, 'true');
+                    updateSidebarToggle();
+                }
             });
         });
         document.querySelectorAll('[data-sensor-card]').forEach((card) => {
