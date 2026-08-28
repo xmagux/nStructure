@@ -31,22 +31,27 @@ final class SnmpClient
     private const TAG_END_OF_MIB_VIEW = 0x82;
 
     /**
-     * Fires every request over its own non-blocking UDP socket and waits on
-     * all of them together with stream_select() under one shared deadline,
-     * instead of the "up to $timeoutSeconds each, one after another" cost
-     * of calling get() in a loop — the point being N requests take roughly
-     * as long as the single slowest one, not the sum of all of them.
+     * Fires requests over non-blocking UDP sockets and waits on all of them
+     * together with stream_select() under one shared deadline, instead of
+     * the "up to $timeoutSeconds each, one after another" cost of calling
+     * get() in a loop — N requests spread across N different hosts take
+     * roughly as long as the single slowest one, not the sum of all of them.
+     *
+     * Concurrency is capped per host ($maxConcurrentPerHost, default 2):
+     * some small embedded SNMP agents (confirmed on a real HWg-PWR unit)
+     * only handle one request in flight at a time and silently drop the
+     * rest when several arrive at once, so a sensor with many OIDs on the
+     * same host — an 8-input dry-contact device, say — sends them out a
+     * couple at a time rather than all in one burst.
      *
      * @param array<string, array{host: string, port: int, community: string, oid: string}> $requests
      *     keyed by an arbitrary identifier the caller uses to match results back to its own data
      * @return array<string, array{ok: bool, value: string|null, type: string|null, error: string|null}>
      */
-    public function getMany(array $requests, float $timeoutSeconds = 2.0): array
+    public function getMany(array $requests, float $timeoutSeconds = 2.0, int $maxConcurrentPerHost = 2): array
     {
         $results = [];
-        $sockets = [];
-        $requestIds = [];
-        $deadline = microtime(true) + $timeoutSeconds;
+        $pending = [];
 
         foreach ($requests as $key => $request) {
             $oid = trim($request['oid']);
@@ -54,29 +59,50 @@ final class SnmpClient
                 $results[$key] = ['ok' => false, 'value' => null, 'type' => null, 'error' => 'No OID configured'];
                 continue;
             }
-
-            try {
-                $requestId = random_int(1, 2_000_000_000);
-                $packet = $this->encodeGetRequest($request['community'], $oid, $requestId);
-            } catch (\Throwable $exception) {
-                $results[$key] = ['ok' => false, 'value' => null, 'type' => null, 'error' => 'Invalid OID: ' . $exception->getMessage()];
-                continue;
-            }
-
-            $socket = @stream_socket_client(sprintf('udp://%s:%d', $request['host'], $request['port']), $errno, $errstr, 1.0);
-            if ($socket === false) {
-                $results[$key] = ['ok' => false, 'value' => null, 'type' => null, 'error' => trim($errstr) ?: 'Could not open socket'];
-                continue;
-            }
-            stream_set_blocking($socket, false);
-            if (@fwrite($socket, $packet) === false) {
-                fclose($socket);
-                $results[$key] = ['ok' => false, 'value' => null, 'type' => null, 'error' => 'Could not send SNMP request'];
-                continue;
-            }
-            $sockets[$key] = $socket;
-            $requestIds[$key] = $requestId;
+            $pending[$key] = $request;
         }
+
+        $sockets = [];
+        $requestIds = [];
+        $socketHosts = [];
+        $inFlightPerHost = [];
+        $deadline = microtime(true) + $timeoutSeconds;
+
+        $sendPending = function () use (&$pending, &$sockets, &$requestIds, &$socketHosts, &$inFlightPerHost, &$results, $maxConcurrentPerHost): void {
+            foreach ($pending as $key => $request) {
+                $host = $request['host'];
+                if (($inFlightPerHost[$host] ?? 0) >= $maxConcurrentPerHost) {
+                    continue;
+                }
+                unset($pending[$key]);
+
+                try {
+                    $requestId = random_int(1, 2_000_000_000);
+                    $packet = $this->encodeGetRequest($request['community'], $request['oid'], $requestId);
+                } catch (\Throwable $exception) {
+                    $results[$key] = ['ok' => false, 'value' => null, 'type' => null, 'error' => 'Invalid OID: ' . $exception->getMessage()];
+                    continue;
+                }
+
+                $socket = @stream_socket_client(sprintf('udp://%s:%d', $host, $request['port']), $errno, $errstr, 1.0);
+                if ($socket === false) {
+                    $results[$key] = ['ok' => false, 'value' => null, 'type' => null, 'error' => trim($errstr) ?: 'Could not open socket'];
+                    continue;
+                }
+                stream_set_blocking($socket, false);
+                if (@fwrite($socket, $packet) === false) {
+                    fclose($socket);
+                    $results[$key] = ['ok' => false, 'value' => null, 'type' => null, 'error' => 'Could not send SNMP request'];
+                    continue;
+                }
+                $sockets[$key] = $socket;
+                $requestIds[$key] = $requestId;
+                $socketHosts[$key] = $host;
+                $inFlightPerHost[$host] = ($inFlightPerHost[$host] ?? 0) + 1;
+            }
+        };
+
+        $sendPending();
 
         while ($sockets !== []) {
             $remaining = $deadline - microtime(true);
@@ -97,6 +123,7 @@ final class SnmpClient
                 $response = @fread($socket, 4096);
                 fclose($socket);
                 unset($sockets[$key]);
+                $inFlightPerHost[$socketHosts[$key]]--;
                 if ($response === false || $response === '') {
                     $results[$key] = ['ok' => false, 'value' => null, 'type' => null, 'error' => 'No response (timeout)'];
                     continue;
@@ -107,10 +134,16 @@ final class SnmpClient
                     $results[$key] = ['ok' => false, 'value' => null, 'type' => null, 'error' => 'Malformed SNMP response: ' . $exception->getMessage()];
                 }
             }
+            if ($pending !== []) {
+                $sendPending();
+            }
         }
 
         foreach ($sockets as $key => $socket) {
             fclose($socket);
+            $results[$key] = ['ok' => false, 'value' => null, 'type' => null, 'error' => 'No response (timeout)'];
+        }
+        foreach ($pending as $key => $request) {
             $results[$key] = ['ok' => false, 'value' => null, 'type' => null, 'error' => 'No response (timeout)'];
         }
 
