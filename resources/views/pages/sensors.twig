@@ -87,9 +87,9 @@
     </div>
     <p class="sensor-chart-warning" data-vm-warning hidden>{{ icons.icon('alert', 15) }}<span>{{ t('sensors.vm_unreachable') }}</span></p>
     <div class="sensor-chart-grid">
-        <article class="card sensor-chart-card"><h3>{{ t('sensors.temperature') }}</h3><div class="sensor-chart" data-chart="temperature"></div></article>
-        <article class="card sensor-chart-card"><h3>{{ t('sensors.humidity') }}</h3><div class="sensor-chart" data-chart="humidity"></div></article>
-        <article class="card sensor-chart-card"><h3>{{ t('sensors.ping_latency') }}</h3><div class="sensor-chart" data-chart="ping_latency"></div></article>
+        <article class="card sensor-chart-card"><div class="sensor-chart-card-head"><h3>{{ t('sensors.temperature') }}</h3><button type="button" class="sensor-chart-reset" data-chart-reset="temperature">{{ t('action.reset_zoom') }}</button></div><div class="sensor-chart" data-chart="temperature"></div></article>
+        <article class="card sensor-chart-card"><div class="sensor-chart-card-head"><h3>{{ t('sensors.humidity') }}</h3><button type="button" class="sensor-chart-reset" data-chart-reset="humidity">{{ t('action.reset_zoom') }}</button></div><div class="sensor-chart" data-chart="humidity"></div></article>
+        <article class="card sensor-chart-card"><div class="sensor-chart-card-head"><h3>{{ t('sensors.ping_latency') }}</h3><button type="button" class="sensor-chart-reset" data-chart-reset="ping_latency">{{ t('action.reset_zoom') }}</button></div><div class="sensor-chart" data-chart="ping_latency"></div></article>
     </div>
     {% else %}
     <div class="empty-state">{{ t('sensors.empty') }}</div>

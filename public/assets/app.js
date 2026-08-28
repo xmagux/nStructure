@@ -2329,14 +2329,6 @@
             chart.setOption({
                 grid: { left: 48, right: 16, top: 16, bottom: 56 },
                 tooltip: { trigger: 'axis', valueFormatter: (value) => `${Number(value).toFixed(1)}${config.unit}` },
-                toolbox: {
-                    show: true,
-                    right: 8,
-                    top: 0,
-                    feature: {
-                        dataZoom: { yAxisIndex: 'none', title: { zoom: 'Zoom', back: 'Reset zoom' } },
-                    },
-                },
                 xAxis: { type: 'time' },
                 yAxis: { type: 'value', axisLabel: { formatter: `{value}${config.unit}` } },
                 dataZoom: [
@@ -2359,6 +2351,20 @@
 
         const resizeObserver = new ResizeObserver(() => instances.forEach(({ chart }) => chart.resize()));
         resizeObserver.observe(container);
+
+        // A plain button instead of ECharts' own toolbox dataZoom/restore
+        // icons — those turned out unreliable here (the rectangle-select
+        // zoom tool and its "back" arrow track their own history separate
+        // from the slider/wheel zoom, so clicking them often did nothing
+        // visible). This always resets whatever zoom state is active,
+        // regardless of how it was applied.
+        container.querySelectorAll('[data-chart-reset]').forEach((button) => {
+            const instance = instances.find((candidate) => candidate.config.key === button.dataset.chartReset);
+            if (!instance) return;
+            button.addEventListener('click', () => {
+                instance.chart.dispatchAction({ type: 'dataZoom', start: 0, end: 100 });
+            });
+        });
 
         let currentRange = '24h';
         let heartbeatTimer = null;
