@@ -2081,8 +2081,8 @@
         document.querySelector('[data-sensors-refresh]')?.addEventListener('click', refreshSensors);
 
         const SENSOR_MODEL_PRESETS = {
-            HWG_STE: { model: 'HWg-STE', temperatureOid: '1.3.6.1.4.1.21796.4.1.3.1.4.2', humidityOid: '1.3.6.1.4.1.21796.4.1.3.1.4.1' },
-            STE2_LITE: { model: 'STE2 Lite', temperatureOid: '1.3.6.1.4.1.21796.4.9.3.1.4.2', humidityOid: '1.3.6.1.4.1.21796.4.9.3.1.4.1' },
+            HWG_STE: { model: 'HWg-STE', temperatureOid: '1.3.6.1.4.1.21796.4.1.3.1.4.1', humidityOid: '1.3.6.1.4.1.21796.4.1.3.1.4.2' },
+            STE2_LITE: { model: 'STE2 Lite', temperatureOid: '1.3.6.1.4.1.21796.4.9.3.1.4.1', humidityOid: '1.3.6.1.4.1.21796.4.9.3.1.4.2' },
         };
         const sensorModelKeyForName = (name) => Object.keys(SENSOR_MODEL_PRESETS).find((key) => SENSOR_MODEL_PRESETS[key].model === name) || 'OTHER';
         const syncSensorModelField = (form) => {
