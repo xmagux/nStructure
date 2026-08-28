@@ -1926,14 +1926,14 @@ body.sidebar-collapsed .user-avatar { width: 40px; height: 40px; }
 .sensor-tile.sensor-tile-down .sensor-tile-visual { color: var(--red); background: color-mix(in srgb, var(--red) 16%, var(--surface-2)); }
 .sensor-tile-status { overflow: hidden; width: 100%; margin-top: 1px; color: var(--text-muted); font-size: 8.5px; font-weight: 700; letter-spacing: .05em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
 .sensor-tile-status.down { color: var(--red); }
-.sensor-tile-name { display: -webkit-box; overflow: hidden; width: 100%; margin-top: 3px; color: var(--text); font-size: 11.5px; font-weight: 600; line-height: 1.3; word-break: break-word; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.sensor-tile-name { display: -webkit-box; overflow: hidden; width: 100%; margin-top: 3px; color: var(--text); font-size: 12.5px; font-weight: 600; line-height: 1.3; word-break: break-word; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 
 /* Per-user tile sizing (persisted server-side) — small/medium/large.
    Icon SVGs carry an inline width/height from the icon macro, so the
    size overrides need !important to actually win over that. */
 .sensor-tile.size-small .sensor-tile-visual { width: 42px; height: 42px; }
 .sensor-tile.size-small .sensor-tile-visual svg { width: 22px !important; height: 22px !important; }
-.sensor-tile.size-small .sensor-tile-name { font-size: 9.5px; }
+.sensor-tile.size-small .sensor-tile-name { font-size: 10.5px; }
 .sensor-tile.size-small .sensor-tile-badge,
 .sensor-tile.size-small .sensor-tile-status,
 .sensor-tile.size-small .sensor-tile-values,
@@ -1941,7 +1941,7 @@ body.sidebar-collapsed .user-avatar { width: 40px; height: 40px; }
 .sensor-tile.size-large { grid-column: span 2; padding: 20px 14px 18px; }
 .sensor-tile.size-large .sensor-tile-visual { width: 84px; height: 84px; border-radius: 18px; }
 .sensor-tile.size-large .sensor-tile-visual svg { width: 44px !important; height: 44px !important; }
-.sensor-tile.size-large .sensor-tile-name { font-size: 14px; }
+.sensor-tile.size-large .sensor-tile-name { font-size: 15px; }
 .sensor-tile.size-large .sensor-tile-badge,
 .sensor-tile.size-large .sensor-tile-status { font-size: 10px; }
 .sensor-tile.size-large .sensor-tile-values,
