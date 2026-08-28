@@ -1772,8 +1772,7 @@ body.sidebar-collapsed .workspace-button > .icon,
 body.sidebar-collapsed .nav-label,
 body.sidebar-collapsed .nav-item > span:not(.nav-live),
 body.sidebar-collapsed .user-row > span:nth-child(2),
-body.sidebar-collapsed .user-row > .status-dot,
-body.sidebar-collapsed .user-row > .user-logout { display: none; }
+body.sidebar-collapsed .user-row > .status-dot { display: none; }
 body.sidebar-collapsed .workspace-card { margin-top: 15px; padding: 4px; border-radius: 17px; }
 body.sidebar-collapsed .workspace-button { min-height: 52px; padding: 6px; justify-content: center; }
 body.sidebar-collapsed .workspace-avatar { width: 38px; height: 38px; }
@@ -1787,7 +1786,8 @@ body.sidebar-collapsed .nav-item:hover::after,
 body.sidebar-collapsed .nav-item:focus-visible::after { opacity: 1; transform: translate(0, -50%); }
 body.sidebar-collapsed .demo-pill { width: 44px; min-height: 40px; margin: 0 auto 7px; padding: 0; justify-content: center; font-size: 0; }
 body.sidebar-collapsed .demo-pill span { width: 8px; height: 8px; }
-body.sidebar-collapsed .user-row { padding-inline: 0; justify-content: center; }
+body.sidebar-collapsed .user-row { padding-inline: 0; justify-content: center; gap: 6px; }
+body.sidebar-collapsed .user-row .user-logout { margin-left: 0; }
 body.sidebar-collapsed .user-avatar { width: 40px; height: 40px; }
 
 /* Field photography */
