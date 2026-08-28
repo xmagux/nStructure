@@ -2041,31 +2041,6 @@
                 const humidityValue = card.querySelector('[data-sensor-humidity] [data-sensor-reading-value]');
                 if (tempValue) tempValue.textContent = formatReading(sensor.temperature, ' °C');
                 if (humidityValue) humidityValue.textContent = formatReading(sensor.humidity, ' %');
-                const rawParts = [];
-                if (sensor.temperature?.raw != null) rawParts.push(`T: ${sensor.temperature.raw}`);
-                if (sensor.humidity?.raw != null) rawParts.push(`H: ${sensor.humidity.raw}`);
-                const rawElement = card.querySelector('[data-sensor-raw]');
-                if (rawElement) {
-                    rawElement.textContent = rawParts.join(' · ');
-                    rawElement.hidden = rawParts.length === 0;
-                }
-            }
-            const mapTile = document.querySelector(`[data-sensor-map-tile][data-sensor-id="${sensor.id}"]`);
-            if (mapTile) {
-                mapTile.classList.toggle('alarm', alarmActive);
-                const statusElement = mapTile.querySelector('[data-sensor-map-status]');
-                if (statusElement) {
-                    if (alarmActive) {
-                        statusElement.textContent = (sensor.alarm.reasons || [])
-                            .map((reason) => sensorLabels[ALARM_REASON_LABELS[reason]] || reason)
-                            .join(' · ');
-                    } else {
-                        const parts = [];
-                        if (sensor.temperature?.ok) parts.push(`${Number(sensor.temperature.value).toFixed(1)}°C`);
-                        if (sensor.humidity?.ok) parts.push(`${Number(sensor.humidity.value).toFixed(1)}%`);
-                        statusElement.textContent = parts.length ? parts.join(' · ') : (sensorLabels.okLabel || 'OK');
-                    }
-                }
             }
         };
         const refreshSensors = async () => {
@@ -2178,10 +2153,11 @@
                 }
             });
         });
-        document.querySelectorAll('[data-sensor-map-tile]').forEach((tile) => {
-            tile.addEventListener('click', () => {
+        document.querySelectorAll('[data-sensor-card]').forEach((card) => {
+            card.addEventListener('click', (event) => {
+                if (event.target.closest('.sensor-card-actions')) return;
                 document.querySelector('[data-sensor-tab="charts"]')?.click();
-                if (chartsController) chartsController.selectSensor(tile.dataset.sensorId);
+                if (chartsController) chartsController.selectSensor(card.dataset.sensorId);
             });
         });
         window.addEventListener('beforeunload', () => chartsController?.pause());

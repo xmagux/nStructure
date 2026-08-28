@@ -540,7 +540,6 @@ return [
     'sensors.not_configured' => 'OID not configured',
     'sensors.other_model' => 'Other',
     'sensors.tab_list' => 'List',
-    'sensors.tab_map' => 'Map',
     'sensors.tab_charts' => 'Charts',
     'sensors.vm_unreachable' => 'VictoriaMetrics is unreachable — history and charts are unavailable, but live readings still work normally.',
     'sensors.chart_sensor' => 'Sensor',

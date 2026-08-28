@@ -24,7 +24,6 @@
 
 <div class="sensor-tabs" data-sensor-tabs>
     <button class="sensor-tab active" type="button" data-sensor-tab="list">{{ icons.icon('layers', 15) }}{{ t('sensors.tab_list') }}</button>
-    <button class="sensor-tab" type="button" data-sensor-tab="map">{{ icons.icon('grid', 15) }}{{ t('sensors.tab_map') }}</button>
     <button class="sensor-tab" type="button" data-sensor-tab="charts">{{ icons.icon('activity', 15) }}{{ t('sensors.tab_charts') }}</button>
 </div>
 
@@ -45,7 +44,6 @@
                 <div><span class="sensor-reading-label">{{ t('sensors.humidity') }}</span><strong data-sensor-reading-value>{{ t('sensors.pending') }}</strong></div>
             </div>
         </div>
-        <p class="sensor-raw" data-sensor-raw hidden></p>
         <div class="sensor-card-actions">
             <button class="icon-button" type="button" aria-label="{{ t('action.edit') }}" title="{{ t('action.edit') }}" data-sensor-edit-open
                 data-sensor-id="{{ sensor.id }}" data-sensor-name="{{ sensor.name }}" data-sensor-model="{{ sensor.model }}" data-sensor-host="{{ sensor.host }}"
@@ -58,18 +56,6 @@
             <button class="icon-button danger" type="button" aria-label="{{ t('action.delete') }}" title="{{ t('action.delete') }}" data-delete-open data-delete-url="/api/v1/sensors/{{ sensor.id }}" data-delete-name="{{ sensor.name }}">{{ icons.icon('trash', 15) }}</button>
         </div>
     </article>
-    {% else %}
-    <div class="empty-state">{{ t('sensors.empty') }}</div>
-    {% endfor %}
-</section>
-
-<section class="sensor-map" data-sensor-map data-sensor-panel="map" hidden>
-    {% for sensor in sensors %}
-    <div class="sensor-map-tile" data-sensor-map-tile data-sensor-id="{{ sensor.id }}">
-        <div class="sensor-map-icon">{{ icons.icon('server', 26) }}</div>
-        <strong>{{ sensor.name }}</strong>
-        <small data-sensor-map-status>{{ t('sensors.pending') }}</small>
-    </div>
     {% else %}
     <div class="empty-state">{{ t('sensors.empty') }}</div>
     {% endfor %}

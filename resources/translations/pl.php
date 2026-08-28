@@ -540,7 +540,6 @@ return [
     'sensors.not_configured' => 'Nie skonfigurowano OID',
     'sensors.other_model' => 'Inny',
     'sensors.tab_list' => 'Lista',
-    'sensors.tab_map' => 'Mapa',
     'sensors.tab_charts' => 'Wykresy',
     'sensors.vm_unreachable' => 'Brak połączenia z VictoriaMetrics — historia i wykresy są niedostępne, ale bieżące odczyty działają normalnie.',
     'sensors.chart_sensor' => 'Czujnik',
