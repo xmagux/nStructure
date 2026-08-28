@@ -19,14 +19,24 @@ final class FpingClient
      */
     public function pingBatch(array $hosts, int $timeoutMs = 1000): array
     {
+        return $this->collectBatch($this->startBatch($hosts, $timeoutMs));
+    }
+
+    /**
+     * Launches fping and returns immediately without waiting for it to
+     * finish — call collectBatch() to get the results once you're ready
+     * for them. Doing other work (an SNMP round, say) in between means
+     * fping's ~1-3s runs concurrently with that work instead of stacking
+     * on top of it.
+     *
+     * @param string[] $hosts
+     * @return array{process: resource, pipes: array<int, resource>, hosts: string[]}|null
+     */
+    public function startBatch(array $hosts, int $timeoutMs = 1000): ?array
+    {
         $validHosts = array_values(array_unique(array_filter($hosts, $this->isValidHost(...))));
         if ($validHosts === []) {
-            return [];
-        }
-
-        $results = [];
-        foreach ($validHosts as $host) {
-            $results[$host] = ['ok' => false, 'latency_ms' => null];
+            return null;
         }
 
         // fping retries an unreachable host 3 times by default — harmless
@@ -38,14 +48,32 @@ final class FpingClient
         $descriptors = [1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
         $process = @proc_open($command, $descriptors, $pipes);
         if (!is_resource($process)) {
-            return $results;
+            return null;
         }
 
-        $stdout = stream_get_contents($pipes[1]) ?: '';
-        $stderr = stream_get_contents($pipes[2]) ?: '';
-        fclose($pipes[1]);
-        fclose($pipes[2]);
-        proc_close($process);
+        return ['process' => $process, 'pipes' => $pipes, 'hosts' => $validHosts];
+    }
+
+    /**
+     * @param array{process: resource, pipes: array<int, resource>, hosts: string[]}|null $batch
+     * @return array<string, array{ok: bool, latency_ms: float|null}>
+     */
+    public function collectBatch(?array $batch): array
+    {
+        if ($batch === null) {
+            return [];
+        }
+
+        $results = [];
+        foreach ($batch['hosts'] as $host) {
+            $results[$host] = ['ok' => false, 'latency_ms' => null];
+        }
+
+        $stdout = stream_get_contents($batch['pipes'][1]) ?: '';
+        $stderr = stream_get_contents($batch['pipes'][2]) ?: '';
+        fclose($batch['pipes'][1]);
+        fclose($batch['pipes'][2]);
+        proc_close($batch['process']);
 
         foreach (explode("\n", $stdout . "\n" . $stderr) as $line) {
             if (preg_match('/^(\S+)\s+is\s+(alive|unreachable)(?:\s+\(([\d.]+)\s*ms\))?/', trim($line), $matches) === 1

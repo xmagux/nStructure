@@ -126,9 +126,11 @@ final class MySqlSensorRepository implements SensorRepository
      * Polls every given sensor concurrently instead of one at a time: a
      * single batched fping call covers every host that wants a reachability
      * check, and every configured SNMP OID goes out over its own
-     * non-blocking socket under one shared timeout budget. With dozens of
-     * sensors this is the difference between "roughly the slowest single
-     * check" and "the sum of every check, one after another."
+     * non-blocking socket under one shared timeout budget. fping is also
+     * started before the SNMP round and only collected afterwards, so the
+     * two phases run alongside each other rather than one after the other.
+     * With dozens of sensors this is the difference between "roughly the
+     * slowest single check" and "the sum of every check, one after another."
      */
     private function pollBatch(array $sensors): array
     {
@@ -138,7 +140,7 @@ final class MySqlSensorRepository implements SensorRepository
             array_filter($activeSensors, static fn (array $sensor): bool => $sensor['ping_enabled']),
             'host',
         )));
-        $pingResults = $pingHosts !== [] ? $this->fping->pingBatch($pingHosts) : [];
+        $pingBatch = $pingHosts !== [] ? $this->fping->startBatch($pingHosts) : null;
 
         $snmpRequests = [];
         foreach ($activeSensors as $sensor) {
@@ -155,6 +157,7 @@ final class MySqlSensorRepository implements SensorRepository
             }
         }
         $snmpResults = $snmpRequests !== [] ? $this->snmp->getMany($snmpRequests) : [];
+        $pingResults = $this->fping->collectBatch($pingBatch);
 
         return array_map(function (array $sensor) use ($pingResults, $snmpResults): array {
             if (!$sensor['monitoring_enabled']) {
