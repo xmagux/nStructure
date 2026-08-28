@@ -2015,15 +2015,18 @@
             ping: 'alarmPingLabel',
             temperature: 'alarmTemperatureLabel',
             humidity: 'alarmHumidityLabel',
+            inputs: 'alarmInputsLabel',
         };
         const applySensorReadings = (sensor) => {
             const card = sensorGrid.querySelector(`[data-sensor-card][data-sensor-id="${sensor.id}"]`);
             if (!card) return;
             const disabled = sensor.monitoring_enabled === false;
             const reasons = sensor.alarm?.reasons || [];
+            const inputs = sensor.inputs || [];
             const alarmActive = !disabled && sensor.alarm?.active === true;
             const pingDown = !disabled && sensor.ping != null && !sensor.ping.ok;
-            const noData = !disabled && !sensor.temperature?.ok && !sensor.humidity?.ok;
+            const hasInputData = inputs.some((input) => input.last_alarm_state != null);
+            const noData = !disabled && !sensor.temperature?.ok && !sensor.humidity?.ok && !hasInputData;
 
             card.classList.toggle('sensor-tile-disabled', disabled);
             card.classList.toggle('alarm', alarmActive);
@@ -2054,6 +2057,12 @@
                 humidityValue.textContent = !disabled && sensor.humidity?.ok ? `${Number(sensor.humidity.value).toFixed(1)}%` : '';
                 humidityValue.classList.toggle('value-alarm', reasons.includes('humidity'));
             }
+
+            const groupAlarm = (groupName) => !disabled && inputs.some((input) => input.group === groupName && input.last_alarm_state === 2);
+            const miastoBadge = card.querySelector('[data-input-group="miasto"]');
+            if (miastoBadge) miastoBadge.classList.toggle('alarm', groupAlarm('miasto'));
+            const agregatBadge = card.querySelector('[data-input-group="agregat"]');
+            if (agregatBadge) agregatBadge.classList.toggle('agregat-alarm', groupAlarm('agregat'));
         };
         const refreshSensors = async () => {
             try {
@@ -2181,9 +2190,53 @@
                 }
             });
         });
+        const sensorInputsModal = document.querySelector('#sensor-inputs-modal');
+        document.querySelectorAll('[data-sensor-inputs-close]').forEach((button) => button.addEventListener('click', () => sensorInputsModal?.close()));
+        sensorInputsModal?.addEventListener('click', (event) => {
+            if (event.target === sensorInputsModal) sensorInputsModal.close();
+        });
+        const renderSensorInputs = (inputs) => {
+            const body = sensorInputsModal?.querySelector('[data-sensor-inputs-body]');
+            if (!body) return;
+            const labels = sensorInputsModal.dataset;
+            body.replaceChildren();
+            inputs.forEach((input) => {
+                const row = document.createElement('div');
+                row.className = 'sensor-inputs-row';
+                const label = document.createElement('span');
+                label.className = 'sensor-inputs-row-label';
+                label.textContent = input.label;
+                const status = document.createElement('span');
+                const state = input.last_alarm_state;
+                status.className = 'sensor-inputs-row-status ' + (state === 2 ? 'alarm' : state === 1 ? 'ok' : 'unknown');
+                status.textContent = state === 2 ? labels.inputAlarmLabel : state === 1 ? labels.inputOkLabel : labels.inputUnknownLabel;
+                row.append(label, status);
+                body.appendChild(row);
+            });
+        };
+        const openSensorInputsModal = async (sensorId, sensorName) => {
+            if (!sensorInputsModal) return;
+            const nameEl = sensorInputsModal.querySelector('[data-sensor-inputs-name]');
+            if (nameEl) nameEl.textContent = sensorName;
+            renderSensorInputs([]);
+            sensorInputsModal.showModal();
+            try {
+                const response = await fetch(`/api/v1/sensors/${sensorId}/poll`, { headers: { Accept: 'application/json' } });
+                const payload = await response.json();
+                renderSensorInputs(payload.data?.inputs || []);
+                applySensorReadings(payload.data);
+            } catch (error) {
+                // modal stays open with an empty list; nothing more useful to show
+            }
+        };
+
         document.querySelectorAll('[data-sensor-card]').forEach((card) => {
             card.addEventListener('click', (event) => {
                 if (event.target.closest('.sensor-tile-actions')) return;
+                if (card.dataset.sensorHasInputs === '1') {
+                    openSensorInputsModal(card.dataset.sensorId, card.querySelector('.sensor-tile-name')?.textContent || '');
+                    return;
+                }
                 document.querySelector('[data-sensor-tab="charts"]')?.click();
                 if (chartsController) chartsController.selectSensor(card.dataset.sensorId);
             });

@@ -1929,6 +1929,22 @@ body.sidebar-collapsed .user-avatar { width: 40px; height: 40px; }
 .sensor-tile-values span:empty { display: none; }
 .sensor-tile-values span[data-sensor-value-temperature]:not(:empty) + span[data-sensor-value-humidity]:not(:empty)::before { content: ' · '; }
 .sensor-tile-values .value-alarm { color: var(--amber); font-weight: 700; }
+/* Devices with dry-contact inputs (grid/generator presence, etc.) instead
+   of temperature/humidity — one small badge per input group, red for the
+   more critical group (grid power), amber for the other (generator). */
+.sensor-tile-input-groups { display: flex; gap: 4px; width: 100%; min-height: 13px; }
+.sensor-tile-input-group { flex: 1; overflow: hidden; padding: 1px 4px; border-radius: 5px; color: var(--text-muted); background: var(--surface-2); font-size: 8.5px; font-weight: 700; line-height: 13px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+.sensor-tile-input-group.alarm { color: #fff; background: var(--red); }
+.sensor-tile-input-group.agregat-alarm { color: #fff; background: var(--amber); }
+
+/* Digital-inputs detail modal */
+.sensor-inputs-table { margin-top: 16px; display: flex; flex-direction: column; gap: 6px; max-height: 60vh; overflow-y: auto; }
+.sensor-inputs-row { padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); }
+.sensor-inputs-row-label { color: var(--text); font-size: 13px; font-weight: 600; }
+.sensor-inputs-row-status { padding: 3px 10px; border-radius: 999px; color: var(--text-muted); background: var(--surface); font-size: 11px; font-weight: 700; }
+.sensor-inputs-row-status.ok { color: var(--green); background: color-mix(in srgb, var(--green) 14%, var(--surface)); }
+.sensor-inputs-row-status.alarm { color: #fff; background: var(--red); }
+.sensor-inputs-row-status.unknown { color: var(--text-muted); }
 .sensor-tile-actions { position: absolute; top: 6px; right: 6px; display: flex; gap: 3px; opacity: 0; transition: opacity .15s; }
 .sensor-tile:hover .sensor-tile-actions { opacity: 1; }
 .sensor-tile-actions .icon-button { width: 22px; height: 22px; border-radius: 6px; }

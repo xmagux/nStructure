@@ -24,7 +24,7 @@ final class MySqlSensorRepository implements SensorRepository
         $statement = $this->pdo->query(
             'SELECT * FROM environmental_sensors WHERE archived_at IS NULL ORDER BY name',
         );
-        return array_map($this->normalize(...), $statement->fetchAll());
+        return $this->attachInputs(array_map($this->normalize(...), $statement->fetchAll()));
     }
 
     public function find(int $id): ?array
@@ -34,7 +34,50 @@ final class MySqlSensorRepository implements SensorRepository
         );
         $statement->execute(['id' => $id]);
         $row = $statement->fetch();
-        return is_array($row) ? $this->normalize($row) : null;
+        if (!is_array($row)) {
+            return null;
+        }
+        return $this->attachInputs([$this->normalize($row)])[0];
+    }
+
+    /**
+     * Attaches each sensor's digital dry-contact inputs (a device like the
+     * HWg-PWR, which has none of its own temperature/humidity but reports
+     * several labeled alarm-state contacts instead — grid power presence,
+     * generator presence, etc.) — empty array for sensors that have none.
+     */
+    private function attachInputs(array $sensors): array
+    {
+        if ($sensors === []) {
+            return $sensors;
+        }
+        $ids = array_column($sensors, 'id');
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $statement = $this->pdo->prepare(
+            "SELECT id, sensor_id, position, label, group_name, alarm_state_oid, last_alarm_state, last_read_at
+             FROM environmental_sensor_inputs WHERE sensor_id IN ($placeholders) ORDER BY sensor_id, position",
+        );
+        $statement->execute($ids);
+
+        $bySensor = [];
+        foreach ($statement->fetchAll() as $row) {
+            $bySensor[(int) $row['sensor_id']][] = [
+                'id' => (int) $row['id'],
+                'position' => (int) $row['position'],
+                'label' => $row['label'],
+                'group' => $row['group_name'],
+                'alarm_state_oid' => $row['alarm_state_oid'],
+                'last_alarm_state' => $row['last_alarm_state'] !== null ? (int) $row['last_alarm_state'] : null,
+                'last_read_at' => $row['last_read_at'],
+            ];
+        }
+
+        foreach ($sensors as &$sensor) {
+            $sensor['inputs'] = $bySensor[$sensor['id']] ?? [];
+        }
+        unset($sensor);
+
+        return $sensors;
     }
 
     public function create(array $input): array
@@ -155,6 +198,16 @@ final class MySqlSensorRepository implements SensorRepository
                     ];
                 }
             }
+            foreach ($sensor['inputs'] as $input) {
+                if (($input['alarm_state_oid'] ?? '') !== '') {
+                    $snmpRequests['input:' . $input['id']] = [
+                        'host' => (string) $sensor['host'],
+                        'port' => (int) $sensor['snmp_port'],
+                        'community' => (string) $sensor['snmp_community'],
+                        'oid' => $input['alarm_state_oid'],
+                    ];
+                }
+            }
         }
         $snmpResults = $snmpRequests !== [] ? $this->snmp->getMany($snmpRequests) : [];
         $pingResults = $this->fping->collectBatch($pingBatch);
@@ -172,6 +225,15 @@ final class MySqlSensorRepository implements SensorRepository
             $sensor['temperature'] = $this->interpretSnmpResult($sensor, 'temperature_oid', 'temperature_divisor', $snmpResults[$sensor['id'] . ':temperature_oid'] ?? null);
             $sensor['humidity'] = $this->interpretSnmpResult($sensor, 'humidity_oid', 'humidity_divisor', $snmpResults[$sensor['id'] . ':humidity_oid'] ?? null);
 
+            foreach ($sensor['inputs'] as &$input) {
+                $result = $snmpResults['input:' . $input['id']] ?? null;
+                if ($result !== null && $result['ok']) {
+                    $input['last_alarm_state'] = (int) round((float) $result['value']);
+                    $this->cacheInputReading($input['id'], $input['last_alarm_state']);
+                }
+            }
+            unset($input);
+
             $reasons = [];
             if ($sensor['ping'] !== null && !$sensor['ping']['ok']) {
                 $reasons[] = 'ping';
@@ -182,12 +244,23 @@ final class MySqlSensorRepository implements SensorRepository
             if ($sensor['humidity']['ok'] && $this->outOfRange($sensor['humidity']['value'], $sensor['humidity_min'], $sensor['humidity_max'])) {
                 $reasons[] = 'humidity';
             }
+            if (array_filter($sensor['inputs'], static fn (array $i): bool => $i['last_alarm_state'] === 2) !== []) {
+                $reasons[] = 'inputs';
+            }
             $sensor['alarm'] = $reasons !== [] ? ['active' => true, 'reasons' => $reasons] : ['active' => false, 'reasons' => []];
 
             $this->cacheReading($sensor);
 
             return $sensor;
         }, $sensors);
+    }
+
+    private function cacheInputReading(int $inputId, int $alarmState): void
+    {
+        $statement = $this->pdo->prepare(
+            'UPDATE environmental_sensor_inputs SET last_alarm_state = :state, last_read_at = CURRENT_TIMESTAMP WHERE id = :id',
+        );
+        $statement->execute(['id' => $inputId, 'state' => $alarmState]);
     }
 
     /**

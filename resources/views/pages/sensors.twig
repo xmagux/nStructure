@@ -27,14 +27,19 @@
     <button class="sensor-tab" type="button" data-sensor-tab="charts">{{ icons.icon('activity', 15) }}{{ t('sensors.tab_charts') }}</button>
 </div>
 
-<section class="sensor-grid" data-sensor-grid data-sensor-panel="list" data-ping-down-label="{{ t('sensors.ping_down') }}" data-alarm-ping-label="{{ t('sensors.alarm_ping') }}" data-alarm-temperature-label="{{ t('sensors.alarm_temperature') }}" data-alarm-humidity-label="{{ t('sensors.alarm_humidity') }}">
+<section class="sensor-grid" data-sensor-grid data-sensor-panel="list" data-ping-down-label="{{ t('sensors.ping_down') }}" data-alarm-ping-label="{{ t('sensors.alarm_ping') }}" data-alarm-temperature-label="{{ t('sensors.alarm_temperature') }}" data-alarm-humidity-label="{{ t('sensors.alarm_humidity') }}" data-alarm-inputs-label="{{ t('sensors.alarm_inputs') }}" data-input-ok-label="{{ t('sensors.input_ok') }}" data-input-alarm-label="{{ t('sensors.input_alarm') }}" data-input-unknown-label="{{ t('sensors.input_unknown') }}">
     {% for sensor in sensors %}
     {% set temp_alarm = sensor.last_temperature is not null and ((sensor.temperature_min is not null and sensor.last_temperature < sensor.temperature_min) or (sensor.temperature_max is not null and sensor.last_temperature > sensor.temperature_max)) %}
     {% set humidity_alarm = sensor.last_humidity is not null and ((sensor.humidity_min is not null and sensor.last_humidity < sensor.humidity_min) or (sensor.humidity_max is not null and sensor.last_humidity > sensor.humidity_max)) %}
     {% set is_down = sensor.monitoring_enabled and sensor.last_ping_ok is not null and not sensor.last_ping_ok %}
-    {% set is_alarm = sensor.monitoring_enabled and (temp_alarm or humidity_alarm or is_down) %}
-    {% set is_no_data = sensor.monitoring_enabled and sensor.last_temperature is null and sensor.last_humidity is null %}
-    <article class="card sensor-tile{{ is_alarm ? ' alarm' : '' }}{{ is_down ? ' sensor-tile-down' : '' }}{{ not sensor.monitoring_enabled ? ' sensor-tile-disabled' : (is_no_data ? ' sensor-tile-no-data' : '') }}" data-sensor-card data-sensor-id="{{ sensor.id }}" title="{{ sensor.name }} · {{ sensor.model ?: '—' }} · {{ sensor.host }}">
+    {% set miasto_inputs = sensor.inputs|filter(i => i.group == 'miasto') %}
+    {% set agregat_inputs = sensor.inputs|filter(i => i.group == 'agregat') %}
+    {% set miasto_alarm = miasto_inputs|filter(i => i.last_alarm_state == 2)|length > 0 %}
+    {% set agregat_alarm = agregat_inputs|filter(i => i.last_alarm_state == 2)|length > 0 %}
+    {% set has_input_data = sensor.inputs|filter(i => i.last_alarm_state is not null)|length > 0 %}
+    {% set is_alarm = sensor.monitoring_enabled and (temp_alarm or humidity_alarm or is_down or miasto_alarm) %}
+    {% set is_no_data = sensor.monitoring_enabled and sensor.last_temperature is null and sensor.last_humidity is null and not has_input_data %}
+    <article class="card sensor-tile{{ is_alarm ? ' alarm' : '' }}{{ is_down ? ' sensor-tile-down' : '' }}{{ not sensor.monitoring_enabled ? ' sensor-tile-disabled' : (is_no_data ? ' sensor-tile-no-data' : '') }}" data-sensor-card data-sensor-id="{{ sensor.id }}" data-sensor-has-inputs="{{ sensor.inputs|length ? '1' : '0' }}" title="{{ sensor.name }} · {{ sensor.model ?: '—' }} · {{ sensor.host }}">
         <div class="sensor-tile-actions">
             <button class="icon-button" type="button" aria-label="{{ t('action.edit') }}" title="{{ t('action.edit') }}" data-sensor-edit-open
                 data-sensor-id="{{ sensor.id }}" data-sensor-name="{{ sensor.name }}" data-sensor-model="{{ sensor.model }}" data-sensor-icon="{{ sensor.icon ?: 'sensor-server' }}" data-sensor-host="{{ sensor.host }}"
@@ -50,7 +55,14 @@
         <div class="sensor-tile-visual">{{ icons.icon(sensor.icon ?: 'sensor-server', 26) }}</div>
         <span class="sensor-tile-status{{ is_down ? ' down' : '' }}" data-sensor-protocol>SNMP</span>
         <strong class="sensor-tile-name">{{ sensor.name }}</strong>
+        {% if sensor.inputs|length %}
+        <div class="sensor-tile-input-groups" data-sensor-input-groups>
+            {% if miasto_inputs|length %}<span class="sensor-tile-input-group{{ miasto_alarm ? ' alarm' : '' }}" data-input-group="miasto">{{ t('sensors.input_group_miasto') }}</span>{% endif %}
+            {% if agregat_inputs|length %}<span class="sensor-tile-input-group{{ agregat_alarm ? ' agregat-alarm' : '' }}" data-input-group="agregat">{{ t('sensors.input_group_agregat') }}</span>{% endif %}
+        </div>
+        {% else %}
         <small class="sensor-tile-values" data-sensor-values><span class="{{ temp_alarm ? 'value-alarm' : '' }}" data-sensor-value-temperature>{{ sensor.last_temperature is not null ? sensor.last_temperature|number_format(1) ~ '°C' : '' }}</span><span class="{{ humidity_alarm ? 'value-alarm' : '' }}" data-sensor-value-humidity>{{ sensor.last_humidity is not null ? sensor.last_humidity|number_format(1) ~ '%' : '' }}</span></small>
+        {% endif %}
     </article>
     {% else %}
     <div class="empty-state">{{ t('sensors.empty') }}</div>
@@ -130,5 +142,12 @@
         <p class="form-error" data-form-error hidden></p>
         <div class="modal-actions"><button class="button button-ghost" type="button" data-sensor-edit-close>{{ t('action.cancel') }}</button><button class="button button-primary" type="submit">{{ icons.icon('save') }}{{ t('action.save') }}</button></div>
     </form>
+</dialog>
+
+<dialog class="modal entity-modal" id="sensor-inputs-modal" data-input-ok-label="{{ t('sensors.input_ok') }}" data-input-alarm-label="{{ t('sensors.input_alarm') }}" data-input-unknown-label="{{ t('sensors.input_unknown') }}">
+    <div class="modal-card">
+        <div class="modal-head"><div><span class="eyebrow">{{ t('modal.sensor_inputs_title') }}</span><h2 data-sensor-inputs-name></h2></div><button class="icon-button" type="button" data-sensor-inputs-close aria-label="{{ t('action.close') }}">{{ icons.icon('close') }}</button></div>
+        <div class="sensor-inputs-table" data-sensor-inputs-body></div>
+    </div>
 </dialog>
 {% endblock %}
