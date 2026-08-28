@@ -80,6 +80,7 @@
     <div class="sensor-charts-controls">
         <label class="field"><span>{{ t('sensors.chart_sensor') }}</span><select data-chart-sensor-select>{% for sensor in sensors %}<option value="{{ sensor.id }}">{{ sensor.name }}</option>{% endfor %}</select></label>
         <div class="sensor-range-buttons" data-chart-range-buttons>
+            <button class="sensor-range-btn" type="button" data-chart-range="5m">5m</button>
             <button class="sensor-range-btn" type="button" data-chart-range="1h">1h</button>
             <button class="sensor-range-btn" type="button" data-chart-range="6h">6h</button>
             <button class="sensor-range-btn active" type="button" data-chart-range="24h">24h</button>

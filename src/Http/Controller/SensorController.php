@@ -28,6 +28,7 @@ final readonly class SensorController
     ];
 
     private const RANGE_SECONDS = [
+        '5m' => 300,
         '1h' => 3600,
         '6h' => 21600,
         '24h' => 86400,

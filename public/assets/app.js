@@ -2213,11 +2213,27 @@
         const REFRESH_INTERVAL_MS = 2000;
 
         const renderInstance = (instance) => {
+            // dataZoom start/end are deliberately omitted below so a user's
+            // interactive zoom/pan survives the next call — this function
+            // runs on every incremental refresh (every couple seconds), and
+            // specifying start/end here would snap the view back each time.
             instance.chart.setOption({
-                grid: { left: 48, right: 16, top: 16, bottom: 32 },
+                grid: { left: 48, right: 16, top: 16, bottom: 56 },
                 tooltip: { trigger: 'axis', valueFormatter: (value) => `${Number(value).toFixed(1)}${instance.config.unit}` },
+                toolbox: {
+                    show: true,
+                    right: 8,
+                    top: 0,
+                    feature: {
+                        dataZoom: { yAxisIndex: 'none', title: { zoom: 'Zoom', back: 'Reset' } },
+                    },
+                },
                 xAxis: { type: 'time' },
                 yAxis: { type: 'value', axisLabel: { formatter: `{value}${instance.config.unit}` } },
+                dataZoom: [
+                    { type: 'inside', xAxisIndex: 0 },
+                    { type: 'slider', xAxisIndex: 0, height: 18, bottom: 4 },
+                ],
                 series: [{
                     type: 'line',
                     showSymbol: false,
@@ -2250,7 +2266,7 @@
         };
 
         const rangeWindowMs = () => {
-            const seconds = { '1h': 3600, '6h': 21600, '24h': 86400, '7d': 604800, '30d': 2592000 }[currentRange] || 86400;
+            const seconds = { '5m': 300, '1h': 3600, '6h': 21600, '24h': 86400, '7d': 604800, '30d': 2592000 }[currentRange] || 86400;
             return seconds * 1000;
         };
 
@@ -2259,14 +2275,21 @@
             if (!sensorId) return;
             const cutoff = Date.now() - rangeWindowMs();
             await Promise.all(instances.map(async (instance) => {
-                if (!instance.lastTimestampMs) return;
+                // No prior data (e.g. this series had nothing yet on the last full
+                // load) — re-fetch the whole range instead of skipping forever, so
+                // a chart that starts empty self-heals once data shows up.
+                const hasBaseline = Boolean(instance.lastTimestampMs);
+                const url = hasBaseline
+                    ? `/api/v1/sensors/${sensorId}/history?metric=${instance.config.metric}&range=${currentRange}&since=${instance.lastTimestampMs}`
+                    : `/api/v1/sensors/${sensorId}/history?metric=${instance.config.metric}&range=${currentRange}`;
                 try {
-                    const response = await fetch(`/api/v1/sensors/${sensorId}/history?metric=${instance.config.metric}&range=${currentRange}&since=${instance.lastTimestampMs}`, { headers: { Accept: 'application/json' } });
+                    const response = await fetch(url, { headers: { Accept: 'application/json' } });
                     const payload = await response.json();
-                    const points = (payload.data || []).filter((point) => point.timestampMs > instance.lastTimestampMs);
+                    const points = hasBaseline
+                        ? (payload.data || []).filter((point) => point.timestampMs > instance.lastTimestampMs)
+                        : (payload.data || []);
                     if (!points.length) return;
-                    instance.data = instance.data
-                        .concat(points.map((point) => [point.timestampMs, point.value]))
+                    instance.data = (hasBaseline ? instance.data.concat(points.map((point) => [point.timestampMs, point.value])) : points.map((point) => [point.timestampMs, point.value]))
                         .filter((pair) => pair[0] >= cutoff);
                     instance.lastTimestampMs = points[points.length - 1].timestampMs;
                     renderInstance(instance);
