@@ -39,6 +39,7 @@ $fastIntervalSeconds = max(1, (int) $env('SENSOR_DAEMON_FAST_INTERVAL', 5));
 $pingDefaultIntervalSeconds = max(1, (int) $env('SENSOR_DAEMON_PING_DEFAULT_INTERVAL', 5));
 $pingFastIntervalSeconds = max(1, (int) $env('SENSOR_DAEMON_PING_FAST_INTERVAL', 2));
 $keepaliveSeconds = max(1, (int) $env('SENSOR_DAEMON_KEEPALIVE_SECONDS', 3600));
+$watchedKeepaliveSeconds = max(1, (int) $env('SENSOR_DAEMON_WATCHED_KEEPALIVE_SECONDS', 5));
 $temperatureHysteresis = (float) $env('SENSOR_DAEMON_TEMP_HYSTERESIS', 0.2);
 $humidityHysteresis = (float) $env('SENSOR_DAEMON_HUMIDITY_HYSTERESIS', 0.5);
 $latencyHysteresis = (float) $env('SENSOR_DAEMON_LATENCY_HYSTERESIS', 1.0);
@@ -114,6 +115,7 @@ fwrite(STDOUT, sprintf("[%s] sensors-daemon started (pid %d, max %d iterations)\
 
 $nextSnmpDueAt = [];
 $nextPingDueAt = [];
+$previouslyActiveSensorIds = [];
 $iteration = 0;
 $sensorsReloadedAt = 0;
 $sensors = [];
@@ -135,6 +137,13 @@ while ($iteration < $maxIterations && !$shouldExit) {
     $pingDueSensors = [];
     foreach ($sensors as $sensor) {
         $isActive = in_array($sensor['id'], $activeSensorIds, true);
+        // A sensor that just became watched shouldn't wait out whatever
+        // slow-cadence due time was already scheduled from before — jump
+        // the queue so its chart starts filling in immediately.
+        if ($isActive && !in_array($sensor['id'], $previouslyActiveSensorIds, true)) {
+            $nextSnmpDueAt[$sensor['id']] = 0;
+            $nextPingDueAt[$sensor['id']] = 0;
+        }
 
         $snmpInterval = $isActive ? $fastIntervalSeconds : $defaultIntervalSeconds;
         if (($nextSnmpDueAt[$sensor['id']] ?? 0) <= $now) {
@@ -150,6 +159,7 @@ while ($iteration < $maxIterations && !$shouldExit) {
             }
         }
     }
+    $previouslyActiveSensorIds = $activeSensorIds;
 
     if ($snmpDueSensors !== [] || $pingDueSensors !== []) {
         $builder = new InfluxLineProtocolBuilder();
@@ -161,16 +171,17 @@ while ($iteration < $maxIterations && !$shouldExit) {
 
             foreach ($pingDueSensors as $sensor) {
                 $tags = ['sensor_id' => (string) $sensor['id'], 'sensor' => $sensor['name']];
+                $keepalive = in_array($sensor['id'], $activeSensorIds, true) ? $watchedKeepaliveSeconds : $keepaliveSeconds;
                 $ping = $pingResults[$sensor['host']] ?? ['ok' => false, 'latency_ms' => null];
                 $upValue = $ping['ok'] ? 1.0 : 0.0;
                 $upKey = 'ping_up:' . $sensor['id'];
-                if ($seriesState->shouldSend($upKey, $upValue, 0.0, $keepaliveSeconds, $now)) {
+                if ($seriesState->shouldSend($upKey, $upValue, 0.0, $keepalive, $now)) {
                     $builder->addPoint('sensor_ping_up', $tags, $upValue, $timestampMs);
                     $seriesState->recordSent($upKey, $upValue, $now);
                 }
                 if ($ping['ok'] && $ping['latency_ms'] !== null) {
                     $latencyKey = 'ping_latency:' . $sensor['id'];
-                    if ($seriesState->shouldSend($latencyKey, $ping['latency_ms'], $latencyHysteresis, $keepaliveSeconds, $now)) {
+                    if ($seriesState->shouldSend($latencyKey, $ping['latency_ms'], $latencyHysteresis, $keepalive, $now)) {
                         $builder->addPoint('sensor_ping_latency_ms', $tags, $ping['latency_ms'], $timestampMs);
                         $seriesState->recordSent($latencyKey, $ping['latency_ms'], $now);
                     }
@@ -180,12 +191,13 @@ while ($iteration < $maxIterations && !$shouldExit) {
 
         foreach ($snmpDueSensors as $sensor) {
             $tags = ['sensor_id' => (string) $sensor['id'], 'sensor' => $sensor['name']];
+            $keepalive = in_array($sensor['id'], $activeSensorIds, true) ? $watchedKeepaliveSeconds : $keepaliveSeconds;
 
             if ($sensor['temperature_oid'] !== null && $sensor['temperature_oid'] !== '') {
                 $result = $snmp->get($sensor['host'], $sensor['snmp_port'], $sensor['snmp_community'], $sensor['temperature_oid'], $snmpTimeoutMicroseconds, $snmpRetries);
                 $probeUp = $result['ok'] ? 1.0 : 0.0;
                 $probeKey = 'temp_probe:' . $sensor['id'];
-                if ($seriesState->shouldSend($probeKey, $probeUp, 0.0, $keepaliveSeconds, $now)) {
+                if ($seriesState->shouldSend($probeKey, $probeUp, 0.0, $keepalive, $now)) {
                     $builder->addPoint('sensor_temperature_probe_up', $tags, $probeUp, $timestampMs);
                     $seriesState->recordSent($probeKey, $probeUp, $now);
                 }
@@ -193,7 +205,7 @@ while ($iteration < $maxIterations && !$shouldExit) {
                     $value = $scaleValue((string) $result['value'], $sensor['temperature_divisor']);
                     if ($value !== null) {
                         $valueKey = 'temp:' . $sensor['id'];
-                        if ($seriesState->shouldSend($valueKey, $value, $temperatureHysteresis, $keepaliveSeconds, $now)) {
+                        if ($seriesState->shouldSend($valueKey, $value, $temperatureHysteresis, $keepalive, $now)) {
                             $builder->addPoint('sensor_temperature_celsius', $tags, $value, $timestampMs);
                             $seriesState->recordSent($valueKey, $value, $now);
                         }
@@ -205,7 +217,7 @@ while ($iteration < $maxIterations && !$shouldExit) {
                 $result = $snmp->get($sensor['host'], $sensor['snmp_port'], $sensor['snmp_community'], $sensor['humidity_oid'], $snmpTimeoutMicroseconds, $snmpRetries);
                 $probeUp = $result['ok'] ? 1.0 : 0.0;
                 $probeKey = 'humidity_probe:' . $sensor['id'];
-                if ($seriesState->shouldSend($probeKey, $probeUp, 0.0, $keepaliveSeconds, $now)) {
+                if ($seriesState->shouldSend($probeKey, $probeUp, 0.0, $keepalive, $now)) {
                     $builder->addPoint('sensor_humidity_probe_up', $tags, $probeUp, $timestampMs);
                     $seriesState->recordSent($probeKey, $probeUp, $now);
                 }
@@ -213,7 +225,7 @@ while ($iteration < $maxIterations && !$shouldExit) {
                     $value = $scaleValue((string) $result['value'], $sensor['humidity_divisor']);
                     if ($value !== null) {
                         $valueKey = 'humidity:' . $sensor['id'];
-                        if ($seriesState->shouldSend($valueKey, $value, $humidityHysteresis, $keepaliveSeconds, $now)) {
+                        if ($seriesState->shouldSend($valueKey, $value, $humidityHysteresis, $keepalive, $now)) {
                             $builder->addPoint('sensor_humidity_percent', $tags, $value, $timestampMs);
                             $seriesState->recordSent($valueKey, $value, $now);
                         }
