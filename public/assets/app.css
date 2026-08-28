@@ -1904,29 +1904,40 @@ body.sidebar-collapsed .user-avatar { width: 40px; height: 40px; }
 /* Environmental sensors (hidden module) */
 .checkbox-field { flex-direction: row !important; align-items: center; gap: 10px !important; }
 .checkbox-field input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--blue); }
-.sensor-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
-.sensor-card { padding: 12px; display: flex; flex-direction: column; gap: 8px; cursor: pointer; transition: border-color .15s, box-shadow .15s, transform .15s; }
+.sensor-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 8px; }
+.sensor-card { padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; cursor: pointer; transition: border-color .15s, box-shadow .15s, transform .15s; }
 .sensor-card:hover { border-color: var(--blue); box-shadow: 0 6px 18px color-mix(in srgb, var(--blue) 14%, transparent); transform: translateY(-1px); }
-.sensor-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
-.sensor-card-head strong { display: block; color: var(--text); font-size: 13px; }
-.sensor-card-head small { color: var(--text-muted); font-size: 11px; }
-.sensor-ping-badge { flex: 0 0 auto; padding: 3px 8px; display: flex; align-items: center; gap: 4px; border-radius: 999px; color: var(--text-muted); background: var(--surface-2); font-size: 10px; font-weight: 600; }
+.sensor-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; }
+.sensor-card-head strong { display: block; overflow: hidden; color: var(--text); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.sensor-card-head small { display: block; overflow: hidden; color: var(--text-muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.sensor-ping-badge { flex: 0 0 auto; padding: 2px 6px; display: flex; align-items: center; gap: 3px; border-radius: 999px; color: var(--text-muted); background: var(--surface-2); font-size: 9px; font-weight: 600; }
 .sensor-ping-badge.ping-up { color: var(--green); background: color-mix(in srgb, var(--green) 14%, var(--surface-2)); }
 .sensor-ping-badge.ping-down { color: var(--red); background: color-mix(in srgb, var(--red) 14%, var(--surface-2)); }
-.sensor-readings { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.sensor-reading { padding: 6px 8px; display: flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); }
+.sensor-readings { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.sensor-reading { padding: 4px 6px; display: flex; align-items: center; gap: 5px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); }
 .sensor-reading-icon { color: var(--blue); }
-.sensor-reading-icon svg { width: 14px; height: 14px; }
-.sensor-reading-label { display: block; color: var(--text-muted); font-size: 10px; }
-.sensor-reading strong { font-size: 13px; }
+.sensor-reading-icon svg { width: 12px; height: 12px; }
+.sensor-reading-label { display: block; color: var(--text-muted); font-size: 9px; }
+.sensor-reading strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.sensor-reading strong.reading-warning { color: var(--amber); font-size: 13px; cursor: help; }
 .sensor-card-actions { display: flex; justify-content: flex-end; gap: 4px; }
 
 /* Sensor tabs */
-.sensor-tabs { margin: 4px 0 16px; display: inline-flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); }
+.sensor-tabs { margin: 4px 0 10px; display: inline-flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); }
 .sensor-tab { padding: 8px 16px; display: inline-flex; align-items: center; gap: 6px; border: 0; border-radius: 999px; color: var(--text-muted); background: transparent; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: color .15s, background .15s; }
 .sensor-tab:hover { color: var(--text); }
 .sensor-tab.active { color: #fff; background: var(--blue); }
 .sensor-card.alarm { border-color: var(--red); box-shadow: 0 0 0 1px var(--red), 0 10px 26px color-mix(in srgb, var(--red) 22%, transparent); }
+
+/* Sensors page: trade the usual page chrome for room to show many cards
+   at once without scrolling — the search command palette is still
+   reachable via the ⌘K shortcut even though its trigger button is hidden. */
+.page-sensors .page-content { padding-top: 18px; padding-bottom: 18px; }
+.page-sensors .page-hero { margin-bottom: 10px; gap: 12px; }
+.page-sensors .page-hero .eyebrow, .page-sensors .page-hero p { display: none; }
+.page-sensors .page-hero h1 { margin-top: 0; font-size: 17px; }
+.page-sensors .hero-actions .button { padding: 7px 12px; font-size: 12px; }
+.page-sensors .search-trigger { display: none; }
 
 /* Sensor charts tab */
 .sensor-charts-controls { margin-bottom: 14px; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px; }

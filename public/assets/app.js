@@ -2011,10 +2011,26 @@
     const sensorGrid = document.querySelector('[data-sensor-grid]');
     if (sensorGrid) {
         const sensorLabels = sensorGrid.dataset;
-        const formatReading = (reading, unit) => {
-            if (!reading || !reading.configured) return sensorLabels.notConfiguredLabel || '—';
-            if (!reading.ok) return reading.error || '—';
-            return `${Number(reading.value).toFixed(1)}${unit}`;
+        // Long backend error strings ("Nie skonfigurowano OID", raw SNMP
+        // failure messages, …) don't fit a small card — show a compact
+        // marker instead and put the real message in the title tooltip.
+        const applyReading = (element, reading, unit) => {
+            if (!element) return;
+            if (!reading || !reading.configured) {
+                element.textContent = '—';
+                element.title = sensorLabels.notConfiguredLabel || '';
+                element.classList.remove('reading-warning');
+                return;
+            }
+            if (!reading.ok) {
+                element.textContent = '⚠';
+                element.title = reading.error || '';
+                element.classList.add('reading-warning');
+                return;
+            }
+            element.textContent = `${Number(reading.value).toFixed(1)}${unit}`;
+            element.title = '';
+            element.classList.remove('reading-warning');
         };
         const ALARM_REASON_LABELS = {
             ping: 'alarmPingLabel',
@@ -2039,8 +2055,8 @@
                 }
                 const tempValue = card.querySelector('[data-sensor-temperature] [data-sensor-reading-value]');
                 const humidityValue = card.querySelector('[data-sensor-humidity] [data-sensor-reading-value]');
-                if (tempValue) tempValue.textContent = formatReading(sensor.temperature, ' °C');
-                if (humidityValue) humidityValue.textContent = formatReading(sensor.humidity, ' %');
+                applyReading(tempValue, sensor.temperature, ' °C');
+                applyReading(humidityValue, sensor.humidity, ' %');
             }
         };
         const refreshSensors = async () => {
