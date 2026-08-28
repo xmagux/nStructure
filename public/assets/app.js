@@ -2210,6 +2210,7 @@
         let heartbeatTimer = null;
         let refreshTimer = null;
         const HEARTBEAT_INTERVAL_MS = 5000;
+        const REFRESH_INTERVAL_MS = 2000;
 
         const renderInstance = (instance) => {
             instance.chart.setOption({
@@ -2295,7 +2296,7 @@
             stopTimers();
             sendHeartbeat();
             heartbeatTimer = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL_MS);
-            refreshTimer = setInterval(loadIncremental, HEARTBEAT_INTERVAL_MS);
+            refreshTimer = setInterval(loadIncremental, REFRESH_INTERVAL_MS);
         };
 
         sensorSelect?.addEventListener('change', () => { loadFull(); startTimers(); });

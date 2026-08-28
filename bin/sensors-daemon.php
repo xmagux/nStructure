@@ -36,6 +36,8 @@ $env = static fn (string $key, mixed $default = null): mixed => $_ENV[$key] ?? g
 $maxIterations = max(1, (int) $env('SENSOR_DAEMON_MAX_ITERATIONS', 1000));
 $defaultIntervalSeconds = max(1, (int) $env('SENSOR_DAEMON_DEFAULT_INTERVAL', 300));
 $fastIntervalSeconds = max(1, (int) $env('SENSOR_DAEMON_FAST_INTERVAL', 5));
+$pingDefaultIntervalSeconds = max(1, (int) $env('SENSOR_DAEMON_PING_DEFAULT_INTERVAL', 5));
+$pingFastIntervalSeconds = max(1, (int) $env('SENSOR_DAEMON_PING_FAST_INTERVAL', 2));
 $keepaliveSeconds = max(1, (int) $env('SENSOR_DAEMON_KEEPALIVE_SECONDS', 3600));
 $temperatureHysteresis = (float) $env('SENSOR_DAEMON_TEMP_HYSTERESIS', 0.2);
 $humidityHysteresis = (float) $env('SENSOR_DAEMON_HUMIDITY_HYSTERESIS', 0.5);
@@ -110,7 +112,8 @@ $scaleValue = static function (string $raw, float $divisor): ?float {
 
 fwrite(STDOUT, sprintf("[%s] sensors-daemon started (pid %d, max %d iterations)\n", date('c'), getmypid(), $maxIterations));
 
-$nextDueAt = [];
+$nextSnmpDueAt = [];
+$nextPingDueAt = [];
 $iteration = 0;
 $sensorsReloadedAt = 0;
 $sensors = [];
@@ -124,24 +127,58 @@ while ($iteration < $maxIterations && !$shouldExit) {
         $sensorsReloadedAt = $now;
     }
 
+    // Ping and SNMP are scheduled independently: ping is cheap (one batched
+    // fping call covers every due host) and worth checking much more often
+    // than temperature/humidity, which change slowly by nature.
     $activeSensorIds = $heartbeatStore->activeSensorIds();
-    $dueSensors = [];
+    $snmpDueSensors = [];
+    $pingDueSensors = [];
     foreach ($sensors as $sensor) {
-        $interval = in_array($sensor['id'], $activeSensorIds, true) ? $fastIntervalSeconds : $defaultIntervalSeconds;
-        if (($nextDueAt[$sensor['id']] ?? 0) <= $now) {
-            $dueSensors[] = $sensor;
-            $nextDueAt[$sensor['id']] = $now + $interval;
+        $isActive = in_array($sensor['id'], $activeSensorIds, true);
+
+        $snmpInterval = $isActive ? $fastIntervalSeconds : $defaultIntervalSeconds;
+        if (($nextSnmpDueAt[$sensor['id']] ?? 0) <= $now) {
+            $snmpDueSensors[] = $sensor;
+            $nextSnmpDueAt[$sensor['id']] = $now + $snmpInterval;
+        }
+
+        if ($sensor['ping_enabled']) {
+            $pingInterval = $isActive ? $pingFastIntervalSeconds : $pingDefaultIntervalSeconds;
+            if (($nextPingDueAt[$sensor['id']] ?? 0) <= $now) {
+                $pingDueSensors[] = $sensor;
+                $nextPingDueAt[$sensor['id']] = $now + $pingInterval;
+            }
         }
     }
 
-    if ($dueSensors !== []) {
-        $pingHosts = array_column(array_filter($dueSensors, static fn (array $s): bool => $s['ping_enabled']), 'host');
-        $pingResults = $pingHosts !== [] ? $fping->pingBatch($pingHosts, $pingTimeoutMs) : [];
-
+    if ($snmpDueSensors !== [] || $pingDueSensors !== []) {
         $builder = new InfluxLineProtocolBuilder();
         $timestampMs = (int) round(microtime(true) * 1000);
 
-        foreach ($dueSensors as $sensor) {
+        if ($pingDueSensors !== []) {
+            $pingHosts = array_column($pingDueSensors, 'host');
+            $pingResults = $fping->pingBatch($pingHosts, $pingTimeoutMs);
+
+            foreach ($pingDueSensors as $sensor) {
+                $tags = ['sensor_id' => (string) $sensor['id'], 'sensor' => $sensor['name']];
+                $ping = $pingResults[$sensor['host']] ?? ['ok' => false, 'latency_ms' => null];
+                $upValue = $ping['ok'] ? 1.0 : 0.0;
+                $upKey = 'ping_up:' . $sensor['id'];
+                if ($seriesState->shouldSend($upKey, $upValue, 0.0, $keepaliveSeconds, $now)) {
+                    $builder->addPoint('sensor_ping_up', $tags, $upValue, $timestampMs);
+                    $seriesState->recordSent($upKey, $upValue, $now);
+                }
+                if ($ping['ok'] && $ping['latency_ms'] !== null) {
+                    $latencyKey = 'ping_latency:' . $sensor['id'];
+                    if ($seriesState->shouldSend($latencyKey, $ping['latency_ms'], $latencyHysteresis, $keepaliveSeconds, $now)) {
+                        $builder->addPoint('sensor_ping_latency_ms', $tags, $ping['latency_ms'], $timestampMs);
+                        $seriesState->recordSent($latencyKey, $ping['latency_ms'], $now);
+                    }
+                }
+            }
+        }
+
+        foreach ($snmpDueSensors as $sensor) {
             $tags = ['sensor_id' => (string) $sensor['id'], 'sensor' => $sensor['name']];
 
             if ($sensor['temperature_oid'] !== null && $sensor['temperature_oid'] !== '') {
@@ -180,23 +217,6 @@ while ($iteration < $maxIterations && !$shouldExit) {
                             $builder->addPoint('sensor_humidity_percent', $tags, $value, $timestampMs);
                             $seriesState->recordSent($valueKey, $value, $now);
                         }
-                    }
-                }
-            }
-
-            if ($sensor['ping_enabled']) {
-                $ping = $pingResults[$sensor['host']] ?? ['ok' => false, 'latency_ms' => null];
-                $upValue = $ping['ok'] ? 1.0 : 0.0;
-                $upKey = 'ping_up:' . $sensor['id'];
-                if ($seriesState->shouldSend($upKey, $upValue, 0.0, $keepaliveSeconds, $now)) {
-                    $builder->addPoint('sensor_ping_up', $tags, $upValue, $timestampMs);
-                    $seriesState->recordSent($upKey, $upValue, $now);
-                }
-                if ($ping['ok'] && $ping['latency_ms'] !== null) {
-                    $latencyKey = 'ping_latency:' . $sensor['id'];
-                    if ($seriesState->shouldSend($latencyKey, $ping['latency_ms'], $latencyHysteresis, $keepaliveSeconds, $now)) {
-                        $builder->addPoint('sensor_ping_latency_ms', $tags, $ping['latency_ms'], $timestampMs);
-                        $seriesState->recordSent($latencyKey, $ping['latency_ms'], $now);
                     }
                 }
             }
