@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace NStructure\Infrastructure\Repository;
 
 use NStructure\Domain\Repository\SensorRepository;
+use NStructure\Infrastructure\Network\FpingClient;
 use NStructure\Infrastructure\Snmp\SnmpClient;
 use PDO;
 use RuntimeException;
@@ -14,6 +15,7 @@ final class MySqlSensorRepository implements SensorRepository
     public function __construct(
         private readonly PDO $pdo,
         private readonly SnmpClient $snmp,
+        private readonly FpingClient $fping,
     ) {
     }
 
@@ -100,12 +102,12 @@ final class MySqlSensorRepository implements SensorRepository
         if ($sensor === null) {
             throw new RuntimeException('Sensor not found');
         }
-        return $this->pollSensor($sensor);
+        return $this->pollBatch([$sensor])[0];
     }
 
     public function pollAll(): array
     {
-        return array_map(fn (array $sensor): array => $this->pollSensor($sensor), $this->all());
+        return $this->pollBatch($this->all());
     }
 
     public function pingAll(): array
@@ -120,35 +122,69 @@ final class MySqlSensorRepository implements SensorRepository
         }, $sensors);
     }
 
-    private function pollSensor(array $sensor): array
+    /**
+     * Polls every given sensor concurrently instead of one at a time: a
+     * single batched fping call covers every host that wants a reachability
+     * check, and every configured SNMP OID goes out over its own
+     * non-blocking socket under one shared timeout budget. With dozens of
+     * sensors this is the difference between "roughly the slowest single
+     * check" and "the sum of every check, one after another."
+     */
+    private function pollBatch(array $sensors): array
     {
-        if (!$sensor['monitoring_enabled']) {
-            $sensor['ping'] = null;
-            $sensor['temperature'] = ['configured' => false, 'ok' => false, 'raw' => null, 'value' => null, 'error' => null];
-            $sensor['humidity'] = ['configured' => false, 'ok' => false, 'raw' => null, 'value' => null, 'error' => null];
-            $sensor['alarm'] = ['active' => false, 'reasons' => []];
+        $activeSensors = array_values(array_filter($sensors, static fn (array $sensor): bool => $sensor['monitoring_enabled']));
+
+        $pingHosts = array_values(array_unique(array_column(
+            array_filter($activeSensors, static fn (array $sensor): bool => $sensor['ping_enabled']),
+            'host',
+        )));
+        $pingResults = $pingHosts !== [] ? $this->fping->pingBatch($pingHosts) : [];
+
+        $snmpRequests = [];
+        foreach ($activeSensors as $sensor) {
+            foreach (['temperature_oid', 'humidity_oid'] as $oidField) {
+                $oid = $sensor[$oidField];
+                if ($oid !== null && $oid !== '') {
+                    $snmpRequests[$sensor['id'] . ':' . $oidField] = [
+                        'host' => (string) $sensor['host'],
+                        'port' => (int) $sensor['snmp_port'],
+                        'community' => (string) $sensor['snmp_community'],
+                        'oid' => $oid,
+                    ];
+                }
+            }
+        }
+        $snmpResults = $snmpRequests !== [] ? $this->snmp->getMany($snmpRequests) : [];
+
+        return array_map(function (array $sensor) use ($pingResults, $snmpResults): array {
+            if (!$sensor['monitoring_enabled']) {
+                $sensor['ping'] = null;
+                $sensor['temperature'] = ['configured' => false, 'ok' => false, 'raw' => null, 'value' => null, 'error' => null];
+                $sensor['humidity'] = ['configured' => false, 'ok' => false, 'raw' => null, 'value' => null, 'error' => null];
+                $sensor['alarm'] = ['active' => false, 'reasons' => []];
+                return $sensor;
+            }
+
+            $sensor['ping'] = $sensor['ping_enabled'] ? ($pingResults[$sensor['host']] ?? ['ok' => false, 'latency_ms' => null]) : null;
+            $sensor['temperature'] = $this->interpretSnmpResult($sensor, 'temperature_oid', 'temperature_divisor', $snmpResults[$sensor['id'] . ':temperature_oid'] ?? null);
+            $sensor['humidity'] = $this->interpretSnmpResult($sensor, 'humidity_oid', 'humidity_divisor', $snmpResults[$sensor['id'] . ':humidity_oid'] ?? null);
+
+            $reasons = [];
+            if ($sensor['ping'] !== null && !$sensor['ping']['ok']) {
+                $reasons[] = 'ping';
+            }
+            if ($sensor['temperature']['ok'] && $this->outOfRange($sensor['temperature']['value'], $sensor['temperature_min'], $sensor['temperature_max'])) {
+                $reasons[] = 'temperature';
+            }
+            if ($sensor['humidity']['ok'] && $this->outOfRange($sensor['humidity']['value'], $sensor['humidity_min'], $sensor['humidity_max'])) {
+                $reasons[] = 'humidity';
+            }
+            $sensor['alarm'] = $reasons !== [] ? ['active' => true, 'reasons' => $reasons] : ['active' => false, 'reasons' => []];
+
+            $this->cacheReading($sensor);
+
             return $sensor;
-        }
-
-        $sensor['ping'] = $sensor['ping_enabled'] ? $this->ping($sensor['host']) : null;
-        $sensor['temperature'] = $this->readValue($sensor, 'temperature_oid', 'temperature_divisor');
-        $sensor['humidity'] = $this->readValue($sensor, 'humidity_oid', 'humidity_divisor');
-
-        $reasons = [];
-        if ($sensor['ping'] !== null && !$sensor['ping']['ok']) {
-            $reasons[] = 'ping';
-        }
-        if ($sensor['temperature']['ok'] && $this->outOfRange($sensor['temperature']['value'], $sensor['temperature_min'], $sensor['temperature_max'])) {
-            $reasons[] = 'temperature';
-        }
-        if ($sensor['humidity']['ok'] && $this->outOfRange($sensor['humidity']['value'], $sensor['humidity_min'], $sensor['humidity_max'])) {
-            $reasons[] = 'humidity';
-        }
-        $sensor['alarm'] = $reasons !== [] ? ['active' => true, 'reasons' => $reasons] : ['active' => false, 'reasons' => []];
-
-        $this->cacheReading($sensor);
-
-        return $sensor;
+        }, $sensors);
     }
 
     /**
@@ -187,15 +223,18 @@ final class MySqlSensorRepository implements SensorRepository
         return $max !== null && $value > $max;
     }
 
-    private function readValue(array $sensor, string $oidField, string $divisorField): array
+    /**
+     * @param array{ok: bool, value: string|null, type: string|null, error: string|null}|null $result
+     *     pre-fetched by a prior batched SnmpClient::getMany() call — this only interprets it.
+     */
+    private function interpretSnmpResult(array $sensor, string $oidField, string $divisorField, ?array $result): array
     {
         $oid = $sensor[$oidField];
         if ($oid === null || $oid === '') {
             return ['configured' => false, 'ok' => false, 'raw' => null, 'value' => null, 'error' => null];
         }
-        $result = $this->snmp->get((string) $sensor['host'], (int) $sensor['snmp_port'], (string) $sensor['snmp_community'], $oid);
-        if (!$result['ok']) {
-            return ['configured' => true, 'ok' => false, 'raw' => null, 'value' => null, 'error' => $result['error']];
+        if ($result === null || !$result['ok']) {
+            return ['configured' => true, 'ok' => false, 'raw' => null, 'value' => null, 'error' => $result['error'] ?? 'No response (timeout)'];
         }
         $value = $this->scaleValue((string) $result['value'], (string) $result['type'], (float) $sensor[$divisorField]);
         return ['configured' => true, 'ok' => $value !== null, 'raw' => $result['value'], 'value' => $value, 'error' => $value === null ? 'Could not parse numeric value' : null];

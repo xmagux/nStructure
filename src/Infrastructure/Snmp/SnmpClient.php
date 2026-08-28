@@ -31,6 +31,93 @@ final class SnmpClient
     private const TAG_END_OF_MIB_VIEW = 0x82;
 
     /**
+     * Fires every request over its own non-blocking UDP socket and waits on
+     * all of them together with stream_select() under one shared deadline,
+     * instead of the "up to $timeoutSeconds each, one after another" cost
+     * of calling get() in a loop — the point being N requests take roughly
+     * as long as the single slowest one, not the sum of all of them.
+     *
+     * @param array<string, array{host: string, port: int, community: string, oid: string}> $requests
+     *     keyed by an arbitrary identifier the caller uses to match results back to its own data
+     * @return array<string, array{ok: bool, value: string|null, type: string|null, error: string|null}>
+     */
+    public function getMany(array $requests, float $timeoutSeconds = 2.0): array
+    {
+        $results = [];
+        $sockets = [];
+        $requestIds = [];
+        $deadline = microtime(true) + $timeoutSeconds;
+
+        foreach ($requests as $key => $request) {
+            $oid = trim($request['oid']);
+            if ($oid === '') {
+                $results[$key] = ['ok' => false, 'value' => null, 'type' => null, 'error' => 'No OID configured'];
+                continue;
+            }
+
+            try {
+                $requestId = random_int(1, 2_000_000_000);
+                $packet = $this->encodeGetRequest($request['community'], $oid, $requestId);
+            } catch (\Throwable $exception) {
+                $results[$key] = ['ok' => false, 'value' => null, 'type' => null, 'error' => 'Invalid OID: ' . $exception->getMessage()];
+                continue;
+            }
+
+            $socket = @stream_socket_client(sprintf('udp://%s:%d', $request['host'], $request['port']), $errno, $errstr, 1.0);
+            if ($socket === false) {
+                $results[$key] = ['ok' => false, 'value' => null, 'type' => null, 'error' => trim($errstr) ?: 'Could not open socket'];
+                continue;
+            }
+            stream_set_blocking($socket, false);
+            if (@fwrite($socket, $packet) === false) {
+                fclose($socket);
+                $results[$key] = ['ok' => false, 'value' => null, 'type' => null, 'error' => 'Could not send SNMP request'];
+                continue;
+            }
+            $sockets[$key] = $socket;
+            $requestIds[$key] = $requestId;
+        }
+
+        while ($sockets !== []) {
+            $remaining = $deadline - microtime(true);
+            if ($remaining <= 0) {
+                break;
+            }
+            $read = array_values($sockets);
+            $write = null;
+            $except = null;
+            $changed = @stream_select($read, $write, $except, (int) floor($remaining), (int) round(($remaining - floor($remaining)) * 1_000_000));
+            if ($changed === false || $changed === 0) {
+                break;
+            }
+            foreach ($sockets as $key => $socket) {
+                if (!in_array($socket, $read, true)) {
+                    continue;
+                }
+                $response = @fread($socket, 4096);
+                fclose($socket);
+                unset($sockets[$key]);
+                if ($response === false || $response === '') {
+                    $results[$key] = ['ok' => false, 'value' => null, 'type' => null, 'error' => 'No response (timeout)'];
+                    continue;
+                }
+                try {
+                    $results[$key] = $this->decodeGetResponse($response, $requestIds[$key]);
+                } catch (\Throwable $exception) {
+                    $results[$key] = ['ok' => false, 'value' => null, 'type' => null, 'error' => 'Malformed SNMP response: ' . $exception->getMessage()];
+                }
+            }
+        }
+
+        foreach ($sockets as $key => $socket) {
+            fclose($socket);
+            $results[$key] = ['ok' => false, 'value' => null, 'type' => null, 'error' => 'No response (timeout)'];
+        }
+
+        return $results;
+    }
+
+    /**
      * @return array{ok: bool, value: string|null, type: string|null, error: string|null}
      */
     public function get(string $host, int $port, string $community, string $oid, float $timeoutSeconds = 2.0): array

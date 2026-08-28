@@ -16,6 +16,7 @@ use NStructure\Http\Middleware\SessionMiddleware;
 use NStructure\Infrastructure\Database\ConnectionFactory;
 use NStructure\Infrastructure\Heartbeat\HeartbeatStore;
 use NStructure\Infrastructure\Metrics\VictoriaMetricsClient;
+use NStructure\Infrastructure\Network\FpingClient;
 use NStructure\Infrastructure\Repository\DemoNetworkRepository;
 use NStructure\Infrastructure\Repository\MySqlNetworkRepository;
 use NStructure\Infrastructure\Repository\MySqlSensorRepository;
@@ -72,6 +73,7 @@ final class Definitions
         $container->set(SensorRepository::class, static fn (Container $container): SensorRepository => new MySqlSensorRepository(
             $container->get(PDO::class),
             $container->get(SnmpClient::class),
+            $container->get(FpingClient::class),
         ));
         $container->set(SessionMiddleware::class, static fn (): SessionMiddleware => new SessionMiddleware($settings));
         $container->set(AuthMiddleware::class, static fn (): AuthMiddleware => new AuthMiddleware($settings));
