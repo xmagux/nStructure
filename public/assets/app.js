@@ -2078,7 +2078,11 @@
 
         const SENSOR_MODEL_PRESETS = {
             HWG_STE: { model: 'HWg-STE', temperatureOid: '1.3.6.1.4.1.21796.4.1.3.1.4.1', humidityOid: '1.3.6.1.4.1.21796.4.1.3.1.4.2' },
-            STE2_LITE: { model: 'STE2 Lite', temperatureOid: '1.3.6.1.4.1.21796.4.9.3.1.4.1', humidityOid: '1.3.6.1.4.1.21796.4.9.3.1.4.2' },
+            // Confirmed live against a real STE2 Lite unit — unlike HWg-STE,
+            // this model's channel order is temperature=.4.2, humidity=.4.1
+            // (the opposite way round; they're different MIB branches, so
+            // assuming they'd match was the bug, not a safe inference).
+            STE2_LITE: { model: 'STE2 Lite', temperatureOid: '1.3.6.1.4.1.21796.4.9.3.1.4.2', humidityOid: '1.3.6.1.4.1.21796.4.9.3.1.4.1' },
             // HWg-PWR reports dry-contact inputs (grid/generator presence,
             // etc.), not temperature/humidity — clears those OID fields
             // rather than leaving a stale preset from the previous
