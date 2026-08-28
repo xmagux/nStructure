@@ -80,6 +80,53 @@ final class MySqlSensorRepository implements SensorRepository
         return $sensors;
     }
 
+    /**
+     * HWg-PWR reports a fixed, well-known set of 8 dry-contact inputs — grid
+     * power presence on 3 phases, generator presence on 3 phases, plus 2
+     * general-purpose contacts — at a standard OID layout confirmed against
+     * a real unit. Picking this model in the form seeds them automatically
+     * instead of requiring a manual per-device setup step; only runs once
+     * (skipped if the sensor already has inputs), so re-saving an existing
+     * HWg-PWR sensor or renaming a different sensor to this model by
+     * mistake won't create duplicates or overwrite hand-edited inputs.
+     */
+    private function seedHwgPwrInputsIfNeeded(int $sensorId, ?string $model): void
+    {
+        if ($model !== 'HWg-PWR') {
+            return;
+        }
+        $countStatement = $this->pdo->prepare('SELECT COUNT(*) FROM environmental_sensor_inputs WHERE sensor_id = :sensor_id');
+        $countStatement->execute(['sensor_id' => $sensorId]);
+        if ((int) $countStatement->fetchColumn() > 0) {
+            return;
+        }
+
+        $base = '1.3.6.1.4.1.21796.4.6.2.2.1.5'; // inpAlarmState column
+        $inputs = [
+            ['position' => 1, 'label' => 'L1 MIASTO', 'group' => 'miasto', 'index' => 1],
+            ['position' => 2, 'label' => 'L2 MIASTO', 'group' => 'miasto', 'index' => 2],
+            ['position' => 3, 'label' => 'L3 MIASTO', 'group' => 'miasto', 'index' => 3],
+            ['position' => 4, 'label' => 'L1 AGREGAT', 'group' => 'agregat', 'index' => 4],
+            ['position' => 5, 'label' => 'L2 AGREGAT', 'group' => 'agregat', 'index' => 5],
+            ['position' => 6, 'label' => 'L3 AGREGAT', 'group' => 'agregat', 'index' => 6],
+            ['position' => 7, 'label' => 'Input 7', 'group' => null, 'index' => 7],
+            ['position' => 8, 'label' => 'Input 8', 'group' => null, 'index' => 8],
+        ];
+        $insertStatement = $this->pdo->prepare(
+            'INSERT INTO environmental_sensor_inputs (sensor_id, position, label, group_name, alarm_state_oid)
+             VALUES (:sensor_id, :position, :label, :group_name, :alarm_state_oid)',
+        );
+        foreach ($inputs as $input) {
+            $insertStatement->execute([
+                'sensor_id' => $sensorId,
+                'position' => $input['position'],
+                'label' => $input['label'],
+                'group_name' => $input['group'],
+                'alarm_state_oid' => $base . '.' . $input['index'],
+            ]);
+        }
+    }
+
     public function create(array $input): array
     {
         $record = $this->sensorRecord($input);
@@ -98,6 +145,7 @@ final class MySqlSensorRepository implements SensorRepository
         );
         $statement->execute($record);
         $id = (int) $this->pdo->lastInsertId();
+        $this->seedHwgPwrInputsIfNeeded($id, $record['model']);
         $sensor = $this->find($id) ?? throw new RuntimeException('Sensor could not be loaded');
         $this->recordAudit('ENVIRONMENTAL_SENSOR', $id, 'CREATE', $sensor);
         return $sensor;
@@ -117,6 +165,7 @@ final class MySqlSensorRepository implements SensorRepository
              WHERE id = :id AND archived_at IS NULL',
         );
         $statement->execute($record);
+        $this->seedHwgPwrInputsIfNeeded($id, $record['model']);
         $sensor = $this->find($id);
         if ($sensor === null) {
             throw new RuntimeException('Sensor not found');
