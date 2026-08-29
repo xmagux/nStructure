@@ -29,6 +29,29 @@ final class MySqlAlertRepository implements AlertRepository
     public function createRecipient(array $input): array
     {
         $record = $this->recipientRecord($input);
+
+        $existingStatement = $this->pdo->prepare(
+            'SELECT id, archived_at FROM alert_recipients WHERE email = :email',
+        );
+        $existingStatement->execute(['email' => $record['email']]);
+        $existing = $existingStatement->fetch();
+        if ($existing !== false) {
+            if ($existing['archived_at'] === null) {
+                throw new RuntimeException('This email address has already been added');
+            }
+            // Re-adding a previously removed recipient revives the same
+            // row instead of hitting the unique constraint on email — the
+            // address is free again from the user's point of view, and
+            // this keeps any old group memberships intact rather than
+            // silently orphaning them behind an archived row.
+            $id = (int) $existing['id'];
+            $reviveStatement = $this->pdo->prepare(
+                'UPDATE alert_recipients SET name = :name, archived_at = NULL WHERE id = :id',
+            );
+            $reviveStatement->execute(['id' => $id, 'name' => $record['name']]);
+            return ['id' => $id, 'email' => $record['email'], 'name' => $record['name']];
+        }
+
         $statement = $this->pdo->prepare(
             'INSERT INTO alert_recipients (email, name) VALUES (:email, :name)',
         );

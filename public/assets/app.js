@@ -4,6 +4,21 @@
     const root = document.documentElement;
     const body = document.body;
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+
+    // A session that expires while a page is left open otherwise just sits
+    // there looking normal but silently failing every background request
+    // (poll/refresh calls swallow the error) until the user happens to
+    // navigate somewhere. Any fetch() call getting a 401 back means the
+    // session is gone, so force a real page reload — the server-side auth
+    // middleware then does the actual redirect to /login.
+    const nativeFetch = window.fetch.bind(window);
+    window.fetch = async (...args) => {
+        const response = await nativeFetch(...args);
+        if (response.status === 401) {
+            window.location.reload();
+        }
+        return response;
+    };
     const graphInstances = [];
     let selectedPort = null;
     let selectPanelCanvasPort = null;
@@ -2064,17 +2079,37 @@
             const agregatBadge = card.querySelector('[data-input-group="agregat"]');
             if (agregatBadge) agregatBadge.classList.toggle('agregat-alarm', groupAlarm('agregat'));
         };
-        const refreshSensors = async () => {
+        const refreshSensors = async (silent = false) => {
             try {
                 const response = await fetch('/api/v1/sensors/poll', { headers: { Accept: 'application/json' } });
                 const payload = await response.json();
                 (payload.data || []).forEach(applySensorReadings);
             } catch (error) {
-                showToast(body.dataset.toastError, 'error');
+                if (!silent) showToast(body.dataset.toastError, 'error');
             }
         };
         refreshSensors();
-        document.querySelector('[data-sensors-refresh]')?.addEventListener('click', refreshSensors);
+        document.querySelector('[data-sensors-refresh]')?.addEventListener('click', () => refreshSensors());
+
+        // The Lista tab otherwise only ever showed a live reading right
+        // after a full page load or a manual refresh click — everything in
+        // between was frozen. Poll quietly in the background the same way
+        // the Wykresy tab already does, pausing while the tab/window isn't
+        // visible so it doesn't run forever in a background browser tab.
+        const LIST_REFRESH_INTERVAL_MS = 15000;
+        let listRefreshTimer = null;
+        const startListRefresh = () => {
+            if (listRefreshTimer) return;
+            listRefreshTimer = setInterval(() => refreshSensors(true), LIST_REFRESH_INTERVAL_MS);
+        };
+        const stopListRefresh = () => {
+            if (listRefreshTimer) clearInterval(listRefreshTimer);
+            listRefreshTimer = null;
+        };
+        startListRefresh();
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) stopListRefresh(); else { refreshSensors(true); startListRefresh(); }
+        });
 
         const SENSOR_MODEL_PRESETS = {
             HWG_STE: { model: 'HWg-STE', temperatureOid: '1.3.6.1.4.1.21796.4.1.3.1.4.1', humidityOid: '1.3.6.1.4.1.21796.4.1.3.1.4.2' },
@@ -2247,21 +2282,41 @@
 
         const sensorCharts = document.querySelector('[data-sensor-charts]');
         let chartsController = null;
-        document.querySelectorAll('[data-sensor-tab]').forEach((tabButton) => {
-            tabButton.addEventListener('click', () => {
-                const target = tabButton.dataset.sensorTab;
-                document.querySelectorAll('[data-sensor-tab]').forEach((btn) => btn.classList.toggle('active', btn === tabButton));
-                document.querySelectorAll('[data-sensor-panel]').forEach((panel) => {
-                    panel.hidden = panel.dataset.sensorPanel !== target;
-                });
-                if (target === 'charts') {
-                    if (!chartsController) chartsController = initSensorCharts(sensorCharts);
-                    chartsController?.resume();
-                } else {
-                    chartsController?.pause();
-                }
+        const SENSOR_TAB_STORAGE_KEY = 'nstructure-sensor-tab';
+        const activateSensorTab = (target) => {
+            const tabButton = document.querySelector(`[data-sensor-tab="${target}"]`);
+            if (!tabButton) return;
+            document.querySelectorAll('[data-sensor-tab]').forEach((btn) => btn.classList.toggle('active', btn === tabButton));
+            document.querySelectorAll('[data-sensor-panel]').forEach((panel) => {
+                panel.hidden = panel.dataset.sensorPanel !== target;
             });
+            if (target === 'charts') {
+                if (!chartsController) chartsController = initSensorCharts(sensorCharts);
+                chartsController?.resume();
+            } else {
+                chartsController?.pause();
+            }
+            try {
+                localStorage.setItem(SENSOR_TAB_STORAGE_KEY, target);
+            } catch (error) {
+                // storage unavailable (private browsing, quota) — tab just won't persist
+            }
+        };
+        document.querySelectorAll('[data-sensor-tab]').forEach((tabButton) => {
+            tabButton.addEventListener('click', () => activateSensorTab(tabButton.dataset.sensorTab));
         });
+        // Every save in this page reloads the whole page (the shared submit
+        // helper's pattern), which used to always land back on "Lista" —
+        // restore whichever tab was active before the reload instead.
+        let savedSensorTab = null;
+        try {
+            savedSensorTab = localStorage.getItem(SENSOR_TAB_STORAGE_KEY);
+        } catch (error) {
+            savedSensorTab = null;
+        }
+        if (savedSensorTab && document.querySelector(`[data-sensor-tab="${savedSensorTab}"]`)) {
+            activateSensorTab(savedSensorTab);
+        }
         const sensorInputsModal = document.querySelector('#sensor-inputs-modal');
         document.querySelectorAll('[data-sensor-inputs-close]').forEach((button) => button.addEventListener('click', () => sensorInputsModal?.close()));
         sensorInputsModal?.addEventListener('click', (event) => {

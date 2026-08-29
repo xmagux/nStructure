@@ -170,6 +170,7 @@
 
         <article class="card alert-card">
             <h3>{{ t('alerts.groups_title') }}</h3>
+            <small>{{ t('alerts.groups_hint') }}</small>
             <div class="alert-groups-list" data-alert-groups-list>
                 {% for group in alert_groups %}
                 <div class="alert-group-row" data-group-id="{{ group.id }}">

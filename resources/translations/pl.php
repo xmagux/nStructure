@@ -553,6 +553,7 @@ return [
     'alerts.recipients_title' => 'Odbiorcy',
     'alerts.no_recipients' => 'Brak odbiorców.',
     'alerts.groups_title' => 'Grupy odbiorców',
+    'alerts.groups_hint' => 'Zaznacz odbiorców przy grupie i kliknij Zapisz, aby ich do niej przypisać.',
     'alerts.no_groups' => 'Brak grup.',
     'alerts.group_name' => 'Nazwa grupy',
     'alerts.sensor_targets_title' => 'Przypisanie czujników do odbiorców',
