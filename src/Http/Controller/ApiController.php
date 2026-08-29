@@ -22,6 +22,18 @@ final readonly class ApiController
         return $this->json($response, ['status' => 'ok', 'service' => 'nStructure']);
     }
 
+    /**
+     * A deliberately trivial authenticated endpoint (unlike /health, which
+     * is public) — its only purpose is to give the front-end's periodic
+     * session watchdog something to hit. Most pages never call any other
+     * API endpoint in the background, so without this an expired session
+     * just sat there looking normal until the next real navigation.
+     */
+    public function sessionPing(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        return $this->json($response, ['data' => ['ok' => true]]);
+    }
+
     public function topology(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
         return $this->json($response, ['data' => $this->repository->topology()]);

@@ -19,6 +19,32 @@
         }
         return response;
     };
+
+    // The 401 handler above only ever fires from a fetch() call that
+    // actually happens — most pages (topology, locations, a rack view...)
+    // never call the API in the background at all, so an expired session
+    // just sat there looking normal until the user happened to navigate
+    // somewhere. This periodic, otherwise-pointless ping is what gives
+    // every page, not just the ones already polling for their own reasons,
+    // something to trigger that same 401 check on.
+    const SESSION_CHECK_INTERVAL_MS = 60000;
+    let sessionCheckTimer = null;
+    const checkSession = () => {
+        fetch('/api/v1/session/ping', { headers: { Accept: 'application/json' } }).catch(() => {});
+    };
+    const startSessionCheck = () => {
+        if (sessionCheckTimer) return;
+        sessionCheckTimer = setInterval(checkSession, SESSION_CHECK_INTERVAL_MS);
+    };
+    const stopSessionCheck = () => {
+        if (sessionCheckTimer) clearInterval(sessionCheckTimer);
+        sessionCheckTimer = null;
+    };
+    startSessionCheck();
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) stopSessionCheck(); else { checkSession(); startSessionCheck(); }
+    });
+
     const graphInstances = [];
     let selectedPort = null;
     let selectPanelCanvasPort = null;
@@ -2322,6 +2348,19 @@
             savedSensorTab = localStorage.getItem(SENSOR_TAB_STORAGE_KEY);
         } catch (error) {
             savedSensorTab = null;
+        }
+        // A link from elsewhere (e.g. a server room's temperature/humidity
+        // reading) can jump straight to a specific sensor's chart via
+        // ?sensor=<id> — this overrides whatever tab/sensor was last open.
+        try {
+            const requestedSensorId = new URLSearchParams(window.location.search).get('sensor');
+            if (requestedSensorId) {
+                localStorage.setItem('nstructure-chart-sensor', requestedSensorId);
+                savedSensorTab = 'charts';
+                window.history.replaceState(null, '', window.location.pathname);
+            }
+        } catch (error) {
+            // storage/history unavailable — link just won't auto-select a sensor
         }
         if (savedSensorTab && document.querySelector(`[data-sensor-tab="${savedSensorTab}"]`)) {
             // app.js is a deferred <script> in <head>, so it runs BEFORE the

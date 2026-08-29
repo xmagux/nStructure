@@ -442,6 +442,8 @@ tbody tr:hover { background: rgba(139,92,246,.035); }
 .room-card { padding: 18px; border-radius: var(--radius-lg); }
 .room-head { display: flex; gap: 11px; align-items: center; }.room-head > div { min-width: 0; flex: 1; }.room-head h3 { margin-top: 2px; font-size: 15px; }.room-icon, .rack-mini { width: 36px; height: 36px; display: grid; place-items: center; border: 1px solid rgba(79,140,255,.17); border-radius: 10px; color: #83abff; background: rgba(79,140,255,.07); }
 .room-meta { margin-top: 15px; display: flex; flex-wrap: wrap; gap: 22px; color: var(--text-muted); font-size: 8px; }.room-meta strong { margin-left: 4px; color: var(--text-soft); }
+.room-meta-link { color: inherit; text-decoration: none; cursor: pointer; }
+.room-meta-link:hover, .room-meta-link:hover strong { color: var(--blue); }
 .rack-list { margin-top: 16px; display: grid; gap: 7px; }
 .rack-row { padding: 10px; display: grid; grid-template-columns: auto minmax(0,1fr) 65px auto; gap: 10px; align-items: center; border: 1px solid var(--line); border-radius: 11px; background: var(--surface-2); transition: border-color .2s, transform .2s; }.rack-row:hover { border-color: rgba(139,92,246,.3); transform: translateX(2px); }.rack-row > span:nth-child(2) { display: flex; flex-direction: column; }.rack-row strong { font-size: 10px; }.rack-row small { color: var(--text-muted); font-size: 8px; }.rack-mini { width: 30px; height: 30px; }
 .mini-progress { height: 3px; overflow: hidden; border-radius: 9px; background: var(--surface-3); }.mini-progress i { display: block; height: 100%; border-radius: inherit; background: var(--violet); }

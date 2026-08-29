@@ -233,6 +233,7 @@ return [
     'location.floor' => 'Floor',
     'location.temperature' => 'Temperature',
     'location.humidity' => 'Humidity',
+    'location.view_chart' => 'View chart',
     'location.no_rooms' => 'No server rooms documented yet.',
     'location.no_racks' => 'No racks documented yet.',
     'rack.eyebrow' => 'Rack front',

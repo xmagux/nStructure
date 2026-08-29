@@ -233,6 +233,7 @@ return [
     'location.floor' => 'Piętro',
     'location.temperature' => 'Temperatura',
     'location.humidity' => 'Wilgotność',
+    'location.view_chart' => 'Zobacz wykres',
     'location.no_rooms' => 'Nie udokumentowano jeszcze serwerowni.',
     'location.no_racks' => 'Nie udokumentowano jeszcze szaf.',
     'rack.eyebrow' => 'Front szafy',

@@ -13,6 +13,7 @@ return static function (App $app): void {
     $demoMode = (bool) $app->getContainer()?->get('settings')['app']['demo_mode'];
     $app->group('/api/v1', function ($group) use ($demoMode): void {
         $group->get('/health', [ApiController::class, 'health']);
+        $group->get('/session/ping', [ApiController::class, 'sessionPing']);
         $group->get('/topology', [ApiController::class, 'topology']);
         $group->get('/search', [ApiController::class, 'search']);
         $group->get('/patch-panels/{id:[0-9]+}', [ApiController::class, 'panel']);

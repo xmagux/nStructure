@@ -19,6 +19,7 @@ use NStructure\Infrastructure\Heartbeat\HeartbeatStore;
 use NStructure\Infrastructure\Mail\Mailer;
 use NStructure\Infrastructure\Metrics\VictoriaMetricsClient;
 use NStructure\Infrastructure\Network\FpingClient;
+use NStructure\Infrastructure\Repository\DemoAlertRepository;
 use NStructure\Infrastructure\Repository\DemoNetworkRepository;
 use NStructure\Infrastructure\Repository\DemoSensorRepository;
 use NStructure\Infrastructure\Repository\MySqlAlertRepository;
@@ -81,9 +82,9 @@ final class Definitions
                 $container->get(SnmpClient::class),
                 $container->get(FpingClient::class),
             ));
-        $container->set(AlertRepository::class, static fn (Container $container): AlertRepository => new MySqlAlertRepository(
-            $container->get(PDO::class),
-        ));
+        $container->set(AlertRepository::class, static fn (Container $container): AlertRepository => $settings['app']['demo_mode']
+            ? new DemoAlertRepository()
+            : new MySqlAlertRepository($container->get(PDO::class)));
         $container->set(Mailer::class, static fn (): Mailer => new Mailer($settings['mail']));
         $container->set(SessionMiddleware::class, static fn (): SessionMiddleware => new SessionMiddleware($settings));
         $container->set(AuthMiddleware::class, static fn (): AuthMiddleware => new AuthMiddleware($settings));
