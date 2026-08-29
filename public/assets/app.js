@@ -2323,7 +2323,16 @@
             savedSensorTab = null;
         }
         if (savedSensorTab && document.querySelector(`[data-sensor-tab="${savedSensorTab}"]`)) {
-            activateSensorTab(savedSensorTab);
+            // app.js is a deferred <script> in <head>, so it runs BEFORE the
+            // deferred echarts.min.js <script> lower in the body (deferred
+            // scripts execute in document order) — restoring straight to
+            // "charts" here would call initSensorCharts() before
+            // window.echarts exists, which just silently bails out and
+            // leaves the chart cards permanently uninitialized (only their
+            // <h3> headers ever showed). DOMContentLoaded fires only after
+            // every deferred script — including echarts.min.js — has run,
+            // so waiting for it guarantees echarts is ready.
+            document.addEventListener('DOMContentLoaded', () => activateSensorTab(savedSensorTab), { once: true });
         }
         const sensorInputsModal = document.querySelector('#sensor-inputs-modal');
         document.querySelectorAll('[data-sensor-inputs-close]').forEach((button) => button.addEventListener('click', () => sensorInputsModal?.close()));
