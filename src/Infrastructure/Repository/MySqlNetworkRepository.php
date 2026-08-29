@@ -268,10 +268,11 @@ final readonly class MySqlNetworkRepository implements NetworkRepository
     {
         $statement = $this->pdo->prepare(
             'SELECT r.id, r.server_room_id, r.code, r.name, r.total_units, r.row_label,
-                sr.name AS room, l.id AS location_id, l.name AS location
+                sr.name AS room, l.id AS location_id, l.name AS location, es.last_temperature
              FROM racks r
              JOIN server_rooms sr ON sr.id = r.server_room_id
              JOIN locations l ON l.id = sr.location_id
+             LEFT JOIN environmental_sensors es ON es.id = sr.sensor_id
              WHERE r.id = :id AND r.archived_at IS NULL',
         );
         $statement->execute(['id' => $id]);
@@ -519,7 +520,7 @@ final readonly class MySqlNetworkRepository implements NetworkRepository
             'location' => $rack['location'],
             'total_units' => (int) $rack['total_units'],
             'power' => '—',
-            'temperature' => '—',
+            'temperature' => $rack['last_temperature'] !== null ? number_format((float) $rack['last_temperature'], 1) . ' °C' : '—',
             'utilization' => round(($used / max(1, (int) $rack['total_units'])) * 100),
             'devices' => $devices,
             'active_devices' => $activeDevices,

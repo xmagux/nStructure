@@ -1849,7 +1849,7 @@
                         const destination = routeLines.length ? routeLines.join('\n') : (port.destination || labels.noDestination || 'No documented destination');
                         portTooltipTag.stroke(statusColor);
                         portTooltipText.text(`${labels.portLabel || 'Port'} ${portNumber}${portDescription} · ${statusLabels[status] || status}\n${destination}`);
-                        portTooltip.position({ x: centerX, y: portMap.y - 5 });
+                        portTooltip.position({ x: group.x() + centerX, y: group.y() + portMap.y - 5 });
                         portTooltip.show();
                         portTooltip.moveToTop();
                         world.getLayer().batchDraw();
@@ -1878,7 +1878,7 @@
                     segment.on('mouseenter', () => {
                         portTooltipTag.stroke(statusColor);
                         portTooltipText.text(`${count} × ${statusLabels[status] || status}`);
-                        portTooltip.position({ x: segment.x() + segment.width() / 2, y: portMap.y - 5 });
+                        portTooltip.position({ x: group.x() + segment.x() + segment.width() / 2, y: group.y() + portMap.y - 5 });
                         portTooltip.show();
                         portTooltip.moveToTop();
                         world.getLayer().batchDraw();
@@ -1891,7 +1891,15 @@
                     cursor += segmentWidth;
                 });
             }
-            group.add(portTooltip);
+            // Attached to the world, not this panel's own group: Konva
+            // stacks strictly by add-order, so a tooltip nested inside its
+            // panel's group could still end up rendered *behind* a
+            // different device added later (an organizer between two
+            // panels, for instance) even after moveToTop() — that only
+            // reorders within the immediate parent's children. Living at
+            // the world level and calling moveToTop() there guarantees it
+            // draws above every device regardless of draw order.
+            world.add(portTooltip);
         }
         group.on('mouseenter', () => { document.body.style.cursor = 'pointer'; group.scale({ x: 1.006, y: 1.006 }); world.getLayer().batchDraw(); });
         group.on('mouseleave', () => { document.body.style.cursor = 'default'; group.scale({ x: 1, y: 1 }); group.findOne('Label')?.hide(); world.getLayer().batchDraw(); });
