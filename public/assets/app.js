@@ -2533,6 +2533,21 @@
         const sensorSelect = container.querySelector('[data-chart-sensor-select]');
         const rangeButtons = container.querySelectorAll('[data-chart-range]');
         const warning = container.querySelector('[data-vm-warning]');
+
+        // The <select> otherwise always defaults to its first <option> on
+        // every page load — restore whichever sensor/range was last being
+        // viewed (e.g. across an F5) instead of silently jumping back to
+        // the first sensor in the list every time.
+        const CHART_SENSOR_STORAGE_KEY = 'nstructure-chart-sensor';
+        const CHART_RANGE_STORAGE_KEY = 'nstructure-chart-range';
+        try {
+            const savedSensorId = localStorage.getItem(CHART_SENSOR_STORAGE_KEY);
+            if (savedSensorId && sensorSelect?.querySelector(`option[value="${savedSensorId}"]`)) {
+                sensorSelect.value = savedSensorId;
+            }
+        } catch (error) {
+            // storage unavailable — falls back to the first sensor as before
+        }
         // channelType links a chart to the extra analog channels (see
         // SENSOR_MODEL_PRESETS.STE2) that share its unit — a sensor with
         // several temperature probes gets one extra line per probe on the
@@ -2651,6 +2666,15 @@
         });
 
         let currentRange = '24h';
+        try {
+            const savedRange = localStorage.getItem(CHART_RANGE_STORAGE_KEY);
+            if (savedRange && Array.from(rangeButtons).some((btn) => btn.dataset.chartRange === savedRange)) {
+                currentRange = savedRange;
+                rangeButtons.forEach((btn) => btn.classList.toggle('active', btn.dataset.chartRange === savedRange));
+            }
+        } catch (error) {
+            // storage unavailable — falls back to the default 24h range
+        }
         let heartbeatTimer = null;
         let refreshTimer = null;
         const HEARTBEAT_INTERVAL_MS = 5000;
@@ -2752,10 +2776,22 @@
             refreshTimer = setInterval(loadIncremental, currentRefreshIntervalMs());
         };
 
-        sensorSelect?.addEventListener('change', () => { loadFull(); startTimers(); });
+        const persistChartPreference = (key, value) => {
+            try {
+                localStorage.setItem(key, value);
+            } catch (error) {
+                // storage unavailable — preference just won't persist
+            }
+        };
+        sensorSelect?.addEventListener('change', () => {
+            persistChartPreference(CHART_SENSOR_STORAGE_KEY, sensorSelect.value);
+            loadFull();
+            startTimers();
+        });
         rangeButtons.forEach((button) => button.addEventListener('click', () => {
             rangeButtons.forEach((btn) => btn.classList.toggle('active', btn === button));
             currentRange = button.dataset.chartRange;
+            persistChartPreference(CHART_RANGE_STORAGE_KEY, currentRange);
             loadFull();
             startTimers();
         }));
@@ -2783,6 +2819,7 @@
             selectSensor(sensorId) {
                 if (!sensorSelect || sensorSelect.value === sensorId) return;
                 sensorSelect.value = sensorId;
+                persistChartPreference(CHART_SENSOR_STORAGE_KEY, sensorId);
                 loadFull();
                 startTimers();
             },
