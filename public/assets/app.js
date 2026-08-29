@@ -2681,6 +2681,13 @@
                 name: s.label,
                 showSymbol: false,
                 smooth: true,
+                // A smoothed spline recalculates its curvature across
+                // nearby points whenever a new one is appended, not just at
+                // the new point — animating that transition made the whole
+                // line visibly warp/re-curve on every live tick. Snapping
+                // straight to the final shape avoids it; the line is still
+                // smooth, it just doesn't morph its way there anymore.
+                animation: false,
                 areaStyle: instance.series.length === 1 ? {
                     color: new window.echarts.graphic.LinearGradient(0, 0, 0, 1, [
                         { offset: 0, color: hexToRgba(s.color, 0.35) },
