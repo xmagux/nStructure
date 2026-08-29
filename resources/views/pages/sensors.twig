@@ -42,7 +42,7 @@
 </template>
 <section class="page-hero compact-hero">
     <div><span class="eyebrow">{{ t('sensors.eyebrow') }}</span><h1>{{ t('sensors.title') }}</h1><p>{{ t('sensors.subtitle') }}</p></div>
-    <div class="hero-actions"><button class="button button-ghost" type="button" data-sensors-refresh>{{ icons.icon('refresh-cw') }}{{ t('action.refresh') }}</button><button class="button button-primary" type="button" data-sensor-modal-open>{{ icons.icon('plus') }}{{ t('action.add_sensor') }}</button></div>
+    <div class="hero-actions"><button class="button button-ghost" type="button" data-sensor-grid-fullscreen aria-label="{{ t('action.fullscreen') }}" title="{{ t('action.fullscreen') }}" data-label-enter="{{ t('action.fullscreen') }}" data-label-exit="{{ t('action.exit_fullscreen') }}"><span data-fullscreen-icon-enter>{{ icons.icon('expand') }}</span><span data-fullscreen-icon-exit hidden>{{ icons.icon('shrink') }}</span><span data-fullscreen-button-label>{{ t('action.fullscreen') }}</span></button><button class="button button-ghost" type="button" data-sensors-refresh>{{ icons.icon('refresh-cw') }}{{ t('action.refresh') }}</button><button class="button button-primary" type="button" data-sensor-modal-open>{{ icons.icon('plus') }}{{ t('action.add_sensor') }}</button></div>
 </section>
 
 <div class="sensor-tabs" data-sensor-tabs>

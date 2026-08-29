@@ -1931,6 +1931,16 @@ body.sidebar-collapsed .user-avatar { width: 40px; height: 40px; }
    long "down" label, or a two-value reading line can never grow the tile
    or spill outside its box, no matter the content. */
 .sensor-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); grid-auto-flow: dense; gap: 12px; }
+/* Fullscreening the grid itself (not the page) means the hero, tabs and
+   sidebar are simply outside what's shown — exactly the "just the boxes"
+   kiosk view this is for — but it still needs its own background/padding
+   since it no longer sits inside the page's own layout. */
+.sensor-grid:fullscreen, .sensor-grid:-webkit-full-screen {
+    padding: 28px;
+    background: var(--bg-elevated);
+    align-content: start;
+    overflow-y: auto;
+}
 .sensor-tile { position: relative; aspect-ratio: 1 / 1; padding: 16px 10px 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); cursor: pointer; text-align: center; transition: background .15s, border-color .15s, transform .15s, box-shadow .15s; }
 .sensor-tile:hover { border-color: var(--blue); box-shadow: 0 8px 20px color-mix(in srgb, var(--blue) 14%, transparent); transform: translateY(-1px); }
 .sensor-tile.dragging { opacity: .4; }

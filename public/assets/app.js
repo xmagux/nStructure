@@ -2467,6 +2467,36 @@
         document.querySelectorAll('[data-sensor-tab]').forEach((tabButton) => {
             tabButton.addEventListener('click', () => activateSensorTab(tabButton.dataset.sensorTab));
         });
+        // Fullscreens the tile grid itself, not the page — the hero,
+        // tabs and sidebar are simply outside the fullscreened element,
+        // so a kiosk/monitor shows nothing but the sensor boxes.
+        const gridFullscreenButton = document.querySelector('[data-sensor-grid-fullscreen]');
+        if (gridFullscreenButton && (document.fullscreenEnabled ?? true)) {
+            const iconEnter = gridFullscreenButton.querySelector('[data-fullscreen-icon-enter]');
+            const iconExit = gridFullscreenButton.querySelector('[data-fullscreen-icon-exit]');
+            const gridFullscreenLabel = gridFullscreenButton.querySelector('[data-fullscreen-button-label]');
+            const syncGridFullscreenButton = () => {
+                const isFullscreen = document.fullscreenElement === sensorGrid;
+                gridFullscreenButton.classList.toggle('active', isFullscreen);
+                const label = isFullscreen ? gridFullscreenButton.dataset.labelExit : gridFullscreenButton.dataset.labelEnter;
+                gridFullscreenButton.setAttribute('aria-label', label);
+                gridFullscreenButton.title = label;
+                if (iconEnter) iconEnter.hidden = isFullscreen;
+                if (iconExit) iconExit.hidden = !isFullscreen;
+                if (gridFullscreenLabel) gridFullscreenLabel.textContent = label;
+            };
+            gridFullscreenButton.addEventListener('click', () => {
+                if (document.fullscreenElement === sensorGrid) {
+                    document.exitFullscreen();
+                    return;
+                }
+                activateSensorTab('list');
+                sensorGrid.requestFullscreen?.();
+            });
+            document.addEventListener('fullscreenchange', () => {
+                if (document.fullscreenElement === sensorGrid || document.fullscreenElement === null) syncGridFullscreenButton();
+            });
+        }
         // Every save in this page reloads the whole page (the shared submit
         // helper's pattern), which used to always land back on "Lista" —
         // restore whichever tab was active before the reload instead.
