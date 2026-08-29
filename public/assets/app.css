@@ -383,6 +383,21 @@ tbody tr:hover { background: rgba(139,92,246,.035); }
 .segmented-control button { padding: 6px 11px; border: 0; border-radius: 6px; color: var(--text-muted); background: transparent; font-size: 9px; cursor: pointer; }
 .segmented-control button.active { color: var(--text); background: var(--surface-solid); box-shadow: 0 2px 8px rgba(0,0,0,.18); }
 .topology-main { display: grid; grid-template-columns: minmax(0,1fr) 285px; min-height: 630px; }
+/* The native Fullscreen API sizes the element to fill the viewport, but
+   only that element itself — its children still need to be told to fill
+   the new space rather than sitting at their normal min-height. */
+.topology-workspace:fullscreen, .topology-workspace:-webkit-full-screen {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: var(--surface);
+    border-radius: 0;
+}
+.topology-workspace:fullscreen .topology-main, .topology-workspace:-webkit-full-screen .topology-main {
+    flex: 1;
+    min-height: 0;
+}
+.cad-tool.active { color: var(--text); background: var(--surface-2); }
 .network-canvas { position: relative; min-width: 0; overflow: hidden; background: radial-gradient(circle at 45% 48%, rgba(139,92,246,.065), transparent 38%), var(--bg-elevated); cursor: grab; }
 .network-canvas:active { cursor: grabbing; }
 .canvas-grid { position: absolute; inset: 0; opacity: .55; background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px); background-size: 38px 38px; mask-image: radial-gradient(circle at center, black, transparent 78%); }

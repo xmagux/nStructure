@@ -1601,6 +1601,37 @@
         scope?.querySelector('[data-graph-zoom-in]')?.addEventListener('click', () => cy.animate({ zoom: Math.min(cy.maxZoom(), cy.zoom() * 1.22), duration: 180 }));
         scope?.querySelector('[data-graph-zoom-out]')?.addEventListener('click', () => cy.animate({ zoom: Math.max(cy.minZoom(), cy.zoom() / 1.22), duration: 180 }));
         scope?.querySelector('[data-graph-fit]')?.addEventListener('click', () => cy.animate({ fit: { eles: cy.elements(), padding: compact ? 34 : 90 }, duration: 260 }));
+        const fullscreenButton = scope?.querySelector('[data-graph-fullscreen]');
+        if (fullscreenButton && scope && (document.fullscreenEnabled ?? true)) {
+            const iconEnter = fullscreenButton.querySelector('[data-fullscreen-icon-enter]');
+            const iconExit = fullscreenButton.querySelector('[data-fullscreen-icon-exit]');
+            const syncFullscreenButton = () => {
+                const isFullscreen = document.fullscreenElement === scope;
+                fullscreenButton.classList.toggle('active', isFullscreen);
+                const label = isFullscreen ? fullscreenButton.dataset.labelExit : fullscreenButton.dataset.labelEnter;
+                fullscreenButton.setAttribute('aria-label', label);
+                fullscreenButton.title = label;
+                if (iconEnter) iconEnter.hidden = isFullscreen;
+                if (iconExit) iconExit.hidden = !isFullscreen;
+                // A native fullscreen resize doesn't fire cytoscape's own
+                // resize handling automatically — without this the graph
+                // stays laid out (and zoomed) for the old, smaller size.
+                window.setTimeout(() => {
+                    cy.resize();
+                    cy.animate({ fit: { eles: cy.elements(), padding: compact ? 34 : 90 }, duration: 220 });
+                }, 60);
+            };
+            fullscreenButton.addEventListener('click', () => {
+                if (document.fullscreenElement === scope) {
+                    document.exitFullscreen();
+                } else {
+                    scope.requestFullscreen?.();
+                }
+            });
+            document.addEventListener('fullscreenchange', () => {
+                if (document.fullscreenElement === scope || document.fullscreenElement === null) syncFullscreenButton();
+            });
+        }
         let dashOffset = 0;
         let previousFrame = 0;
         const animateFlow = (time) => {

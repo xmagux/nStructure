@@ -139,6 +139,8 @@ return [
     'action.zoom_in' => 'Powiększ',
     'action.zoom_out' => 'Pomniejsz',
     'action.fit_view' => 'Dopasuj model do widoku',
+    'action.fullscreen' => 'Pełny ekran',
+    'action.exit_fullscreen' => 'Zamknij pełny ekran',
     'action.rotate_left' => 'Obróć w lewo',
     'action.rotate_right' => 'Obróć w prawo',
     'visual.pan_zoom_hint' => 'Przeciągnij, aby przesunąć · kółko, aby powiększyć',

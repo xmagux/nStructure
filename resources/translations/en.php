@@ -139,6 +139,8 @@ return [
     'action.zoom_in' => 'Zoom in',
     'action.zoom_out' => 'Zoom out',
     'action.fit_view' => 'Fit model to view',
+    'action.fullscreen' => 'Fullscreen',
+    'action.exit_fullscreen' => 'Exit fullscreen',
     'action.rotate_left' => 'Rotate left',
     'action.rotate_right' => 'Rotate right',
     'visual.pan_zoom_hint' => 'Drag to pan · wheel to zoom',
