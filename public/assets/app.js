@@ -2540,6 +2540,23 @@
         // the first sensor in the list every time.
         const CHART_SENSOR_STORAGE_KEY = 'nstructure-chart-sensor';
         const CHART_RANGE_STORAGE_KEY = 'nstructure-chart-range';
+        const CHART_ZOOM_STORAGE_KEY = 'nstructure-chart-zoom';
+        const loadSavedZoom = () => {
+            try {
+                return JSON.parse(localStorage.getItem(CHART_ZOOM_STORAGE_KEY) || '{}');
+            } catch (error) {
+                return {};
+            }
+        };
+        const saveZoom = (key, startValue, endValue) => {
+            try {
+                const all = loadSavedZoom();
+                all[key] = { startValue, endValue };
+                localStorage.setItem(CHART_ZOOM_STORAGE_KEY, JSON.stringify(all));
+            } catch (error) {
+                // storage unavailable — zoom just won't persist
+            }
+        };
         try {
             const savedSensorId = localStorage.getItem(CHART_SENSOR_STORAGE_KEY);
             if (savedSensorId && sensorSelect?.querySelector(`option[value="${savedSensorId}"]`)) {
@@ -2581,9 +2598,24 @@
                 ],
                 series: [],
             });
+            // Remembers whatever time window the user drags/scrolls into,
+            // so it survives a page reload instead of always snapping back
+            // to the full range — debounced since dragging the slider fires
+            // this continuously.
+            let zoomSaveTimer = null;
+            chart.on('dataZoom', () => {
+                clearTimeout(zoomSaveTimer);
+                zoomSaveTimer = setTimeout(() => {
+                    const dz = chart.getOption().dataZoom?.[0];
+                    if (dz && dz.startValue != null && dz.endValue != null) {
+                        saveZoom(config.key, dz.startValue, dz.endValue);
+                    }
+                }, 300);
+            });
             return { config, chart, series: [], state: {} };
         }).filter(Boolean);
         if (!instances.length) return null;
+        let hasAppliedInitialZoom = false;
 
         // Builds the list of lines a chart instance should show for the
         // currently selected sensor: its own primary reading plus one line
@@ -2607,6 +2639,14 @@
             return list;
         };
 
+        const hexToRgba = (hex, alpha) => {
+            const value = hex.replace('#', '');
+            const r = parseInt(value.substring(0, 2), 16);
+            const g = parseInt(value.substring(2, 4), 16);
+            const b = parseInt(value.substring(4, 6), 16);
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        };
+
         // `replace` fully swaps the series list (needed when the count itself
         // changes, e.g. switching to a sensor with a different number of
         // channels) rather than merging by index. Every *routine* refresh
@@ -2619,7 +2659,12 @@
                 name: s.label,
                 showSymbol: false,
                 smooth: true,
-                areaStyle: instance.series.length === 1 ? { opacity: 0.08 } : undefined,
+                areaStyle: instance.series.length === 1 ? {
+                    color: new window.echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                        { offset: 0, color: hexToRgba(s.color, 0.35) },
+                        { offset: 1, color: hexToRgba(s.color, 0) },
+                    ]),
+                } : undefined,
                 lineStyle: { color: s.color, width: 2 },
                 itemStyle: { color: s.color },
                 data: instance.state[s.key]?.data || [],
@@ -2662,6 +2707,7 @@
             if (!instance) return;
             button.addEventListener('click', () => {
                 instance.chart.dispatchAction({ type: 'dataZoom', start: 0, end: 100 });
+                saveZoom(instance.config.key, null, null);
             });
         });
 
@@ -2704,6 +2750,7 @@
                     anyFailed = true;
                 }
             })));
+            const savedZoom = !hasAppliedInitialZoom ? loadSavedZoom() : {};
             instances.forEach((instance) => {
                 // replace: true here is what actually swaps the chart over
                 // to the new sensor/series — the single point where the
@@ -2711,12 +2758,19 @@
                 // backed by real (already-fetched) data instead of an
                 // empty placeholder.
                 updateInstanceData(instance, { replace: true });
-                // A real navigation (new sensor/range) should reset any
-                // leftover zoom from before — dispatchAction here so the
-                // dataZoom/toolbox component definitions never get
-                // re-specified outside chart setup.
-                instance.chart.dispatchAction({ type: 'dataZoom', start: 0, end: 100 });
+                // Only the very first load of a chartsController's lifetime
+                // (a fresh page load, or the first-ever visit to Wykresy)
+                // restores a saved zoom — a real navigation afterwards (new
+                // sensor/range) should reset to the full range instead of
+                // reapplying an unrelated old zoom window.
+                const zoom = savedZoom[instance.config.key];
+                if (zoom && zoom.startValue != null && zoom.endValue != null) {
+                    instance.chart.dispatchAction({ type: 'dataZoom', startValue: zoom.startValue, endValue: zoom.endValue });
+                } else {
+                    instance.chart.dispatchAction({ type: 'dataZoom', start: 0, end: 100 });
+                }
             });
+            hasAppliedInitialZoom = true;
             if (warning) warning.hidden = !anyFailed;
         };
 
