@@ -2096,11 +2096,19 @@
         // between was frozen. Poll quietly in the background the same way
         // the Wykresy tab already does, pausing while the tab/window isn't
         // visible so it doesn't run forever in a background browser tab.
+        // Skipped entirely while a different tab is open: a full sensor
+        // poll walks every configured sensor's SNMP/ping and takes a few
+        // seconds, and running it every 15s in the background was starving
+        // the PHP-FPM worker pool the Wykresy tab's own chart requests
+        // needed, which is what made charts appear to go blank.
         const LIST_REFRESH_INTERVAL_MS = 15000;
         let listRefreshTimer = null;
         const startListRefresh = () => {
             if (listRefreshTimer) return;
-            listRefreshTimer = setInterval(() => refreshSensors(true), LIST_REFRESH_INTERVAL_MS);
+            listRefreshTimer = setInterval(() => {
+                if (sensorGrid.hidden) return;
+                refreshSensors(true);
+            }, LIST_REFRESH_INTERVAL_MS);
         };
         const stopListRefresh = () => {
             if (listRefreshTimer) clearInterval(listRefreshTimer);
@@ -2108,7 +2116,7 @@
         };
         startListRefresh();
         document.addEventListener('visibilitychange', () => {
-            if (document.hidden) stopListRefresh(); else { refreshSensors(true); startListRefresh(); }
+            if (document.hidden) stopListRefresh(); else { if (!sensorGrid.hidden) refreshSensors(true); startListRefresh(); }
         });
 
         const SENSOR_MODEL_PRESETS = {
@@ -2595,10 +2603,16 @@
             instance.chart.setOption({ series: seriesOption }, replace ? { replaceMerge: ['series'] } : undefined);
         };
 
-        // Rebuilds the series list (and resets its data) for the currently
-        // selected sensor — called on every sensor change so a switch from
-        // a multi-probe sensor to a single-probe one doesn't leave stale
-        // extra lines behind.
+        // Rebuilds the series list (and resets its pending data) for the
+        // currently selected sensor — called on every sensor change so a
+        // switch from a multi-probe sensor to a single-probe one doesn't
+        // leave stale extra lines behind. Deliberately does NOT touch the
+        // chart's visible series yet: doing that here cleared the chart to
+        // empty immediately, then left it empty for however long the
+        // history fetch that follows took — normally instant, but visibly
+        // "the chart just disappeared" whenever the server was briefly busy
+        // (e.g. a full sensor poll from the refresh button). The old data
+        // now stays on screen until the new data actually arrives.
         const rebuildSeries = (instance) => {
             const list = buildSeriesList(instance);
             instance.series = list;
@@ -2608,7 +2622,6 @@
                 grid: { top: list.length > 1 ? 34 : 16 },
                 legend: list.length > 1 ? { show: true, top: 4, itemWidth: 14, itemHeight: 8, textStyle: { fontSize: 11 } } : { show: false },
             });
-            updateInstanceData(instance, { replace: true });
         };
 
         const resizeObserver = new ResizeObserver(() => instances.forEach(({ chart }) => chart.resize()));
@@ -2659,7 +2672,12 @@
                 }
             })));
             instances.forEach((instance) => {
-                updateInstanceData(instance);
+                // replace: true here is what actually swaps the chart over
+                // to the new sensor/series — the single point where the
+                // previously-displayed data gets replaced, now that it's
+                // backed by real (already-fetched) data instead of an
+                // empty placeholder.
+                updateInstanceData(instance, { replace: true });
                 // A real navigation (new sensor/range) should reset any
                 // leftover zoom from before — dispatchAction here so the
                 // dataZoom/toolbox component definitions never get
