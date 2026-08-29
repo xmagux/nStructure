@@ -2540,7 +2540,12 @@
         // the first sensor in the list every time.
         const CHART_SENSOR_STORAGE_KEY = 'nstructure-chart-sensor';
         const CHART_RANGE_STORAGE_KEY = 'nstructure-chart-range';
-        const CHART_ZOOM_STORAGE_KEY = 'nstructure-chart-zoom';
+        // Renamed (v2) so a bad absolute zoom saved by the earlier buggy
+        // version — which pinned every chart to whatever window happened
+        // to be on screen at the time, since it saved on every routine
+        // reset — gets abandoned automatically instead of staying stuck
+        // for anyone who already had one recorded.
+        const CHART_ZOOM_STORAGE_KEY = 'nstructure-chart-zoom-v2';
         const loadSavedZoom = () => {
             try {
                 return JSON.parse(localStorage.getItem(CHART_ZOOM_STORAGE_KEY) || '{}');
