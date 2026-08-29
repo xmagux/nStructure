@@ -10,7 +10,8 @@ Group=victoriametrics
 ExecStart=/usr/local/bin/victoria-metrics-prod \
     -storageDataPath=/var/lib/victoria-metrics-data \
     -retentionPeriod=3 \
-    -httpListenAddr=127.0.0.1:8428
+    -httpListenAddr=127.0.0.1:8428 \
+    -search.latencyOffset=1s
 Restart=always
 RestartSec=2
 

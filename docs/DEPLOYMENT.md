@@ -186,6 +186,13 @@ The unit starts VictoriaMetrics with:
   external ever talks to VictoriaMetrics directly.
 - `-storageDataPath=/var/lib/victoria-metrics-data` — where series data lives.
 - `-retentionPeriod=3` — keep 3 months of history, then auto-expire.
+- `-search.latencyOffset=1s` — VictoriaMetrics defaults this to 30s (it
+  deliberately withholds the most recent 30 seconds of data from
+  `query_range` results, to avoid returning incomplete-looking buckets for
+  aggregation-heavy queries). The live "watching this sensor" chart mode
+  polls every 1-2 seconds specifically for near-real-time updates, so the
+  default made it look permanently stuck a few dozen seconds behind — this
+  flag is what makes freshly-written points show up immediately instead.
 
 Adjust `-retentionPeriod` to taste (e.g. `12` for a year); disk usage below
 scales roughly linearly with it.
