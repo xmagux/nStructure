@@ -251,6 +251,34 @@ The `/tools/sensors` page's Wykresy tab shows a warning banner if
 VictoriaMetrics is unreachable (checked via `/api/v1/sensors/metrics-status`)
 without breaking the rest of the page.
 
+### 4. Email alerts (optional)
+
+The Alerty tab on `/tools/sensors` lets you add email recipients, group
+them, and assign sensors to specific recipients or groups. When an alarm
+triggers, the daemon emails immediately, repeats every N minutes (set in
+the Alerty tab) while it stays active, and sends one more email once it
+clears. This needs outgoing SMTP configured in `.env`:
+
+```dotenv
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_ENCRYPTION=tls
+SMTP_USERNAME=alerts@example.com
+SMTP_PASSWORD=...
+SMTP_FROM_ADDRESS=alerts@example.com
+SMTP_FROM_NAME=nStructure
+```
+
+Leave `SMTP_HOST` empty to disable email sending — the tile's alarm ring
+and the Alerty tab's recipient/group management still work either way,
+only the emails themselves are skipped. The "Wyślij testową wiadomość"
+button in the Alerty tab is the quickest way to confirm the SMTP settings
+work. Sending itself happens from `bin/sensors-daemon.php`, not the web
+app, so alerts fire even with no browser open; sensors with digital
+inputs (grid/generator power) are checked every `SENSOR_DAEMON_ALARM_INTERVAL`
+seconds (30 by default) rather than the slower default polling interval,
+since a power-loss alarm needs to go out quickly.
+
 ## Verification
 
 ```bash

@@ -34,5 +34,14 @@ return static function (string $rootPath): array {
                 is_dir('/dev/shm') ? '/dev/shm/nstructure-sensor-heartbeats.json' : sys_get_temp_dir() . '/nstructure-sensor-heartbeats.json',
             ),
         ],
+        'mail' => [
+            'host' => (string) $env('SMTP_HOST', ''),
+            'port' => (int) $env('SMTP_PORT', 587),
+            'encryption' => (string) $env('SMTP_ENCRYPTION', 'tls'),
+            'username' => (string) $env('SMTP_USERNAME', ''),
+            'password' => (string) $env('SMTP_PASSWORD', ''),
+            'from_address' => (string) $env('SMTP_FROM_ADDRESS', 'nstructure@localhost'),
+            'from_name' => (string) $env('SMTP_FROM_NAME', 'nStructure'),
+        ],
     ];
 };

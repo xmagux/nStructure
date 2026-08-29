@@ -14,6 +14,7 @@
     "ext-json": "*",
     "ext-pdo": "*",
     "ext-pdo_mysql": "*",
+    "phpmailer/phpmailer": "^6.9",
     "slim/psr7": "^1.7",
     "slim/slim": "^4.15",
     "slim/twig-view": "^3.4",

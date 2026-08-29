@@ -2370,6 +2370,89 @@
             });
         });
 
+        // Alerty tab: recipients/groups/settings all reuse the same
+        // submit-and-reload helper as the rest of the app; only the
+        // checkbox-picker "Save" buttons (group membership, per-sensor
+        // targets) need a bespoke handler since they're not <form> submits.
+        document.querySelector('[data-alert-settings-form]')?.addEventListener('submit', (event) => {
+            event.preventDefault();
+            submitEntityForm(event.currentTarget, '/api/v1/alerts/settings', null);
+        });
+        document.querySelector('[data-alert-recipient-form]')?.addEventListener('submit', (event) => {
+            event.preventDefault();
+            submitEntityForm(event.currentTarget, '/api/v1/alerts/recipients', null);
+        });
+        document.querySelector('[data-alert-group-form]')?.addEventListener('submit', (event) => {
+            event.preventDefault();
+            submitEntityForm(event.currentTarget, '/api/v1/alerts/groups', null);
+        });
+        document.querySelector('[data-alert-test-form]')?.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const form = event.currentTarget;
+            const result = document.querySelector('[data-alert-test-result]');
+            const button = form.querySelector('button[type="submit"]');
+            button.disabled = true;
+            try {
+                const response = await fetch('/api/v1/alerts/test-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-Token': csrfToken },
+                    body: JSON.stringify(Object.fromEntries(new FormData(form).entries())),
+                });
+                const payload = await response.json();
+                if (result) {
+                    result.hidden = false;
+                    result.textContent = response.ok ? (body.dataset.toastSaved || 'OK') : (payload.error || body.dataset.toastError);
+                }
+            } catch (error) {
+                if (result) { result.hidden = false; result.textContent = body.dataset.toastError; }
+            } finally {
+                button.disabled = false;
+            }
+        });
+        document.querySelectorAll('[data-alert-group-save-members]').forEach((button) => {
+            button.addEventListener('click', async () => {
+                const row = button.closest('[data-group-id]');
+                if (!row) return;
+                const recipientIds = Array.from(row.querySelectorAll('[data-group-member-checkbox]:checked')).map((input) => input.value);
+                button.disabled = true;
+                try {
+                    const response = await fetch(`/api/v1/alerts/groups/${row.dataset.groupId}/members`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-Token': csrfToken },
+                        body: JSON.stringify({ recipient_ids: recipientIds }),
+                    });
+                    if (!response.ok) throw new Error();
+                    showToast(body.dataset.toastSaved);
+                } catch (error) {
+                    showToast(body.dataset.toastError, 'error');
+                } finally {
+                    button.disabled = false;
+                }
+            });
+        });
+        document.querySelectorAll('[data-alert-sensor-save]').forEach((button) => {
+            button.addEventListener('click', async () => {
+                const row = button.closest('[data-sensor-id]');
+                if (!row) return;
+                const recipientIds = Array.from(row.querySelectorAll('[data-target-recipient]:checked')).map((input) => input.value);
+                const groupIds = Array.from(row.querySelectorAll('[data-target-group]:checked')).map((input) => input.value);
+                button.disabled = true;
+                try {
+                    const response = await fetch(`/api/v1/sensors/${row.dataset.sensorId}/alert-targets`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-Token': csrfToken },
+                        body: JSON.stringify({ recipient_ids: recipientIds, group_ids: groupIds }),
+                    });
+                    if (!response.ok) throw new Error();
+                    showToast(body.dataset.toastSaved);
+                } catch (error) {
+                    showToast(body.dataset.toastError, 'error');
+                } finally {
+                    button.disabled = false;
+                }
+            });
+        });
+
         window.addEventListener('beforeunload', () => chartsController?.pause());
     }
 
@@ -2437,7 +2520,13 @@
             return list;
         };
 
-        const updateInstanceData = (instance) => {
+        // `replace` fully swaps the series list (needed when the count itself
+        // changes, e.g. switching to a sensor with a different number of
+        // channels) rather than merging by index. Every *routine* refresh
+        // tick must use a plain merge instead — replaceMerge removes and
+        // re-adds each series, which made the whole chart visibly flash on
+        // every 1-2s poll even though only the data had changed.
+        const updateInstanceData = (instance, { replace = false } = {}) => {
             const seriesOption = instance.series.map((s) => ({
                 type: 'line',
                 name: s.label,
@@ -2448,7 +2537,7 @@
                 itemStyle: { color: s.color },
                 data: instance.state[s.key]?.data || [],
             }));
-            instance.chart.setOption({ series: seriesOption }, { replaceMerge: ['series'] });
+            instance.chart.setOption({ series: seriesOption }, replace ? { replaceMerge: ['series'] } : undefined);
         };
 
         // Rebuilds the series list (and resets its data) for the currently
@@ -2464,7 +2553,7 @@
                 grid: { top: list.length > 1 ? 34 : 16 },
                 legend: list.length > 1 ? { show: true, top: 4, itemWidth: 14, itemHeight: 8, textStyle: { fontSize: 11 } } : { show: false },
             });
-            updateInstanceData(instance);
+            updateInstanceData(instance, { replace: true });
         };
 
         const resizeObserver = new ResizeObserver(() => instances.forEach(({ chart }) => chart.resize()));

@@ -1971,6 +1971,29 @@ body.sidebar-collapsed .user-avatar { width: 40px; height: 40px; }
     .sensor-channel-row { grid-template-columns: 1fr 1fr; }
 }
 
+/* Alerty tab (email recipients/groups + per-sensor assignment) */
+.sensor-alerts { display: flex; flex-direction: column; gap: 16px; }
+.alert-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.alert-card { padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+.alert-card h3 { margin: 0; font-size: 15px; }
+.alert-card > small { color: var(--text-muted); font-size: 11px; }
+.alert-test-result { margin: 0; color: var(--text-muted); font-size: 12px; }
+.alert-inline-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; }
+.alert-inline-form input[type="text"], .alert-inline-form input[type="email"], .alert-inline-form input[type="number"] { min-height: 34px; padding: 0 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); color: var(--text); font-size: 12px; }
+.alert-list { display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow-y: auto; }
+.alert-list-row { padding: 6px 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); font-size: 12px; }
+.alert-empty { color: var(--text-muted); font-size: 12px; }
+.alert-groups-list { display: flex; flex-direction: column; gap: 10px; max-height: 320px; overflow-y: auto; }
+.alert-group-row { padding: 10px; display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); }
+.alert-group-head { display: flex; align-items: center; justify-content: space-between; }
+.alert-group-members { display: flex; flex-wrap: wrap; gap: 6px 12px; }
+.alert-checkbox { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text); }
+.alert-checkbox input { accent-color: var(--blue); }
+.alert-sensor-list { display: flex; flex-direction: column; gap: 8px; }
+.alert-sensor-row { padding: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); }
+.alert-sensor-name { min-width: 140px; font-weight: 600; }
+.alert-sensor-targets-picker { flex: 1; display: flex; flex-wrap: wrap; gap: 6px 14px; }
+
 /* Digital-inputs detail modal */
 .sensor-inputs-table { margin-top: 16px; display: flex; flex-direction: column; gap: 6px; max-height: 60vh; overflow-y: auto; }
 .sensor-inputs-row { padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); }

@@ -6,6 +6,7 @@ namespace NStructure\Http\Controller;
 
 use InvalidArgumentException;
 use NStructure\Application\View\ViewContext;
+use NStructure\Domain\Repository\AlertRepository;
 use NStructure\Domain\Repository\SensorRepository;
 use NStructure\Infrastructure\Heartbeat\HeartbeatStore;
 use NStructure\Infrastructure\Metrics\VictoriaMetricsClient;
@@ -44,6 +45,7 @@ final readonly class SensorController
         private SensorRepository $repository,
         private VictoriaMetricsClient $metrics,
         private HeartbeatStore $heartbeat,
+        private AlertRepository $alertRepository,
     ) {
     }
 
@@ -59,6 +61,10 @@ final readonly class SensorController
         $data = $this->context->make('page.sensors', 'sensors', [
             'sensors' => $sensors,
             'sensor_sizes' => $layout['sizes'],
+            'alert_recipients' => $this->alertRepository->listRecipients(),
+            'alert_groups' => $this->alertRepository->listGroups(),
+            'alert_settings' => $this->alertRepository->getSettings(),
+            'alert_targets' => $this->alertRepository->listAllSensorAlertTargets(),
         ]);
         return $this->view->render($response, 'pages/sensors.twig', $data);
     }

@@ -48,12 +48,15 @@
 <div class="sensor-tabs" data-sensor-tabs>
     <button class="sensor-tab active" type="button" data-sensor-tab="list">{{ icons.icon('layers', 15) }}{{ t('sensors.tab_list') }}</button>
     <button class="sensor-tab" type="button" data-sensor-tab="charts">{{ icons.icon('activity', 15) }}{{ t('sensors.tab_charts') }}</button>
+    <button class="sensor-tab" type="button" data-sensor-tab="alerts">{{ icons.icon('mail', 15) }}{{ t('sensors.tab_alerts') }}</button>
 </div>
 
 <section class="sensor-grid" data-sensor-grid data-sensor-panel="list" data-ping-down-label="{{ t('sensors.ping_down') }}" data-alarm-ping-label="{{ t('sensors.alarm_ping') }}" data-alarm-temperature-label="{{ t('sensors.alarm_temperature') }}" data-alarm-humidity-label="{{ t('sensors.alarm_humidity') }}" data-alarm-inputs-label="{{ t('sensors.alarm_inputs') }}" data-input-ok-label="{{ t('sensors.input_ok') }}" data-input-alarm-label="{{ t('sensors.input_alarm') }}" data-input-unknown-label="{{ t('sensors.input_unknown') }}">
     {% for sensor in sensors %}
-    {% set temp_alarm = sensor.last_temperature is not null and ((sensor.temperature_min is not null and sensor.last_temperature < sensor.temperature_min) or (sensor.temperature_max is not null and sensor.last_temperature > sensor.temperature_max)) %}
-    {% set humidity_alarm = sensor.last_humidity is not null and ((sensor.humidity_min is not null and sensor.last_humidity < sensor.humidity_min) or (sensor.humidity_max is not null and sensor.last_humidity > sensor.humidity_max)) %}
+    {% set temp_channel_breach = sensor.channels|filter(c => c.channel_type == 'temperature' and c.last_value is not null and ((sensor.temperature_min is not null and c.last_value < sensor.temperature_min) or (sensor.temperature_max is not null and c.last_value > sensor.temperature_max)))|length > 0 %}
+    {% set humidity_channel_breach = sensor.channels|filter(c => c.channel_type == 'humidity' and c.last_value is not null and ((sensor.humidity_min is not null and c.last_value < sensor.humidity_min) or (sensor.humidity_max is not null and c.last_value > sensor.humidity_max)))|length > 0 %}
+    {% set temp_alarm = temp_channel_breach or (sensor.last_temperature is not null and ((sensor.temperature_min is not null and sensor.last_temperature < sensor.temperature_min) or (sensor.temperature_max is not null and sensor.last_temperature > sensor.temperature_max))) %}
+    {% set humidity_alarm = humidity_channel_breach or (sensor.last_humidity is not null and ((sensor.humidity_min is not null and sensor.last_humidity < sensor.humidity_min) or (sensor.humidity_max is not null and sensor.last_humidity > sensor.humidity_max))) %}
     {% set is_down = sensor.monitoring_enabled and sensor.last_ping_ok is not null and not sensor.last_ping_ok %}
     {% set miasto_inputs = sensor.inputs|filter(i => i.group == 'miasto') %}
     {% set agregat_inputs = sensor.inputs|filter(i => i.group == 'agregat') %}
@@ -90,7 +93,10 @@
         <small class="sensor-tile-values" data-sensor-values><span class="{{ temp_alarm ? 'value-alarm' : '' }}" data-sensor-value-temperature>{{ sensor.last_temperature is not null ? sensor.last_temperature|number_format(1) ~ '°C' : '' }}</span><span class="{{ humidity_alarm ? 'value-alarm' : '' }}" data-sensor-value-humidity>{{ sensor.last_humidity is not null ? sensor.last_humidity|number_format(1) ~ '%' : '' }}</span></small>
         {% if sensor.channels|length %}
         <small class="sensor-tile-channels" data-sensor-channels-values>
-            {% for channel in sensor.channels %}<span title="{{ channel.label }}">{{ channel.label }}: {{ channel.last_value is not null ? channel.last_value|number_format(1) ~ (channel.channel_type == 'humidity' ? '%' : '°C') : '—' }}</span>{% endfor %}
+            {% for channel in sensor.channels %}
+            {% set channel_breach = channel.last_value is not null and ((channel.channel_type == 'temperature' and ((sensor.temperature_min is not null and channel.last_value < sensor.temperature_min) or (sensor.temperature_max is not null and channel.last_value > sensor.temperature_max))) or (channel.channel_type == 'humidity' and ((sensor.humidity_min is not null and channel.last_value < sensor.humidity_min) or (sensor.humidity_max is not null and channel.last_value > sensor.humidity_max)))) %}
+            <span class="{{ channel_breach ? 'value-alarm' : '' }}" title="{{ channel.label }}">{{ channel.label }}: {{ channel.last_value is not null ? channel.last_value|number_format(1) ~ (channel.channel_type == 'humidity' ? '%' : '°C') : '—' }}</span>
+            {% endfor %}
         </small>
         {% endif %}
         {% endif %}
@@ -124,6 +130,100 @@
     {% endif %}
 </section>
 <script src="/assets/vendor/echarts.min.js?v=20260828a" defer></script>
+
+<section class="sensor-alerts" data-sensor-panel="alerts" hidden>
+    <div class="alert-grid">
+        <article class="card alert-card">
+            <h3>{{ t('alerts.settings_title') }}</h3>
+            <form class="alert-inline-form" data-alert-settings-form>
+                <label class="field"><span>{{ t('alerts.repeat_interval') }}</span><input name="repeat_interval_minutes" type="number" min="1" value="{{ alert_settings.repeat_interval_minutes }}"></label>
+                <button class="button button-primary button-small" type="submit">{{ t('action.save') }}</button>
+                <p class="form-error" data-form-error hidden></p>
+            </form>
+            <small>{{ t('alerts.repeat_interval_hint') }}</small>
+            <form class="alert-inline-form" data-alert-test-form>
+                <label class="field"><span>{{ t('alerts.test_email') }}</span><input name="email" type="email" placeholder="you@example.com" required></label>
+                <button class="button button-ghost button-small" type="submit">{{ t('alerts.send_test') }}</button>
+            </form>
+            <p class="alert-test-result" data-alert-test-result hidden></p>
+        </article>
+
+        <article class="card alert-card">
+            <h3>{{ t('alerts.recipients_title') }}</h3>
+            <div class="alert-list" data-alert-recipients-list>
+                {% for recipient in alert_recipients %}
+                <div class="alert-list-row" data-recipient-id="{{ recipient.id }}">
+                    <span>{{ recipient.name ? recipient.name ~ ' · ' ~ recipient.email : recipient.email }}</span>
+                    <button class="icon-button danger" type="button" aria-label="{{ t('action.delete') }}" data-delete-open data-delete-url="/api/v1/alerts/recipients/{{ recipient.id }}" data-delete-name="{{ recipient.email }}">{{ icons.icon('trash', 12) }}</button>
+                </div>
+                {% else %}
+                <p class="alert-empty">{{ t('alerts.no_recipients') }}</p>
+                {% endfor %}
+            </div>
+            <form class="alert-inline-form" data-alert-recipient-form>
+                <input name="email" type="email" placeholder="{{ t('form.email') }}" maxlength="255" required>
+                <input name="name" type="text" maxlength="160" placeholder="{{ t('form.name_optional') }}">
+                <button class="button button-primary button-small" type="submit">{{ icons.icon('plus', 13) }}{{ t('action.add') }}</button>
+                <p class="form-error" data-form-error hidden></p>
+            </form>
+        </article>
+
+        <article class="card alert-card">
+            <h3>{{ t('alerts.groups_title') }}</h3>
+            <div class="alert-groups-list" data-alert-groups-list>
+                {% for group in alert_groups %}
+                <div class="alert-group-row" data-group-id="{{ group.id }}">
+                    <div class="alert-group-head">
+                        <strong>{{ group.name }}</strong>
+                        <button class="icon-button danger" type="button" aria-label="{{ t('action.delete') }}" data-delete-open data-delete-url="/api/v1/alerts/groups/{{ group.id }}" data-delete-name="{{ group.name }}">{{ icons.icon('trash', 12) }}</button>
+                    </div>
+                    <div class="alert-group-members">
+                        {% for recipient in alert_recipients %}
+                        <label class="alert-checkbox"><input type="checkbox" data-group-member-checkbox value="{{ recipient.id }}" {{ recipient.id in group.member_ids ? 'checked' : '' }}><span>{{ recipient.email }}</span></label>
+                        {% else %}
+                        <span class="alert-empty">{{ t('alerts.no_recipients') }}</span>
+                        {% endfor %}
+                    </div>
+                    <button class="button button-ghost button-small" type="button" data-alert-group-save-members data-id="{{ group.id }}">{{ t('action.save') }}</button>
+                </div>
+                {% else %}
+                <p class="alert-empty">{{ t('alerts.no_groups') }}</p>
+                {% endfor %}
+            </div>
+            <form class="alert-inline-form" data-alert-group-form>
+                <input name="name" type="text" maxlength="160" placeholder="{{ t('alerts.group_name') }}" required>
+                <button class="button button-primary button-small" type="submit">{{ icons.icon('plus', 13) }}{{ t('action.add') }}</button>
+                <p class="form-error" data-form-error hidden></p>
+            </form>
+        </article>
+    </div>
+
+    <article class="card alert-card">
+        <h3>{{ t('alerts.sensor_targets_title') }}</h3>
+        <div class="alert-sensor-list">
+            {% for sensor in sensors %}
+            {% set targets = alert_targets[sensor.id] ?? {'recipient_ids': [], 'group_ids': []} %}
+            <div class="alert-sensor-row" data-sensor-id="{{ sensor.id }}">
+                <span class="alert-sensor-name">{{ sensor.name }}</span>
+                <div class="alert-sensor-targets-picker">
+                    {% for group in alert_groups %}
+                    <label class="alert-checkbox"><input type="checkbox" data-target-group value="{{ group.id }}" {{ group.id in targets.group_ids ? 'checked' : '' }}><span>👥 {{ group.name }}</span></label>
+                    {% endfor %}
+                    {% for recipient in alert_recipients %}
+                    <label class="alert-checkbox"><input type="checkbox" data-target-recipient value="{{ recipient.id }}" {{ recipient.id in targets.recipient_ids ? 'checked' : '' }}><span>{{ recipient.email }}</span></label>
+                    {% endfor %}
+                    {% if alert_groups|length == 0 and alert_recipients|length == 0 %}
+                    <span class="alert-empty">{{ t('alerts.no_recipients') }}</span>
+                    {% endif %}
+                </div>
+                <button class="button button-ghost button-small" type="button" data-alert-sensor-save>{{ t('action.save') }}</button>
+            </div>
+            {% else %}
+            <p class="alert-empty">{{ t('sensors.empty') }}</p>
+            {% endfor %}
+        </div>
+    </article>
+</section>
 
 <dialog class="modal entity-modal" id="sensor-modal">
     <form class="modal-card modal-card-wide" data-sensor-form>

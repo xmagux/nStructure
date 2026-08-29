@@ -7,6 +7,7 @@ namespace NStructure\Infrastructure\Container;
 use NStructure\Application\Storage\AssetImageStorage;
 use NStructure\Application\Translation\Translator;
 use NStructure\Application\View\ViewContext;
+use NStructure\Domain\Repository\AlertRepository;
 use NStructure\Domain\Repository\NetworkRepository;
 use NStructure\Domain\Repository\SensorRepository;
 use NStructure\Domain\Repository\UserRepository;
@@ -15,9 +16,11 @@ use NStructure\Http\Middleware\LocaleMiddleware;
 use NStructure\Http\Middleware\SessionMiddleware;
 use NStructure\Infrastructure\Database\ConnectionFactory;
 use NStructure\Infrastructure\Heartbeat\HeartbeatStore;
+use NStructure\Infrastructure\Mail\Mailer;
 use NStructure\Infrastructure\Metrics\VictoriaMetricsClient;
 use NStructure\Infrastructure\Network\FpingClient;
 use NStructure\Infrastructure\Repository\DemoNetworkRepository;
+use NStructure\Infrastructure\Repository\MySqlAlertRepository;
 use NStructure\Infrastructure\Repository\MySqlNetworkRepository;
 use NStructure\Infrastructure\Repository\MySqlSensorRepository;
 use NStructure\Infrastructure\Repository\MySqlUserRepository;
@@ -75,6 +78,10 @@ final class Definitions
             $container->get(SnmpClient::class),
             $container->get(FpingClient::class),
         ));
+        $container->set(AlertRepository::class, static fn (Container $container): AlertRepository => new MySqlAlertRepository(
+            $container->get(PDO::class),
+        ));
+        $container->set(Mailer::class, static fn (): Mailer => new Mailer($settings['mail']));
         $container->set(SessionMiddleware::class, static fn (): SessionMiddleware => new SessionMiddleware($settings));
         $container->set(AuthMiddleware::class, static fn (): AuthMiddleware => new AuthMiddleware($settings));
         $container->set(LocaleMiddleware::class, static fn (Container $container): LocaleMiddleware => new LocaleMiddleware(

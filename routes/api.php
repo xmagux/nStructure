@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use NStructure\Http\Controller\AlertController;
 use NStructure\Http\Controller\ApiController;
 use NStructure\Http\Controller\AssetController;
 use NStructure\Http\Controller\SensorController;
@@ -60,6 +61,16 @@ return static function (App $app): void {
             $group->post('/sensors', [SensorController::class, 'create']);
             $group->post('/sensors/{id:[0-9]+}', [SensorController::class, 'update']);
             $group->delete('/sensors/{id:[0-9]+}', [SensorController::class, 'archive']);
+            $group->post('/sensors/{id:[0-9]+}/alert-targets', [AlertController::class, 'setSensorAlertTargets']);
+            $group->post('/alerts/recipients', [AlertController::class, 'createRecipient']);
+            $group->post('/alerts/recipients/{id:[0-9]+}', [AlertController::class, 'updateRecipient']);
+            $group->delete('/alerts/recipients/{id:[0-9]+}', [AlertController::class, 'archiveRecipient']);
+            $group->post('/alerts/groups', [AlertController::class, 'createGroup']);
+            $group->post('/alerts/groups/{id:[0-9]+}', [AlertController::class, 'updateGroup']);
+            $group->delete('/alerts/groups/{id:[0-9]+}', [AlertController::class, 'deleteGroup']);
+            $group->post('/alerts/groups/{id:[0-9]+}/members', [AlertController::class, 'setGroupMembers']);
+            $group->post('/alerts/settings', [AlertController::class, 'saveSettings']);
+            $group->post('/alerts/test-email', [AlertController::class, 'sendTestEmail']);
         }
         $group->post('/cables', [ApiController::class, 'createCable']);
         $group->post('/cables/{id:[0-9]+}', [ApiController::class, 'updateCable']);

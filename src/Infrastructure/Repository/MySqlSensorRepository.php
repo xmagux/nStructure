@@ -404,6 +404,7 @@ final class MySqlSensorRepository implements SensorRepository
                 $value = $result !== null && $result['ok']
                     ? $this->scaleValue((string) $result['value'], (string) $result['type'], $channel['value_divisor'])
                     : null;
+                $channel['ok'] = $value !== null;
                 if ($value !== null) {
                     $channel['last_value'] = $value;
                     $this->cacheChannelReading($channel['id'], $value);
@@ -415,10 +416,27 @@ final class MySqlSensorRepository implements SensorRepository
             if ($sensor['ping'] !== null && !$sensor['ping']['ok']) {
                 $reasons[] = 'ping';
             }
-            if ($sensor['temperature']['ok'] && $this->outOfRange($sensor['temperature']['value'], $sensor['temperature_min'], $sensor['temperature_max'])) {
+            // A sensor with extra probes (see attachChannels()) should alarm
+            // if ANY of its temperature/humidity readings — the primary
+            // pair or an extra channel — breaches the shared thresholds,
+            // not just the primary one.
+            $temperatureBreach = $sensor['temperature']['ok'] && $this->outOfRange($sensor['temperature']['value'], $sensor['temperature_min'], $sensor['temperature_max']);
+            $humidityBreach = $sensor['humidity']['ok'] && $this->outOfRange($sensor['humidity']['value'], $sensor['humidity_min'], $sensor['humidity_max']);
+            foreach ($sensor['channels'] as $channel) {
+                if (!$channel['ok']) {
+                    continue;
+                }
+                if ($channel['channel_type'] === 'temperature' && $this->outOfRange($channel['last_value'], $sensor['temperature_min'], $sensor['temperature_max'])) {
+                    $temperatureBreach = true;
+                }
+                if ($channel['channel_type'] === 'humidity' && $this->outOfRange($channel['last_value'], $sensor['humidity_min'], $sensor['humidity_max'])) {
+                    $humidityBreach = true;
+                }
+            }
+            if ($temperatureBreach) {
                 $reasons[] = 'temperature';
             }
-            if ($sensor['humidity']['ok'] && $this->outOfRange($sensor['humidity']['value'], $sensor['humidity_min'], $sensor['humidity_max'])) {
+            if ($humidityBreach) {
                 $reasons[] = 'humidity';
             }
             // The "agregat" (generator) group gets its own amber badge on
