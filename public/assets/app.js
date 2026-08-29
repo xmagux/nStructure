@@ -671,6 +671,7 @@
         form.elements.location_id.value = button.dataset.locationId || '';
         form.elements.name.value = button.dataset.roomName || '';
         form.elements.floor.value = button.dataset.roomFloor || '';
+        if (form.elements.sensor_id) form.elements.sensor_id.value = button.dataset.roomSensorId || '';
         roomEditModal.querySelector('[data-room-edit-context]').textContent = button.dataset.roomName || '';
     });
     document.querySelector('[data-room-edit-form]')?.addEventListener('submit', (event) => {

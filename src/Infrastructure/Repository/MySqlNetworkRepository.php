@@ -207,8 +207,10 @@ final readonly class MySqlNetworkRepository implements NetworkRepository
         }
 
         $statement = $this->pdo->prepare(
-            'SELECT sr.id, sr.code, sr.name, sr.floor
+            'SELECT sr.id, sr.code, sr.name, sr.floor, sr.sensor_id,
+                    es.name AS sensor_name, es.last_temperature, es.last_humidity
              FROM server_rooms sr
+             LEFT JOIN environmental_sensors es ON es.id = sr.sensor_id
              WHERE sr.location_id = :location_id AND sr.archived_at IS NULL
              ORDER BY sr.name',
         );
@@ -249,7 +251,10 @@ final readonly class MySqlNetworkRepository implements NetworkRepository
                 fn (array $upsDevice): array => $this->normalizeUpsDevice($upsDevice),
                 $upsStatement->fetchAll(),
             );
-            $room['temperature'] = '—';
+            $room['sensor_id'] = $room['sensor_id'] !== null ? (int) $room['sensor_id'] : null;
+            $room['temperature'] = $room['last_temperature'] !== null ? number_format((float) $room['last_temperature'], 1) . ' °C' : '—';
+            $room['humidity'] = $room['last_humidity'] !== null ? number_format((float) $room['last_humidity'], 1) . ' %' : '—';
+            unset($room['last_temperature'], $room['last_humidity']);
             $room['images'] = $this->assetImages('SERVER_ROOM', (int) $room['id']);
         }
         unset($room);
@@ -1174,14 +1179,16 @@ SQL;
         );
         $sequence->execute(['location_id' => $locationId]);
         $code = sprintf('SR-%03d', (int) $sequence->fetchColumn());
+        $sensorId = $this->nullableSensorId($input['sensor_id'] ?? null);
         $statement = $this->pdo->prepare(
-            'INSERT INTO server_rooms (location_id, code, name, floor) VALUES (:location_id, :code, :name, :floor)',
+            'INSERT INTO server_rooms (location_id, code, name, floor, sensor_id) VALUES (:location_id, :code, :name, :floor, :sensor_id)',
         );
         $statement->execute([
             'location_id' => $locationId,
             'code' => $code,
             'name' => trim((string) $input['name']),
             'floor' => trim((string) ($input['floor'] ?? '')) ?: null,
+            'sensor_id' => $sensorId,
         ]);
 
         $record = [
@@ -1190,6 +1197,7 @@ SQL;
             'code' => $code,
             'name' => trim((string) $input['name']),
             'floor' => trim((string) ($input['floor'] ?? '')),
+            'sensor_id' => $sensorId,
         ];
         $this->recordAudit('SERVER_ROOM', $record['id'], 'CREATE', null, $record);
         return $record;
@@ -1198,13 +1206,14 @@ SQL;
     public function updateServerRoom(int $serverRoomId, array $input): array
     {
         $statement = $this->pdo->prepare(
-            'UPDATE server_rooms SET location_id = :location_id, name = :name, floor = :floor WHERE id = :id AND archived_at IS NULL',
+            'UPDATE server_rooms SET location_id = :location_id, name = :name, floor = :floor, sensor_id = :sensor_id WHERE id = :id AND archived_at IS NULL',
         );
         $record = [
             'id' => $serverRoomId,
             'location_id' => (int) $input['location_id'],
             'name' => trim((string) $input['name']),
             'floor' => trim((string) ($input['floor'] ?? '')) ?: null,
+            'sensor_id' => $this->nullableSensorId($input['sensor_id'] ?? null),
         ];
         $statement->execute($record);
         if ($statement->rowCount() === 0 && !$this->recordExists('server_rooms', $serverRoomId)) {
@@ -3259,6 +3268,15 @@ SQL;
         $statement = $this->pdo->prepare(sprintf('SELECT COUNT(*) FROM %s WHERE id = :id AND archived_at IS NULL', $table));
         $statement->execute(['id' => $id]);
         return (int) $statement->fetchColumn() > 0;
+    }
+
+    private function nullableSensorId(mixed $value): ?int
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        $id = filter_var($value, FILTER_VALIDATE_INT);
+        return $id !== false && $id > 0 ? $id : null;
     }
 
     private function resizeSingleSegment(int $segmentId, int $currentCount, int $newCount): void

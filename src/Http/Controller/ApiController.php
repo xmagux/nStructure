@@ -84,6 +84,7 @@ final readonly class ApiController
             if (mb_strlen(trim((string) ($input['floor'] ?? ''))) > 40) {
                 throw new InvalidArgumentException('Floor must contain no more than 40 characters');
             }
+            $this->validateOptionalSensorId($input);
             $room = $this->repository->createServerRoom((int) $arguments['id'], $input);
             return $this->json($response->withStatus(201), ['data' => $room]);
         } catch (InvalidArgumentException $exception) {
@@ -105,6 +106,7 @@ final readonly class ApiController
             if (mb_strlen(trim((string) ($input['floor'] ?? ''))) > 40) {
                 throw new InvalidArgumentException('Floor must contain no more than 40 characters');
             }
+            $this->validateOptionalSensorId($input);
             return $this->json($response, ['data' => $this->repository->updateServerRoom((int) $arguments['id'], $input)]);
         } catch (InvalidArgumentException $exception) {
             return $this->json($response->withStatus(422), ['error' => $exception->getMessage()]);
@@ -645,6 +647,17 @@ final readonly class ApiController
         $name = trim((string) ($input['name'] ?? ''));
         if (mb_strlen($name) < 2 || mb_strlen($name) > 160) {
             throw new InvalidArgumentException('Name must contain 2-160 characters');
+        }
+    }
+
+    private function validateOptionalSensorId(array $input): void
+    {
+        $sensorId = $input['sensor_id'] ?? null;
+        if ($sensorId === null || $sensorId === '') {
+            return;
+        }
+        if (filter_var($sensorId, FILTER_VALIDATE_INT) === false) {
+            throw new InvalidArgumentException('Sensor must be a valid selection');
         }
     }
 

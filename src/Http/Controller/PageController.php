@@ -6,6 +6,7 @@ namespace NStructure\Http\Controller;
 
 use NStructure\Application\View\ViewContext;
 use NStructure\Domain\Repository\NetworkRepository;
+use NStructure\Domain\Repository\SensorRepository;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Slim\Views\Twig;
@@ -16,6 +17,7 @@ final readonly class PageController
         private Twig $view,
         private ViewContext $context,
         private NetworkRepository $repository,
+        private SensorRepository $sensors,
     ) {
     }
 
@@ -46,8 +48,27 @@ final readonly class PageController
         $data = $this->context->make('page.location', 'locations', [
             'location' => $location,
             'locations' => $this->repository->locations(),
+            'sensor_options' => $this->sensorOptions(),
         ]);
         return $this->view->render($response, 'pages/location.twig', $data);
+    }
+
+    /**
+     * SensorRepository always talks to the real database (unlike
+     * NetworkRepository, it isn't swapped for an in-memory one in demo
+     * mode), so a missing/unreachable sensors schema shouldn't take the
+     * whole location page down with it — the picker just ends up empty.
+     */
+    private function sensorOptions(): array
+    {
+        try {
+            return array_map(
+                static fn (array $sensor): array => ['id' => $sensor['id'], 'name' => $sensor['name']],
+                $this->sensors->all(),
+            );
+        } catch (\Throwable) {
+            return [];
+        }
     }
 
     public function rack(ServerRequestInterface $request, ResponseInterface $response, array $arguments): ResponseInterface
