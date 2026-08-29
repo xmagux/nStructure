@@ -1716,34 +1716,60 @@
     };
 
     const addKindGlyph = (group, device, height, deviceWidth, accent, palette) => {
-        if (device.kind === 'POWER') {
-            const socketCount = 6;
-            const areaWidth = Math.min(150, deviceWidth * 0.4);
-            const areaX = deviceWidth - areaWidth - 20;
-            const step = areaWidth / socketCount;
-            const radius = Math.max(3, Math.min(7, height * 0.22, step * 0.35));
-            for (let index = 0; index < socketCount; index += 1) {
-                group.add(new window.Konva.Circle({
-                    x: areaX + step * index + step / 2,
-                    y: height / 2,
-                    radius,
-                    stroke: accent,
-                    strokeWidth: 1.4,
-                    fill: palette.surfaceRaised,
-                }));
+        // Centered in whatever space is left after the code/name text
+        // (which stops around x=212) rather than crammed into the far
+        // right edge — that made the earlier version nearly invisible.
+        const contentStart = 220;
+        const areaWidth = Math.max(60, deviceWidth - contentStart - 20);
+        const areaCenterX = contentStart + areaWidth / 2;
+
+        if (device.kind === 'POWER' || device.kind === 'ACTIVE_DEVICE') {
+            // POWER: a row of round sockets (PDU strip). ACTIVE_DEVICE: a
+            // row of small squares (switch ports) — deliberately square so
+            // it reads as "copper/ethernet", same visual language as the
+            // RJ45 port dots elsewhere.
+            const isSwitch = device.kind === 'ACTIVE_DEVICE';
+            const count = isSwitch ? 10 : 6;
+            const usableWidth = Math.min(areaWidth, isSwitch ? 230 : 170);
+            const startX = areaCenterX - usableWidth / 2;
+            const step = usableWidth / count;
+            const size = Math.max(5, Math.min(isSwitch ? 9 : 11, height * 0.32, step * 0.55));
+            for (let index = 0; index < count; index += 1) {
+                const centerX = startX + step * index + step / 2;
+                if (isSwitch) {
+                    group.add(new window.Konva.Rect({
+                        x: centerX - size / 2,
+                        y: height / 2 - size / 2,
+                        width: size,
+                        height: size,
+                        cornerRadius: 1,
+                        stroke: accent,
+                        strokeWidth: 1.8,
+                        fill: palette.surfaceRaised,
+                    }));
+                } else {
+                    group.add(new window.Konva.Circle({
+                        x: centerX,
+                        y: height / 2,
+                        radius: size,
+                        stroke: accent,
+                        strokeWidth: 1.8,
+                        fill: palette.surfaceRaised,
+                    }));
+                }
             }
             return;
         }
         const path = RACK_ITEM_GLYPHS[device.kind];
         if (!path) return;
-        const iconSize = Math.max(16, Math.min(height - 10, 34));
+        const iconSize = Math.max(24, Math.min(height - 6, 52));
         group.add(new window.Konva.Path({
-            x: deviceWidth - iconSize - 20,
+            x: areaCenterX - iconSize / 2,
             y: height / 2 - iconSize / 2,
             data: path,
             scale: { x: iconSize / 24, y: iconSize / 24 },
             stroke: accent,
-            strokeWidth: 1.6,
+            strokeWidth: Math.max(2, iconSize * 0.08),
             lineCap: 'round',
             lineJoin: 'round',
         }));
@@ -1769,7 +1795,7 @@
         if (device.type === 'patch_panel' && device.ports) {
             const portStates = Array.isArray(device.port_items) && device.port_items.length
                 ? device.port_items
-                : Array.from({ length: Number(device.ports) }, (_, index) => ({ number: index + 1, status: index < Number(device.occupied) ? 'occupied' : 'available' }));
+                : Array.from({ length: Number(device.ports) }, (_, index) => ({ number: index + 1, status: index < Number(device.occupied) ? 'occupied' : 'available', connector_medium: device.connector_medium }));
             const portMap = { x: 230, y: 4, width: 274, height: Math.max(10, height - 8) };
             const maxRowsForHeight = Math.max(1, Math.min(Math.floor(portMap.height / 7), 6));
             const portRows = Math.max(1, Math.min(Number(device.rows || (device.ports > 24 ? 2 : 1)), maxRowsForHeight));
@@ -1797,17 +1823,23 @@
                     const column = index % portColumns;
                     const status = String(port.status || 'available').toLowerCase();
                     const statusColor = status === 'occupied' ? palette.green : (status === 'reserved' ? palette.amber : (['blocked', 'damaged'].includes(status) ? palette.red : palette.borderStrong));
-                    const portCircle = new window.Konva.Circle({
-                        x: portMap.x + (column * xStep) + (xStep / 2),
-                        y: portMap.y + (row * yStep) + (yStep / 2),
-                        radius,
+                    // Square instead of round for copper (RJ45) ports, so a
+                    // panel reads as "not fiber" at a glance without having
+                    // to hover every dot.
+                    const isCopperPort = port.connector_medium === 'COPPER' || port.connector === 'RJ45';
+                    const centerX = portMap.x + (column * xStep) + (xStep / 2);
+                    const centerY = portMap.y + (row * yStep) + (yStep / 2);
+                    const portShapeProps = {
                         fill: status === 'available' ? palette.surfaceRaised : statusColor,
                         stroke: statusColor,
                         strokeWidth: Math.max(0.6, radius * 0.3),
                         shadowColor: statusColor,
                         shadowBlur: status === 'available' ? 0 : Math.min(radius * 1.8, xStep * 0.32, yStep * 0.32),
                         shadowOpacity: status === 'available' ? 0 : 0.32,
-                    });
+                    };
+                    const portCircle = isCopperPort
+                        ? new window.Konva.Rect({ ...portShapeProps, x: centerX - radius, y: centerY - radius, width: radius * 2, height: radius * 2, cornerRadius: Math.max(0.5, radius * 0.2) })
+                        : new window.Konva.Circle({ ...portShapeProps, x: centerX, y: centerY, radius });
                     portCircle.on('mouseenter', () => {
                         const portNumber = String(port.number || index + 1).padStart(2, '0');
                         const portDescription = port.label ? ` · ${port.label}` : '';
@@ -1817,7 +1849,7 @@
                         const destination = routeLines.length ? routeLines.join('\n') : (port.destination || labels.noDestination || 'No documented destination');
                         portTooltipTag.stroke(statusColor);
                         portTooltipText.text(`${labels.portLabel || 'Port'} ${portNumber}${portDescription} · ${statusLabels[status] || status}\n${destination}`);
-                        portTooltip.position({ x: portCircle.x(), y: portMap.y - 5 });
+                        portTooltip.position({ x: centerX, y: portMap.y - 5 });
                         portTooltip.show();
                         portTooltip.moveToTop();
                         world.getLayer().batchDraw();
@@ -1985,14 +2017,23 @@
             const reserved = portStatus === 'reserved';
             const stateAccent = damaged ? palette.red : (blocked || reserved ? palette.amber : palette.borderStrong);
             const accent = occupied ? (fiberColors[port.color] || palette.blue) : stateAccent;
+            // Square instead of round for copper (RJ45) ports — same idea
+            // as the rack elevation's port dots, so a panel reads as
+            // "not fiber" without hovering every port. Rings (selection,
+            // highlight) stay circular either way; only the solid port
+            // body itself changes shape.
+            const isCopperPort = port.connector_medium === 'COPPER' || port.connector === 'RJ45';
+            const makePortShape = (radius, extraProps) => (isCopperPort
+                ? new window.Konva.Rect({ x: -radius, y: -radius, width: radius * 2, height: radius * 2, cornerRadius: Math.max(1, radius * 0.18), ...extraProps })
+                : new window.Konva.Circle({ radius, ...extraProps }));
             const selection = new window.Konva.Circle({ name: 'selection-ring', radius: 31, stroke: palette.green, strokeWidth: 3, visible: false, shadowColor: palette.green, shadowBlur: 14, shadowOpacity: 0.62 });
             group.add(selection);
-            group.add(new window.Konva.Circle({ radius: 24, fill: palette.canvas, stroke: damaged ? palette.red : (blocked || reserved ? palette.amber : (occupied ? palette.borderStrong : palette.border)), strokeWidth: damaged ? 5 : 3, shadowColor: damaged ? palette.red : palette.shadow, shadowBlur: damaged ? 16 : 6, shadowOpacity: damaged ? 0.58 : 0.3 }));
+            group.add(makePortShape(24, { fill: palette.canvas, stroke: damaged ? palette.red : (blocked || reserved ? palette.amber : (occupied ? palette.borderStrong : palette.border)), strokeWidth: damaged ? 5 : 3, shadowColor: damaged ? palette.red : palette.shadow, shadowBlur: damaged ? 16 : 6, shadowOpacity: damaged ? 0.58 : 0.3 }));
             if (port.highlight_color && portHighlightColors[port.highlight_color]) {
                 group.add(new window.Konva.Circle({ radius: 28, stroke: portHighlightColors[port.highlight_color], strokeWidth: 3, dash: [4, 3] }));
             }
-            group.add(new window.Konva.Circle({ radius: 15, fill: occupied || damaged || blocked || reserved ? accent : palette.surfaceMuted, stroke: occupied && port.color === 'white' ? palette.borderStrong : accent, strokeWidth: 2 }));
-            group.add(new window.Konva.Circle({ radius: 6, fill: occupied || damaged || blocked || reserved ? palette.canvas : palette.border, opacity: 0.9 }));
+            group.add(makePortShape(15, { fill: occupied || damaged || blocked || reserved ? accent : palette.surfaceMuted, stroke: occupied && port.color === 'white' ? palette.borderStrong : accent, strokeWidth: 2 }));
+            group.add(makePortShape(6, { fill: occupied || damaged || blocked || reserved ? palette.canvas : palette.border, opacity: 0.9 }));
             const portLabelSize = Math.max(14, Math.min(18, xStep * 0.24, yStep * 0.24));
             const portLabelY = -56;
             const portLabel = new window.Konva.Group({ x: -27, y: portLabelY, listening: false });

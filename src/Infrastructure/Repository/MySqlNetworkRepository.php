@@ -291,6 +291,7 @@ final readonly class MySqlNetworkRepository implements NetworkRepository
         $panels->execute(['rack_id' => $id]);
         $portStatement = $this->pdo->prepare(
             'SELECT ppp.patch_panel_id, ppp.port_number AS number, ppp.label, ppp.highlight_color, ppp.remote_endpoint_label,
+                ct.medium AS connector_medium,
                 CASE
                     WHEN ppp.administrative_status <> "AVAILABLE" THEN LOWER(ppp.administrative_status)
                     WHEN EXISTS (
@@ -382,6 +383,7 @@ final readonly class MySqlNetworkRepository implements NetworkRepository
                 ) AS front_destination
              FROM patch_panel_ports ppp
              JOIN patch_panels pp ON pp.id = ppp.patch_panel_id
+             JOIN connector_types ct ON ct.id = ppp.connector_type_id
              WHERE pp.rack_id = :rack_id AND pp.archived_at IS NULL
              ORDER BY ppp.patch_panel_id, ppp.port_number',
         );
@@ -395,6 +397,7 @@ final readonly class MySqlNetworkRepository implements NetworkRepository
                 'status' => $port['status'],
                 'label' => $port['label'],
                 'highlight_color' => $port['highlight_color'],
+                'connector_medium' => $port['connector_medium'],
                 'destination' => $frontDestination ?: $rearDestination,
                 'rear_destination' => $rearDestination,
                 'front_destination' => $frontDestination,
@@ -402,6 +405,7 @@ final readonly class MySqlNetworkRepository implements NetworkRepository
         }
         $devices = array_map(static function (array $panel) use ($portsByPanel): array {
             $panelId = (int) $panel['id'];
+            $panelPorts = $portsByPanel[$panelId] ?? [];
             return [
                 'id' => $panelId,
                 'code' => $panel['code'],
@@ -411,7 +415,11 @@ final readonly class MySqlNetworkRepository implements NetworkRepository
                 'ports' => (int) $panel['ports'],
                 'rows' => (int) $panel['port_rows'],
                 'occupied' => (int) $panel['occupied'],
-                'port_items' => $portsByPanel[$panelId] ?? [],
+                'port_items' => $panelPorts,
+                // Fallback for the rare case port_items is empty (port count
+                // set but no port rows exist yet) — addRackDevice() synthesizes
+                // placeholder dots in that case and needs something to shape them.
+                'connector_medium' => $panelPorts[0]['connector_medium'] ?? 'FIBER',
                 'type' => 'patch_panel',
                 'tone' => 'violet',
             ];
@@ -560,7 +568,7 @@ final readonly class MySqlNetworkRepository implements NetworkRepository
 
         $portStatement = $this->pdo->prepare(
             'SELECT ppp.id, ppp.port_number AS number, ppp.label, ppp.highlight_color, ppp.remote_endpoint_label, ppp.notes, ppp.administrative_status,
-                ct.id AS connector_type_id, ct.code AS connector, fs.strand_number, fs.strand_color,
+                ct.id AS connector_type_id, ct.code AS connector, ct.medium AS connector_medium, fs.strand_number, fs.strand_color,
                 cs.segment_code, c.code AS cable_code,
                 pfc.id AS front_connection_id, pfc.patch_cord_label AS front_patch_cord_label, pfc.notes AS front_connection_notes,
                 adi.id AS active_interface_id, adi.name AS active_interface_name, adi.interface_type AS active_interface_type,
@@ -732,6 +740,7 @@ final readonly class MySqlNetworkRepository implements NetworkRepository
                 'administrative_status' => $port['administrative_status'],
                 'connector_type_id' => (int) $port['connector_type_id'],
                 'connector' => $port['connector'],
+                'connector_medium' => $port['connector_medium'],
                 'label' => $port['label'],
                 'highlight_color' => $port['highlight_color'],
                 'manual_remote_endpoint' => $port['remote_endpoint_label'],
@@ -1033,18 +1042,19 @@ SQL;
     public function connectorTypes(): array
     {
         $rows = $this->pdo->query(
-            'SELECT id, code FROM connector_types WHERE active = TRUE
+            'SELECT id, code, medium FROM connector_types WHERE active = TRUE
              ORDER BY FIELD(code,
                 "LC", "LC-UPC", "LC-APC",
                 "SC", "SC-UPC", "SC-APC", "SC-PC",
                 "E2000", "E2000-UPC", "E2000-APC",
-                "FC", "ST", "MPO", "INNE"
+                "FC", "ST", "MPO", "RJ45", "INNE"
              ), code',
         )->fetchAll();
 
         return array_map(static fn (array $row): array => [
             'id' => (int) $row['id'],
             'code' => $row['code'],
+            'medium' => $row['medium'],
         ], $rows);
     }
 

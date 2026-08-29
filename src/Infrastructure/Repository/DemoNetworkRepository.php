@@ -513,20 +513,21 @@ final class DemoNetworkRepository implements NetworkRepository
     public function connectorTypes(): array
     {
         return [
-            ['id' => 4, 'code' => 'LC'],
-            ['id' => 8, 'code' => 'LC-UPC'],
-            ['id' => 9, 'code' => 'LC-APC'],
-            ['id' => 10, 'code' => 'SC'],
-            ['id' => 11, 'code' => 'SC-UPC'],
-            ['id' => 3, 'code' => 'SC-APC'],
-            ['id' => 2, 'code' => 'SC-PC'],
-            ['id' => 1, 'code' => 'E2000'],
-            ['id' => 12, 'code' => 'E2000-UPC'],
-            ['id' => 13, 'code' => 'E2000-APC'],
-            ['id' => 5, 'code' => 'FC'],
-            ['id' => 6, 'code' => 'ST'],
-            ['id' => 7, 'code' => 'MPO'],
-            ['id' => 14, 'code' => 'INNE'],
+            ['id' => 4, 'code' => 'LC', 'medium' => 'FIBER'],
+            ['id' => 8, 'code' => 'LC-UPC', 'medium' => 'FIBER'],
+            ['id' => 9, 'code' => 'LC-APC', 'medium' => 'FIBER'],
+            ['id' => 10, 'code' => 'SC', 'medium' => 'FIBER'],
+            ['id' => 11, 'code' => 'SC-UPC', 'medium' => 'FIBER'],
+            ['id' => 3, 'code' => 'SC-APC', 'medium' => 'FIBER'],
+            ['id' => 2, 'code' => 'SC-PC', 'medium' => 'FIBER'],
+            ['id' => 1, 'code' => 'E2000', 'medium' => 'FIBER'],
+            ['id' => 12, 'code' => 'E2000-UPC', 'medium' => 'FIBER'],
+            ['id' => 13, 'code' => 'E2000-APC', 'medium' => 'FIBER'],
+            ['id' => 5, 'code' => 'FC', 'medium' => 'FIBER'],
+            ['id' => 6, 'code' => 'ST', 'medium' => 'FIBER'],
+            ['id' => 7, 'code' => 'MPO', 'medium' => 'FIBER'],
+            ['id' => 15, 'code' => 'RJ45', 'medium' => 'COPPER'],
+            ['id' => 14, 'code' => 'INNE', 'medium' => 'FIBER'],
         ];
     }
 
