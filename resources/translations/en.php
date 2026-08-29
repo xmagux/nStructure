@@ -553,7 +553,7 @@ return [
     'alerts.recipients_title' => 'Recipients',
     'alerts.no_recipients' => 'No recipients yet.',
     'alerts.groups_title' => 'Recipient groups',
-    'alerts.groups_hint' => 'Check recipients next to a group and click Save to assign them to it.',
+    'alerts.groups_hint' => 'Check the recipients you want in the group, uncheck the ones you want removed, then click that group\'s Save.',
     'alerts.no_groups' => 'No groups yet.',
     'alerts.group_name' => 'Group name',
     'alerts.sensor_targets_title' => 'Assign sensors to recipients',
