@@ -1704,6 +1704,51 @@
         return { stage, layer, world, fit };
     };
 
+    // Rough, not-literal visual shorthand for rack item kinds that don't
+    // have anything else (like a port grid) to draw — just enough of a
+    // hint that an organizer or a PDU is recognizable at a glance in the
+    // elevation, without trying to be an actual product illustration.
+    const RACK_ITEM_GLYPHS = {
+        // A mounting bar with a few D-ring cable hooks hanging off it.
+        ORGANIZER: 'M1,4 H23 M3,4 V8 A2,2 0 0 0 7,8 V4 M10,4 V8 A2,2 0 0 0 14,8 V4 M17,4 V8 A2,2 0 0 0 21,8 V4',
+        // A simple battery-with-bolt glyph.
+        UPS: 'M3,7 H16 V17 H3 Z M16,10 H19 V14 H16 M12.5,9 L8.5,13.5 H11 L9.5,17 L14.5,12 H11.5 Z',
+    };
+
+    const addKindGlyph = (group, device, height, deviceWidth, accent, palette) => {
+        if (device.kind === 'POWER') {
+            const socketCount = 6;
+            const areaWidth = Math.min(150, deviceWidth * 0.4);
+            const areaX = deviceWidth - areaWidth - 20;
+            const step = areaWidth / socketCount;
+            const radius = Math.max(3, Math.min(7, height * 0.22, step * 0.35));
+            for (let index = 0; index < socketCount; index += 1) {
+                group.add(new window.Konva.Circle({
+                    x: areaX + step * index + step / 2,
+                    y: height / 2,
+                    radius,
+                    stroke: accent,
+                    strokeWidth: 1.4,
+                    fill: palette.surfaceRaised,
+                }));
+            }
+            return;
+        }
+        const path = RACK_ITEM_GLYPHS[device.kind];
+        if (!path) return;
+        const iconSize = Math.max(16, Math.min(height - 10, 34));
+        group.add(new window.Konva.Path({
+            x: deviceWidth - iconSize - 20,
+            y: height / 2 - iconSize / 2,
+            data: path,
+            scale: { x: iconSize / 24, y: iconSize / 24 },
+            stroke: accent,
+            strokeWidth: 1.6,
+            lineCap: 'round',
+            lineJoin: 'round',
+        }));
+    };
+
     const addRackDevice = (world, device, rack, geometry, palette, labels) => {
         const { rackX, rackY, rackWidth, unitHeight } = geometry;
         const top = rackY + (rack.total_units - device.start) * unitHeight;
@@ -1712,10 +1757,12 @@
         const colors = { violet: palette.indigo, cyan: palette.cyan, blue: palette.blue, amber: palette.amber, slate: palette.borderStrong };
         const accent = colors[device.tone] || palette.blue;
         const group = new window.Konva.Group({ x: rackX + 54, y: top + 2 });
-        group.add(new window.Konva.Rect({ width: deviceWidth, height, cornerRadius: 7, fill: palette.surfaceRaised, stroke: accent, strokeWidth: 1.4, shadowColor: palette.shadow, shadowBlur: 12, shadowOpacity: 0.28, shadowOffsetY: 4 }));
+        const isFreeSpace = device.kind === 'FREE_SPACE';
+        group.add(new window.Konva.Rect({ width: deviceWidth, height, cornerRadius: 7, fill: palette.surfaceRaised, stroke: accent, strokeWidth: 1.4, dash: isFreeSpace ? [6, 4] : undefined, shadowColor: palette.shadow, shadowBlur: 12, shadowOpacity: 0.28, shadowOffsetY: 4 }));
         group.add(new window.Konva.Rect({ width: 7, height, cornerRadius: [7, 0, 0, 7], fill: accent }));
         group.add(new window.Konva.Text({ x: 26, y: Math.max(4, height / 2 - 9), width: 186, ellipsis: true, text: device.code, fontFamily: 'Inter, sans-serif', fontSize: Math.max(11, Math.min(17, height * 0.35)), fontStyle: 'bold', fill: palette.text }));
         if (height > 32) group.add(new window.Konva.Text({ x: 26, y: height / 2 + 6, width: 186, ellipsis: true, text: device.name, fontFamily: 'Inter, sans-serif', fontSize: 10, fill: palette.muted }));
+        if (device.type === 'rack_item') addKindGlyph(group, device, height, deviceWidth, accent, palette);
         if (device.ports) {
             group.add(new window.Konva.Text({ x: rackWidth - 300, y: Math.max(4, height / 2 - 8), width: 160, align: 'right', text: `${device.occupied}/${device.ports} PORTS`, fontFamily: 'JetBrains Mono, monospace', fontSize: 11, fontStyle: 'bold', fill: accent }));
         }
