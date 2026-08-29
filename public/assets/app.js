@@ -2601,9 +2601,21 @@
             // Remembers whatever time window the user drags/scrolls into,
             // so it survives a page reload instead of always snapping back
             // to the full range — debounced since dragging the slider fires
-            // this continuously.
+            // this continuously. Our OWN dataZoom calls (the routine
+            // reset-to-100% on every load, or reapplying a saved zoom) also
+            // fire this same event, and getOption() always reports absolute
+            // startValue/endValue even for a plain percentage reset — left
+            // unguarded, every ordinary load "saved" that moment's full
+            // extent as if it were a deliberate zoom, which then got
+            // reapplied as a FIXED window on the next load. A fixed
+            // absolute window doesn't grow as new live data streams in
+            // (unlike a plain 0-100% reset, which is percentage-based and
+            // auto-follows the data), so the chart looked stuck. Only
+            // genuine user interaction should ever be persisted.
             let zoomSaveTimer = null;
+            let suppressZoomSave = false;
             chart.on('dataZoom', () => {
+                if (suppressZoomSave) return;
                 clearTimeout(zoomSaveTimer);
                 zoomSaveTimer = setTimeout(() => {
                     const dz = chart.getOption().dataZoom?.[0];
@@ -2612,7 +2624,12 @@
                     }
                 }, 300);
             });
-            return { config, chart, series: [], state: {} };
+            const setZoom = (options) => {
+                suppressZoomSave = true;
+                chart.dispatchAction({ type: 'dataZoom', ...options });
+                setTimeout(() => { suppressZoomSave = false; }, 50);
+            };
+            return { config, chart, series: [], state: {}, setZoom };
         }).filter(Boolean);
         if (!instances.length) return null;
         let hasAppliedInitialZoom = false;
@@ -2706,7 +2723,7 @@
             const instance = instances.find((candidate) => candidate.config.key === button.dataset.chartReset);
             if (!instance) return;
             button.addEventListener('click', () => {
-                instance.chart.dispatchAction({ type: 'dataZoom', start: 0, end: 100 });
+                instance.setZoom({ start: 0, end: 100 });
                 saveZoom(instance.config.key, null, null);
             });
         });
@@ -2765,9 +2782,9 @@
                 // reapplying an unrelated old zoom window.
                 const zoom = savedZoom[instance.config.key];
                 if (zoom && zoom.startValue != null && zoom.endValue != null) {
-                    instance.chart.dispatchAction({ type: 'dataZoom', startValue: zoom.startValue, endValue: zoom.endValue });
+                    instance.setZoom({ startValue: zoom.startValue, endValue: zoom.endValue });
                 } else {
-                    instance.chart.dispatchAction({ type: 'dataZoom', start: 0, end: 100 });
+                    instance.setZoom({ start: 0, end: 100 });
                 }
             });
             hasAppliedInitialZoom = true;
