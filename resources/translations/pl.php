@@ -568,6 +568,7 @@ return [
     'form.name_optional' => 'Nazwa (opcjonalnie)',
     'sensors.vm_unreachable' => 'Brak połączenia z VictoriaMetrics — historia i wykresy są niedostępne, ale bieżące odczyty działają normalnie.',
     'sensors.chart_sensor' => 'Czujnik',
+    'sensors.open_device' => 'Otwórz stronę czujnika',
     'sensors.ping_latency' => 'Ping — czas odpowiedzi',
     'sensors.alarm_ping' => 'Brak połączenia',
     'sensors.alarm_temperature' => 'Temperatura poza zakresem',

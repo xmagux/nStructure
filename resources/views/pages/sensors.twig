@@ -118,12 +118,16 @@
             <button class="sensor-range-btn" type="button" data-chart-range="7d">7d</button>
             <button class="sensor-range-btn" type="button" data-chart-range="30d">30d</button>
         </div>
+        <div class="sensor-chart-sensor-actions">
+            <button class="button button-ghost button-small" type="button" data-chart-edit-sensor>{{ icons.icon('edit', 14) }}{{ t('action.edit') }}</button>
+            <a class="button button-ghost button-small" data-chart-open-sensor href="#" target="_blank" rel="noopener noreferrer">{{ icons.icon('external-link', 14) }}{{ t('sensors.open_device') }}</a>
+        </div>
     </div>
     <p class="sensor-chart-warning" data-vm-warning hidden>{{ icons.icon('alert', 15) }}<span>{{ t('sensors.vm_unreachable') }}</span></p>
     <div class="sensor-chart-grid">
+        <article class="card sensor-chart-card"><div class="sensor-chart-card-head"><h3>{{ t('sensors.ping_latency') }}</h3><button type="button" class="sensor-chart-reset" data-chart-reset="ping_latency">{{ t('action.reset_zoom') }}</button></div><div class="sensor-chart" data-chart="ping_latency"></div></article>
         <article class="card sensor-chart-card"><div class="sensor-chart-card-head"><h3>{{ t('sensors.temperature') }}</h3><button type="button" class="sensor-chart-reset" data-chart-reset="temperature">{{ t('action.reset_zoom') }}</button></div><div class="sensor-chart" data-chart="temperature"></div></article>
         <article class="card sensor-chart-card"><div class="sensor-chart-card-head"><h3>{{ t('sensors.humidity') }}</h3><button type="button" class="sensor-chart-reset" data-chart-reset="humidity">{{ t('action.reset_zoom') }}</button></div><div class="sensor-chart" data-chart="humidity"></div></article>
-        <article class="card sensor-chart-card"><div class="sensor-chart-card-head"><h3>{{ t('sensors.ping_latency') }}</h3><button type="button" class="sensor-chart-reset" data-chart-reset="ping_latency">{{ t('action.reset_zoom') }}</button></div><div class="sensor-chart" data-chart="ping_latency"></div></article>
     </div>
     {% else %}
     <div class="empty-state">{{ t('sensors.empty') }}</div>

@@ -2063,6 +2063,8 @@ body.sidebar-collapsed .user-avatar { width: 40px; height: 40px; }
 /* Sensor charts tab */
 .sensor-charts-controls { margin-bottom: 14px; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px; }
 .sensor-charts-controls .field { min-width: 220px; }
+.sensor-chart-sensor-actions { display: flex; gap: 8px; margin-left: auto; }
+.sensor-chart-sensor-actions[hidden] { display: none; }
 .sensor-range-buttons { display: inline-flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line); }
 .sensor-range-btn { padding: 8px 14px; border: 0; border-radius: 9px; color: var(--text-muted); background: transparent; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; transition: color .15s, background .15s; }
 .sensor-range-btn:hover { color: var(--text); }

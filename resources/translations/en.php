@@ -568,6 +568,7 @@ return [
     'form.name_optional' => 'Name (optional)',
     'sensors.vm_unreachable' => 'VictoriaMetrics is unreachable — history and charts are unavailable, but live readings still work normally.',
     'sensors.chart_sensor' => 'Sensor',
+    'sensors.open_device' => 'Open device page',
     'sensors.ping_latency' => 'Ping response time',
     'sensors.alarm_ping' => 'Not reachable',
     'sensors.alarm_temperature' => 'Temperature out of range',

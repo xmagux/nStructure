@@ -2730,6 +2730,30 @@
         const sensorSelect = container.querySelector('[data-chart-sensor-select]');
         const rangeButtons = container.querySelectorAll('[data-chart-range]');
         const warning = container.querySelector('[data-vm-warning]');
+        const editSensorButton = container.querySelector('[data-chart-edit-sensor]');
+        const openSensorLink = container.querySelector('[data-chart-open-sensor]');
+        const sensorActions = container.querySelector('.sensor-chart-sensor-actions');
+
+        // The edit/open-device buttons here are proxies onto the Lista tab's
+        // own tile for the same sensor — that tile already carries the host
+        // and drives the fully-wired edit modal, so this just finds it by
+        // id instead of duplicating any of that.
+        const syncSensorActions = () => {
+            const sensorId = sensorSelect?.value;
+            const tileEditButton = sensorId
+                ? document.querySelector(`[data-sensor-edit-open][data-sensor-id="${sensorId}"]`)
+                : null;
+            if (sensorActions) sensorActions.hidden = !tileEditButton;
+            if (openSensorLink) {
+                const host = tileEditButton?.dataset.sensorHost;
+                openSensorLink.href = host ? `http://${host}` : '#';
+            }
+        };
+        editSensorButton?.addEventListener('click', () => {
+            const sensorId = sensorSelect?.value;
+            if (!sensorId) return;
+            document.querySelector(`[data-sensor-edit-open][data-sensor-id="${sensorId}"]`)?.click();
+        });
 
         // The <select> otherwise always defaults to its first <option> on
         // every page load — restore whichever sensor/range was last being
@@ -2773,9 +2797,9 @@
         // temperature chart instead of a separate chart each. ping_latency
         // has no channelType since only temperature/humidity channels exist.
         const chartConfigs = [
+            { key: 'ping_latency', metric: 'ping_latency', unit: ' ms', color: '#a855f7', channelType: null, label: container.dataset.chartPingLatencyLabel || 'Ping latency' },
             { key: 'temperature', metric: 'temperature', unit: ' °C', color: '#3b82f6', channelType: 'temperature', label: container.dataset.chartTemperatureLabel || 'Temperature' },
             { key: 'humidity', metric: 'humidity', unit: ' %', color: '#14b8a6', channelType: 'humidity', label: container.dataset.chartHumidityLabel || 'Humidity' },
-            { key: 'ping_latency', metric: 'ping_latency', unit: ' ms', color: '#a855f7', channelType: null, label: container.dataset.chartPingLatencyLabel || 'Ping latency' },
         ];
         const CHANNEL_COLORS = ['#f97316', '#22c55e', '#eab308', '#ec4899', '#06b6d4'];
         // Chart chrome (axes, toolbox, dataZoom/slider) is set up exactly
@@ -2831,7 +2855,7 @@
                 chart.dispatchAction({ type: 'dataZoom', ...options });
                 setTimeout(() => { suppressZoomSave = false; }, 50);
             };
-            return { config, chart, series: [], state: {}, setZoom };
+            return { config, chart, card: element.closest('.sensor-chart-card'), series: [], state: {}, setZoom };
         }).filter(Boolean);
         if (!instances.length) return null;
         let hasAppliedInitialZoom = false;
@@ -2963,6 +2987,7 @@
         const loadFull = async () => {
             const sensorId = sensorSelect?.value;
             if (!sensorId) return;
+            syncSensorActions();
             instances.forEach((instance) => rebuildSeries(instance));
             let anyFailed = false;
             await Promise.all(instances.flatMap((instance) => instance.series.map(async (s) => {
@@ -2998,6 +3023,17 @@
             });
             hasAppliedInitialZoom = true;
             if (warning) warning.hidden = !anyFailed;
+            // Hiding a chart because it genuinely has no data is only safe
+            // when every fetch this round actually succeeded — otherwise a
+            // transient VM outage would hide charts that do have data, not
+            // just the ones that lack it.
+            if (!anyFailed) {
+                instances.forEach((instance) => {
+                    if (!instance.card) return;
+                    const hasData = instance.series.some((s) => (instance.state[s.key]?.data.length ?? 0) > 0);
+                    instance.card.hidden = !hasData;
+                });
+            }
         };
 
         const rangeWindowMs = () => {
@@ -3030,7 +3066,17 @@
                     // keep showing the last known data; the warning banner covers VM outages
                 }
             })));
-            instances.forEach((instance) => updateInstanceData(instance));
+            instances.forEach((instance) => {
+                updateInstanceData(instance);
+                // Incremental fetches only ever see a narrow "since" window,
+                // so they can confirm a chart now has data (un-hide it) but
+                // never confirm it has none — that call belongs to loadFull,
+                // which sees the whole range.
+                if (instance.card?.hidden) {
+                    const hasData = instance.series.some((s) => (instance.state[s.key]?.data.length ?? 0) > 0);
+                    if (hasData) instance.card.hidden = false;
+                }
+            });
         };
 
         const sendHeartbeat = () => {
