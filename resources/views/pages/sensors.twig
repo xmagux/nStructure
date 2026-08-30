@@ -222,10 +222,10 @@
                     <tr>
                         <th class="alert-matrix-sensor-col">{{ t('sensors.matrix_sensor_col') }}</th>
                         {% for group in alert_groups %}
-                        <th><span class="alert-matrix-col-label" title="{{ group.name }}">{{ icons.icon('users', 12) }}{{ group.name }}</span></th>
+                        <th class="alert-matrix-target-col alert-matrix-group-col"><span class="alert-matrix-col-label" title="{{ group.name }}">{{ group.name }}</span></th>
                         {% endfor %}
                         {% for recipient in alert_recipients %}
-                        <th><span class="alert-matrix-col-label" title="{{ recipient.email }}">{{ recipient.name ?: recipient.email }}</span></th>
+                        <th class="alert-matrix-target-col"><span class="alert-matrix-col-label" title="{{ recipient.email }}">{{ recipient.name ?: recipient.email }}</span></th>
                         {% endfor %}
                         <th class="alert-matrix-save-col"></th>
                     </tr>
@@ -236,10 +236,10 @@
                     <tr data-sensor-id="{{ sensor.id }}">
                         <td class="alert-matrix-sensor-col">{{ sensor.name }}</td>
                         {% for group in alert_groups %}
-                        <td><input type="checkbox" data-target-group value="{{ group.id }}" {{ group.id in targets.group_ids ? 'checked' : '' }}></td>
+                        <td class="alert-matrix-target-col alert-matrix-group-col"><input type="checkbox" data-target-group value="{{ group.id }}" {{ group.id in targets.group_ids ? 'checked' : '' }}></td>
                         {% endfor %}
                         {% for recipient in alert_recipients %}
-                        <td><input type="checkbox" data-target-recipient value="{{ recipient.id }}" {{ recipient.id in targets.recipient_ids ? 'checked' : '' }}></td>
+                        <td class="alert-matrix-target-col"><input type="checkbox" data-target-recipient value="{{ recipient.id }}" {{ recipient.id in targets.recipient_ids ? 'checked' : '' }}></td>
                         {% endfor %}
                         <td class="alert-matrix-save-col"><button class="button button-ghost button-small" type="button" data-alert-sensor-save>{{ t('action.save') }}</button></td>
                     </tr>

@@ -2033,7 +2033,16 @@ body.sidebar-collapsed .user-avatar { width: 40px; height: 40px; }
 .alert-matrix tbody tr:nth-child(even) td { background: var(--surface-2); }
 .alert-matrix-sensor-col { position: sticky; left: 0; z-index: 1; text-align: left; font-weight: 600; }
 .alert-matrix thead .alert-matrix-sensor-col { z-index: 3; }
-.alert-matrix-col-label { display: inline-flex; align-items: center; gap: 4px; max-width: 110px; overflow: hidden; text-overflow: ellipsis; }
+/* Recipient/group columns are narrow with the label rotated upright —
+   full email addresses as horizontal column headers either got truncated
+   illegibly or forced the whole table absurdly wide. Reading them
+   vertically keeps every column compact regardless of label length. */
+.alert-matrix-target-col { width: 34px; padding: 6px 3px; }
+.alert-matrix thead .alert-matrix-target-col { height: 165px; vertical-align: bottom; }
+.alert-matrix-col-label { display: inline-block; overflow: hidden; writing-mode: vertical-rl; transform: rotate(180deg); max-height: 155px; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+.alert-matrix-group-col { background: color-mix(in srgb, var(--blue) 6%, var(--surface)); }
+.alert-matrix tbody tr:nth-child(even) .alert-matrix-group-col { background: color-mix(in srgb, var(--blue) 6%, var(--surface-2)); }
+.alert-matrix thead .alert-matrix-group-col { background: color-mix(in srgb, var(--blue) 10%, var(--surface-solid)); }
 .alert-matrix input[type="checkbox"] { accent-color: var(--blue); cursor: pointer; }
 .alert-matrix-save-col { text-align: right; }
 
