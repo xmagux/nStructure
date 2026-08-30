@@ -2810,6 +2810,12 @@
         // has no channelType since only temperature/humidity channels exist.
         const chartConfigs = [
             { key: 'ping_latency', metric: 'ping_latency', unit: ' ms', color: '#a855f7', channelType: null, label: container.dataset.chartPingLatencyLabel || 'Ping latency' },
+            // A power sensor (HWg-PWR) has no temperature/humidity of its own —
+            // its whole point is the dry-contact inputs (grid/generator
+            // presence), which are otherwise only ever visible as a live
+            // snapshot on the tile. Losing exactly when/for how long grid
+            // power dropped is the one thing this chart exists for.
+            { key: 'power', metric: 'input', unit: '', color: '#22c55e', channelType: null, isPower: true, label: container.dataset.chartPowerLabel || 'Power status' },
             { key: 'temperature', metric: 'temperature', unit: ' °C', color: '#3b82f6', channelType: 'temperature', label: container.dataset.chartTemperatureLabel || 'Temperature' },
             { key: 'humidity', metric: 'humidity', unit: ' %', color: '#14b8a6', channelType: 'humidity', label: container.dataset.chartHumidityLabel || 'Humidity' },
         ];
@@ -2824,12 +2830,18 @@
             const element = container.querySelector(`[data-chart="${config.key}"]`);
             if (!element) return null;
             const chart = window.echarts.init(element);
+            const powerValueLabel = (value) => (value >= 0.5 ? (container.dataset.chartPowerOkLabel || 'OK') : (container.dataset.chartPowerAlarmLabel || 'ALARM'));
             chart.setOption({
                 grid: { left: 48, right: 16, top: 16, bottom: 56 },
-                tooltip: { trigger: 'axis', valueFormatter: (value) => `${Number(value).toFixed(1)}${config.unit}` },
+                tooltip: {
+                    trigger: 'axis',
+                    valueFormatter: config.isPower ? powerValueLabel : (value) => `${Number(value).toFixed(1)}${config.unit}`,
+                },
                 legend: { show: false },
                 xAxis: { type: 'time' },
-                yAxis: { type: 'value', axisLabel: { formatter: `{value}${config.unit}` } },
+                yAxis: config.isPower
+                    ? { type: 'value', min: 0, max: 1, interval: 1, axisLabel: { formatter: powerValueLabel } }
+                    : { type: 'value', axisLabel: { formatter: `{value}${config.unit}` } },
                 dataZoom: [
                     { type: 'inside', xAxisIndex: 0 },
                     { type: 'slider', xAxisIndex: 0, height: 18, bottom: 4 },
@@ -2877,8 +2889,26 @@
         // per extra channel of the matching type (embedded as JSON on the
         // selected <option> — see sensors.twig).
         const buildSeriesList = (instance) => {
-            const list = [{ key: 'primary', metric: instance.config.metric, label: instance.config.label, color: instance.config.color }];
             const sensorOption = sensorSelect?.selectedOptions?.[0];
+            // A power sensor has no primary reading of its own — every line
+            // on this chart is one of its dry-contact inputs (grid phases,
+            // generator phases, ...), so the list is built entirely from
+            // those instead of starting from a primary metric.
+            if (instance.config.isPower) {
+                try {
+                    const inputs = JSON.parse(sensorOption?.dataset.inputs || '[]');
+                    return inputs.map((input, index) => ({
+                        key: `input:${input.id}`,
+                        metric: 'input',
+                        inputId: input.id,
+                        label: input.label,
+                        color: CHANNEL_COLORS[index % CHANNEL_COLORS.length],
+                    }));
+                } catch (error) {
+                    return [];
+                }
+            }
+            const list = [{ key: 'primary', metric: instance.config.metric, label: instance.config.label, color: instance.config.color }];
             if (instance.config.channelType && sensorOption) {
                 try {
                     const channels = JSON.parse(sensorOption.dataset.channels || '[]');
@@ -2909,11 +2939,17 @@
         // re-adds each series, which made the whole chart visibly flash on
         // every 1-2s poll even though only the data had changed.
         const updateInstanceData = (instance, { replace = false } = {}) => {
+            // The power chart's inputs only ever hold 0/1 — a smoothed
+            // spline between two far-apart readings implies a gradual
+            // transition that never happened. A step line reads correctly
+            // as "stayed at this state, then flipped instantly."
+            const isPower = Boolean(instance.config.isPower);
             const seriesOption = instance.series.map((s) => ({
                 type: 'line',
                 name: s.label,
                 showSymbol: false,
-                smooth: true,
+                smooth: !isPower,
+                step: isPower ? 'end' : undefined,
                 // A smoothed spline recalculates its curvature across
                 // nearby points whenever a new one is appended, not just at
                 // the new point — animating that transition made the whole
@@ -2921,7 +2957,7 @@
                 // straight to the final shape avoids it; the line is still
                 // smooth, it just doesn't morph its way there anymore.
                 animation: false,
-                areaStyle: instance.series.length === 1 ? {
+                areaStyle: !isPower && instance.series.length === 1 ? {
                     color: new window.echarts.graphic.LinearGradient(0, 0, 0, 1, [
                         { offset: 0, color: hexToRgba(s.color, 0.35) },
                         { offset: 1, color: hexToRgba(s.color, 0) },
@@ -2991,10 +3027,11 @@
         const REFRESH_INTERVAL_MS = 2000;
         const currentRefreshIntervalMs = () => (currentRange === LIVE_RANGE ? LIVE_REFRESH_INTERVAL_MS : REFRESH_INTERVAL_MS);
 
-        const historyUrl = (sensorId, s, extra = '') =>
-            s.metric === 'channel'
-                ? `/api/v1/sensors/${sensorId}/history?metric=channel&channel_id=${s.channelId}&range=${currentRange}${extra}`
-                : `/api/v1/sensors/${sensorId}/history?metric=${s.metric}&range=${currentRange}${extra}`;
+        const historyUrl = (sensorId, s, extra = '') => {
+            if (s.metric === 'channel') return `/api/v1/sensors/${sensorId}/history?metric=channel&channel_id=${s.channelId}&range=${currentRange}${extra}`;
+            if (s.metric === 'input') return `/api/v1/sensors/${sensorId}/history?metric=input&input_id=${s.inputId}&range=${currentRange}${extra}`;
+            return `/api/v1/sensors/${sensorId}/history?metric=${s.metric}&range=${currentRange}${extra}`;
+        };
 
         const loadFull = async () => {
             const sensorId = sensorSelect?.value;

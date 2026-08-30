@@ -89,7 +89,7 @@ if (function_exists('pcntl_signal')) {
  *     humidity_divisor: float, temperature_min: ?float, temperature_max: ?float,
  *     humidity_min: ?float, humidity_max: ?float, ping_enabled: bool, name: string,
  *     channels: array<int, array{id: int, label: string, channel_type: string, value_oid: string, value_divisor: float}>,
- *     inputs: array<int, array{id: int, group: ?string, alarm_state_oid: string}>}>
+ *     inputs: array<int, array{id: int, label: string, group: ?string, alarm_state_oid: string}>}>
  */
 $loadSensors = static function () use ($pdo): array {
     $statement = $pdo->query(
@@ -141,7 +141,7 @@ $loadSensors = static function () use ($pdo): array {
         }
 
         $inputStatement = $pdo->query(
-            'SELECT sensor_id, id, group_name, alarm_state_oid FROM environmental_sensor_inputs',
+            'SELECT sensor_id, id, label, group_name, alarm_state_oid FROM environmental_sensor_inputs',
         );
         foreach ($inputStatement->fetchAll() as $row) {
             $sensorId = (int) $row['sensor_id'];
@@ -150,6 +150,7 @@ $loadSensors = static function () use ($pdo): array {
             }
             $byId[$sensorId]['inputs'][] = [
                 'id' => (int) $row['id'],
+                'label' => (string) $row['label'],
                 'group' => $row['group_name'],
                 'alarm_state_oid' => (string) $row['alarm_state_oid'],
             ];
@@ -469,6 +470,19 @@ while ($iteration < $maxIterations && !$shouldExit) {
                     ->execute(['id' => $input['id'], 'state' => $state]);
                 if ($state === 2 && $input['group'] !== 'agregat') {
                     $inputsBreach = true;
+                }
+                // Recorded as an "up" gauge (1 = normal, 0 = alarm) rather
+                // than the raw 1/2 AlarmState — same convention as
+                // sensor_ping_up, and it lets a chart of this series read
+                // as a plain presence/absence timeline (e.g. exactly when
+                // grid power dropped and came back), which is the whole
+                // point of keeping history for a power sensor.
+                $inputUpValue = $state === 2 ? 0.0 : 1.0;
+                $inputKey = 'input:' . $input['id'];
+                if ($seriesState->shouldSend($inputKey, $inputUpValue, 0.0, $keepalive, $now)) {
+                    $inputTags = $tags + ['input_id' => (string) $input['id'], 'input' => $input['label'], 'input_group' => $input['group'] ?? ''];
+                    $builder->addPoint('sensor_input_up', $inputTags, $inputUpValue, $timestampMs);
+                    $seriesState->recordSent($inputKey, $inputUpValue, $now);
                 }
             }
 

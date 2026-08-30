@@ -107,10 +107,10 @@
     {% endfor %}
 </section>
 
-<section class="sensor-charts" data-sensor-charts data-sensor-panel="charts" hidden data-vm-unreachable-label="{{ t('sensors.vm_unreachable') }}" data-chart-temperature-label="{{ t('sensors.temperature') }}" data-chart-humidity-label="{{ t('sensors.humidity') }}" data-chart-ping-latency-label="{{ t('sensors.ping_latency') }}">
+<section class="sensor-charts" data-sensor-charts data-sensor-panel="charts" hidden data-vm-unreachable-label="{{ t('sensors.vm_unreachable') }}" data-chart-temperature-label="{{ t('sensors.temperature') }}" data-chart-humidity-label="{{ t('sensors.humidity') }}" data-chart-ping-latency-label="{{ t('sensors.ping_latency') }}" data-chart-power-label="{{ t('sensors.power_status') }}" data-chart-power-ok-label="{{ t('sensors.power_ok') }}" data-chart-power-alarm-label="{{ t('sensors.power_alarm') }}">
     {% if sensors|length %}
     <div class="sensor-charts-controls">
-        <label class="field"><span>{{ t('sensors.chart_sensor') }}</span><select data-chart-sensor-select>{% for sensor in sensors %}<option value="{{ sensor.id }}" data-channels="{{ sensor.channels|json_encode }}">{{ sensor.name }}</option>{% endfor %}</select></label>
+        <label class="field"><span>{{ t('sensors.chart_sensor') }}</span><select data-chart-sensor-select>{% for sensor in sensors %}<option value="{{ sensor.id }}" data-channels="{{ sensor.channels|json_encode }}" data-inputs="{{ sensor.inputs|json_encode }}">{{ sensor.name }}</option>{% endfor %}</select></label>
         <div class="sensor-range-buttons" data-chart-range-buttons>
             <button class="sensor-range-btn" type="button" data-chart-range="5m">5m</button>
             <button class="sensor-range-btn" type="button" data-chart-range="1h">1h</button>
@@ -127,6 +127,7 @@
     <p class="sensor-chart-warning" data-vm-warning hidden>{{ icons.icon('alert', 15) }}<span>{{ t('sensors.vm_unreachable') }}</span></p>
     <div class="sensor-chart-grid">
         <article class="card sensor-chart-card"><div class="sensor-chart-card-head"><h3>{{ t('sensors.ping_latency') }}</h3><button type="button" class="sensor-chart-reset" data-chart-reset="ping_latency">{{ t('action.reset_zoom') }}</button></div><div class="sensor-chart" data-chart="ping_latency"></div></article>
+        <article class="card sensor-chart-card"><div class="sensor-chart-card-head"><h3>{{ t('sensors.power_status') }}</h3><button type="button" class="sensor-chart-reset" data-chart-reset="power">{{ t('action.reset_zoom') }}</button></div><div class="sensor-chart" data-chart="power"></div></article>
         <article class="card sensor-chart-card"><div class="sensor-chart-card-head"><h3>{{ t('sensors.temperature') }}</h3><button type="button" class="sensor-chart-reset" data-chart-reset="temperature">{{ t('action.reset_zoom') }}</button></div><div class="sensor-chart" data-chart="temperature"></div></article>
         <article class="card sensor-chart-card"><div class="sensor-chart-card-head"><h3>{{ t('sensors.humidity') }}</h3><button type="button" class="sensor-chart-reset" data-chart-reset="humidity">{{ t('action.reset_zoom') }}</button></div><div class="sensor-chart" data-chart="humidity"></div></article>
     </div>

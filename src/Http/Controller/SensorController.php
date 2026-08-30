@@ -169,6 +169,11 @@ final readonly class SensorController
             if ($channelId === false || $channelId === null) {
                 return $this->json($response->withStatus(422), ['error' => 'channel_id is required']);
             }
+        } elseif ($metricKey === 'input') {
+            $inputId = filter_var($query['input_id'] ?? null, FILTER_VALIDATE_INT);
+            if ($inputId === false || $inputId === null) {
+                return $this->json($response->withStatus(422), ['error' => 'input_id is required']);
+            }
         } elseif (!isset(self::METRIC_NAMES[$metricKey])) {
             return $this->json($response->withStatus(422), ['error' => 'Unknown metric']);
         }
@@ -185,9 +190,11 @@ final readonly class SensorController
         $windowSeconds = max(1, $end - $start);
         $step = $this->formatStepDuration(max(1, (int) ceil($windowSeconds / self::MAX_POINTS)));
 
-        $promql = $metricKey === 'channel'
-            ? sprintf('sensor_channel_value_value{sensor_id="%d",channel_id="%d"}', $sensorId, $channelId)
-            : sprintf('%s{sensor_id="%d"}', self::METRIC_NAMES[$metricKey], $sensorId);
+        $promql = match ($metricKey) {
+            'channel' => sprintf('sensor_channel_value_value{sensor_id="%d",channel_id="%d"}', $sensorId, $channelId),
+            'input' => sprintf('sensor_input_up_value{sensor_id="%d",input_id="%d"}', $sensorId, $inputId),
+            default => sprintf('%s{sensor_id="%d"}', self::METRIC_NAMES[$metricKey], $sensorId),
+        };
         $points = $this->metrics->queryRange($promql, $start, $end, $step);
 
         return $this->json($response, ['data' => $points]);
