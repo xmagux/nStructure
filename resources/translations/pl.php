@@ -406,6 +406,8 @@ return [
     'form.room_sensor' => 'Czujnik temperatury/wilgotności',
     'form.room_sensor_none' => '— brak —',
     'form.room_sensor_hint' => 'Wybierz już skonfigurowany czujnik (Czujniki środowiskowe), żeby jego odczyt pojawił się na tej serwerowni.',
+    'form.rack_sensor' => 'Czujnik temperatury/wilgotności',
+    'form.rack_sensor_hint' => 'Domyślnie czujnik przypisany do serwerowni — możesz wybrać inny.',
     'form.room_name_hint' => 'Przykład: Główna serwerownia',
     'form.rack_name_hint' => 'Przykład: Szafa dystrybucyjna 01',
     'form.rack_units' => 'Jednostki szafy',

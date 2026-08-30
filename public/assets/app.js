@@ -561,6 +561,11 @@
         const roomName = form?.querySelector('[data-rack-room-name]');
         if (roomId) roomId.value = button.dataset.roomId || '';
         if (roomName) roomName.textContent = button.dataset.roomName || '';
+        // A new rack starts out pointed at whatever sensor already covers
+        // its server room — the common case — while still leaving the
+        // dropdown editable for the rare rack that needs its own.
+        const sensorSelect = form?.querySelector('[data-rack-sensor-select]');
+        if (sensorSelect) sensorSelect.value = button.dataset.roomSensorId || '';
     });
     document.querySelector('[data-rack-form]')?.addEventListener('submit', (event) => {
         event.preventDefault();

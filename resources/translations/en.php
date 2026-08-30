@@ -406,6 +406,8 @@ return [
     'form.room_sensor' => 'Temperature/humidity sensor',
     'form.room_sensor_none' => '— none —',
     'form.room_sensor_hint' => 'Pick an already-configured sensor (Environmental sensors) to show its reading on this server room.',
+    'form.rack_sensor' => 'Temperature/humidity sensor',
+    'form.rack_sensor_hint' => 'Defaults to the server room\'s sensor — pick a different one if this rack needs its own.',
     'form.room_name_hint' => 'Example: Core server room',
     'form.rack_name_hint' => 'Example: Distribution rack 01',
     'form.rack_units' => 'Rack units',

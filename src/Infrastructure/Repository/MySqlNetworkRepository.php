@@ -267,12 +267,14 @@ final readonly class MySqlNetworkRepository implements NetworkRepository
     public function rack(int $id): ?array
     {
         $statement = $this->pdo->prepare(
-            'SELECT r.id, r.server_room_id, r.code, r.name, r.total_units, r.row_label,
-                sr.name AS room, l.id AS location_id, l.name AS location, es.last_temperature
+            'SELECT r.id, r.server_room_id, r.code, r.name, r.total_units, r.row_label, r.sensor_id,
+                sr.name AS room, sr.sensor_id AS room_sensor_id, l.id AS location_id, l.name AS location,
+                COALESCE(res.last_temperature, rms.last_temperature) AS last_temperature
              FROM racks r
              JOIN server_rooms sr ON sr.id = r.server_room_id
              JOIN locations l ON l.id = sr.location_id
-             LEFT JOIN environmental_sensors es ON es.id = sr.sensor_id
+             LEFT JOIN environmental_sensors res ON res.id = r.sensor_id
+             LEFT JOIN environmental_sensors rms ON rms.id = sr.sensor_id
              WHERE r.id = :id AND r.archived_at IS NULL',
         );
         $statement->execute(['id' => $id]);
@@ -516,6 +518,8 @@ final readonly class MySqlNetworkRepository implements NetworkRepository
             'code' => $rack['code'],
             'name' => $rack['name'],
             'row_label' => $rack['row_label'],
+            'sensor_id' => $rack['sensor_id'] !== null ? (int) $rack['sensor_id'] : null,
+            'room_sensor_id' => $rack['room_sensor_id'] !== null ? (int) $rack['room_sensor_id'] : null,
             'room' => $rack['room'],
             'location' => $rack['location'],
             'total_units' => (int) $rack['total_units'],
@@ -1374,8 +1378,8 @@ SQL;
         $positionIndex = (int) $position->fetchColumn();
 
         $statement = $this->pdo->prepare(
-            'INSERT INTO racks (server_room_id, code, name, total_units, row_label, position_index)
-             VALUES (:server_room_id, :code, :name, :total_units, :row_label, :position_index)',
+            'INSERT INTO racks (server_room_id, code, name, total_units, row_label, sensor_id, position_index)
+             VALUES (:server_room_id, :code, :name, :total_units, :row_label, :sensor_id, :position_index)',
         );
         $statement->execute([
             'server_room_id' => $serverRoomId,
@@ -1383,6 +1387,7 @@ SQL;
             'name' => trim((string) $input['name']),
             'total_units' => (int) $input['total_units'],
             'row_label' => trim((string) ($input['row_label'] ?? '')) ?: null,
+            'sensor_id' => $this->nullableSensorId($input['sensor_id'] ?? null),
             'position_index' => $positionIndex,
         ]);
 
@@ -1409,7 +1414,7 @@ SQL;
             throw new RuntimeException('Rack cannot be smaller than its highest mounted panel');
         }
         $statement = $this->pdo->prepare(
-            'UPDATE racks SET code = :code, name = :name, total_units = :total_units, row_label = :row_label
+            'UPDATE racks SET code = :code, name = :name, total_units = :total_units, row_label = :row_label, sensor_id = :sensor_id
              WHERE id = :id AND archived_at IS NULL',
         );
         $record = [
@@ -1418,6 +1423,7 @@ SQL;
             'name' => trim((string) $input['name']),
             'total_units' => (int) $input['total_units'],
             'row_label' => trim((string) ($input['row_label'] ?? '')) ?: null,
+            'sensor_id' => $this->nullableSensorId($input['sensor_id'] ?? null),
         ];
         $statement->execute($record);
         if ($statement->rowCount() === 0 && !$this->recordExists('racks', $rackId)) {

@@ -80,6 +80,7 @@ final readonly class PageController
         $data = $this->context->make('page.rack', 'locations', [
             'rack' => $rack,
             'connector_types' => $this->repository->connectorTypes(),
+            'sensor_options' => $this->sensorOptions(),
         ]);
         return $this->view->render($response, 'pages/rack.twig', $data);
     }
