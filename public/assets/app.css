@@ -2107,3 +2107,26 @@ body.sidebar-collapsed .user-avatar { width: 40px; height: 40px; }
 .sensor-chart-reset { padding: 4px 10px; border: 1px solid var(--line); border-radius: 8px; color: var(--text-muted); background: var(--surface-2); font: inherit; font-size: 11px; font-weight: 600; cursor: pointer; transition: color .15s, border-color .15s, background .15s; }
 .sensor-chart-reset:hover { color: var(--text); border-color: var(--blue); background: color-mix(in srgb, var(--blue) 10%, var(--surface-2)); }
 .sensor-chart { width: 100%; height: 260px; }
+
+/* Easter eggs — see app.js for the "magu"/"42" search triggers and the
+   Konami code listener. */
+body.egg-active { overflow: hidden; }
+@keyframes egg-fade-in { from { opacity: 0; } to { opacity: 1; } }
+.egg-matrix-overlay { position: fixed; inset: 0; z-index: 99999; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; background: #030805; overflow: hidden; animation: egg-fade-in .25s ease; cursor: default; }
+.egg-matrix-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.egg-matrix-caption { position: relative; z-index: 2; color: #d6ffe8; font-family: "Courier New", monospace; font-size: clamp(20px, 3.4vw, 30px); font-weight: 700; letter-spacing: .08em; text-shadow: 0 0 18px rgba(34, 197, 94, .75); opacity: 0; transform: translateY(10px); transition: opacity .6s ease, transform .6s ease; pointer-events: none; }
+.egg-matrix-caption.visible { opacity: 1; transform: translateY(0); }
+.egg-matrix-stage { position: relative; z-index: 2; opacity: 0; transform: scale(.85); transition: opacity .7s ease, transform .7s ease; border-radius: 14px; overflow: hidden; box-shadow: 0 0 0 1px rgba(34, 197, 94, .5), 0 40px 120px rgba(0, 0, 0, .7), 0 0 60px rgba(34, 197, 94, .35); }
+.egg-matrix-stage.visible { opacity: 1; transform: scale(1); }
+.egg-matrix-stage iframe { display: block; width: min(88vw, 720px); height: min(50vw, 405px); border: 0; }
+.egg-matrix-close { position: absolute; top: 22px; right: 26px; z-index: 3; width: 40px; height: 40px; border: 1px solid rgba(34, 197, 94, .5); border-radius: 50%; color: #d6ffe8; background: rgba(3, 8, 5, .6); font-size: 16px; line-height: 1; cursor: pointer; transition: background .2s, transform .2s; }
+.egg-matrix-close:hover { background: rgba(34, 197, 94, .25); transform: rotate(90deg); }
+
+.egg-answer-overlay { position: fixed; inset: 0; z-index: 99999; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 20px; background: rgba(4, 6, 12, .92); backdrop-filter: blur(6px); opacity: 0; transition: opacity .3s ease; cursor: pointer; }
+.egg-answer-overlay.visible { opacity: 1; }
+@keyframes egg-answer-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+.egg-answer-number { font-size: clamp(90px, 22vw, 220px); font-weight: 800; line-height: 1; color: transparent; background: linear-gradient(135deg, #a855f7, #3b82f6, #22c55e); -webkit-background-clip: text; background-clip: text; text-shadow: 0 0 60px rgba(139, 92, 246, .5); animation: egg-answer-pulse 2.4s ease-in-out infinite; }
+.egg-answer-caption { max-width: 420px; color: #94a3b8; text-align: center; font-size: 14px; letter-spacing: .02em; }
+
+.egg-confetti-piece { position: fixed; top: -20px; z-index: 99998; width: 9px; height: 14px; border-radius: 2px; pointer-events: none; animation: egg-confetti-fall linear forwards; }
+@keyframes egg-confetti-fall { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(105vh) rotate(540deg); opacity: .2; } }

@@ -118,6 +118,118 @@
     const preferredTheme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
     root.dataset.theme = storedTheme || preferredTheme;
 
+    // --- Easter eggs -------------------------------------------------
+    // A couple of hidden, harmless surprises. Each one is fully
+    // self-contained (builds its own overlay, cleans itself up on close)
+    // so it can't interfere with anything else on the page and never
+    // leaves stray DOM/timers behind once dismissed.
+
+    /** Typing "magu" into the search opens a Matrix-style code rain that
+     * settles into a video of the owner's aquarium. */
+    const openMaguEasterEgg = () => {
+        if (document.querySelector('.egg-matrix-overlay')) return;
+        const overlay = createElement('div', 'egg-matrix-overlay');
+        const canvas = document.createElement('canvas');
+        canvas.className = 'egg-matrix-canvas';
+        const caption = createElement('div', 'egg-matrix-caption', 'Witaj, Magu.');
+        const stage = createElement('div', 'egg-matrix-stage');
+        stage.innerHTML = '<iframe src="https://www.youtube.com/embed/4GzorwDNhhs?autoplay=1&si=bczJBgR4-KNGlShk" title="Akwarium Magu" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>';
+        const closeButton = createElement('button', 'egg-matrix-close', '✕');
+        closeButton.type = 'button';
+        closeButton.setAttribute('aria-label', 'Close');
+        overlay.append(canvas, caption, stage, closeButton);
+        document.body.appendChild(overlay);
+        document.body.classList.add('egg-active');
+
+        const ctx = canvas.getContext('2d');
+        const glyphs = 'アイウエオカキクケコサシスセソ0123456789<>/#|+-*ΨΞΔ';
+        const fontSize = 16;
+        let columns = 0;
+        let drops = [];
+        const resize = () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            columns = Math.ceil(canvas.width / fontSize);
+            drops = Array.from({ length: columns }, () => Math.random() * -80);
+        };
+        resize();
+        window.addEventListener('resize', resize);
+        const tick = () => {
+            ctx.fillStyle = 'rgba(3, 8, 5, 0.09)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.font = `${fontSize}px "Courier New", monospace`;
+            drops.forEach((y, i) => {
+                const glyph = glyphs[Math.floor(Math.random() * glyphs.length)];
+                const x = i * fontSize;
+                ctx.fillStyle = Math.random() > 0.96 ? '#d6ffe8' : '#22c55e';
+                ctx.fillText(glyph, x, y * fontSize);
+                drops[i] = (y * fontSize > canvas.height && Math.random() > 0.975) ? 0 : y + 1;
+            });
+        };
+        const rainTimer = window.setInterval(tick, 45);
+
+        const revealTimer = window.setTimeout(() => {
+            caption.classList.add('visible');
+            window.setTimeout(() => stage.classList.add('visible'), 900);
+        }, 1100);
+
+        const close = () => {
+            window.clearInterval(rainTimer);
+            window.clearTimeout(revealTimer);
+            window.removeEventListener('resize', resize);
+            document.removeEventListener('keydown', onKeydown);
+            document.body.classList.remove('egg-active');
+            overlay.remove();
+        };
+        const onKeydown = (event) => { if (event.key === 'Escape') close(); };
+        document.addEventListener('keydown', onKeydown);
+        overlay.addEventListener('click', (event) => { if (event.target === overlay) close(); });
+        closeButton.addEventListener('click', close);
+    };
+
+    /** Typing "42" answers the Great Question, briefly. */
+    const openAnswerEasterEgg = () => {
+        if (document.querySelector('.egg-answer-overlay')) return;
+        const overlay = createElement('div', 'egg-answer-overlay');
+        overlay.innerHTML = '<div class="egg-answer-number">42</div><p class="egg-answer-caption">Odpowiedź na Wielkie Pytanie o Życiu, Wszechświecie i w ogóle.</p>';
+        document.body.appendChild(overlay);
+        window.requestAnimationFrame(() => overlay.classList.add('visible'));
+        const close = () => {
+            overlay.classList.remove('visible');
+            window.setTimeout(() => overlay.remove(), 300);
+            document.removeEventListener('keydown', onKeydown);
+        };
+        const onKeydown = (event) => { if (event.key === 'Escape') close(); };
+        document.addEventListener('keydown', onKeydown);
+        overlay.addEventListener('click', close);
+        window.setTimeout(close, 4200);
+    };
+
+    /** The Konami code, anywhere on the site — a small shower of fiber-
+     * optic-colored confetti and a wink of a toast. */
+    (() => {
+        const sequence = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+        let progress = 0;
+        document.addEventListener('keydown', (event) => {
+            const expected = sequence[progress];
+            const key = expected.length === 1 ? event.key.toLowerCase() : event.key;
+            progress = key === expected ? progress + 1 : (key === sequence[0] ? 1 : 0);
+            if (progress !== sequence.length) return;
+            progress = 0;
+            const colors = ['#22c55e', '#3b82f6', '#a855f7', '#f97316', '#eab308'];
+            for (let i = 0; i < 90; i++) {
+                const piece = createElement('span', 'egg-confetti-piece');
+                piece.style.left = `${Math.random() * 100}vw`;
+                piece.style.background = colors[i % colors.length];
+                piece.style.animationDelay = `${Math.random() * 0.4}s`;
+                piece.style.animationDuration = `${1.8 + Math.random() * 1.4}s`;
+                document.body.appendChild(piece);
+                piece.addEventListener('animationend', () => piece.remove());
+            }
+            showToast('🐟 Tryb Magu odblokowany');
+        });
+    })();
+
     const showToast = (message, type = 'success') => {
         const toast = document.querySelector('[data-toast]');
         if (!toast) return;
@@ -369,6 +481,16 @@
         window.clearTimeout(commandTimer);
         commandRequest?.abort();
         const query = commandInput.value.trim();
+        const normalizedQuery = query.toLowerCase();
+        if (normalizedQuery === 'magu' || normalizedQuery === '42') {
+            commandModal?.close();
+            commandInput.value = '';
+            commandDefault.hidden = false;
+            commandResults.hidden = true;
+            commandResults.replaceChildren();
+            if (normalizedQuery === 'magu') openMaguEasterEgg(); else openAnswerEasterEgg();
+            return;
+        }
         if (query.length < 2) {
             commandDefault.hidden = false;
             commandResults.hidden = true;
