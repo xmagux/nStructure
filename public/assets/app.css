@@ -2010,11 +2010,17 @@ body.sidebar-collapsed .user-avatar { width: 40px; height: 40px; }
 .alert-test-result { margin: 0; color: var(--text-muted); font-size: 12px; }
 .alert-inline-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; }
 .alert-inline-form input[type="text"], .alert-inline-form input[type="email"], .alert-inline-form input[type="number"] { min-height: 34px; padding: 0 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); color: var(--text); font-size: 12px; }
-.alert-list { display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow-y: auto; }
+/* flex:1 + min-height:0 lets the list actually use whatever extra height
+   the grid stretched this card to (e.g. a neighboring card with more
+   content) instead of stopping at a fixed height and leaving dead space
+   below it — max-height is still a real cap, not a target, since an
+   unbounded flex child would otherwise report its full content height as
+   the row's intrinsic size and blow up the whole grid row to fit it. */
+.alert-list { display: flex; flex-direction: column; gap: 6px; flex: 1; min-height: 120px; max-height: 460px; overflow-y: auto; }
 .alert-list-row { padding: 6px 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); font-size: 12px; }
 .alert-list-row-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
 .alert-empty { color: var(--text-muted); font-size: 12px; }
-.alert-groups-list { display: flex; flex-direction: column; gap: 10px; max-height: 320px; overflow-y: auto; }
+.alert-groups-list { display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 160px; max-height: 460px; overflow-y: auto; }
 .alert-group-row { padding: 10px; display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); }
 .alert-group-head { display: flex; align-items: center; justify-content: space-between; }
 .alert-group-members { display: flex; flex-wrap: wrap; gap: 6px 12px; }
