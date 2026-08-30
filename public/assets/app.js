@@ -2295,6 +2295,18 @@
                     { channel_type: 'temperature', label: 'Temp #3', value_oid: '1.3.6.1.4.1.21796.4.9.3.1.4.4', value_divisor: '1' },
                 ],
             },
+            // Same MIB branch as STE2, confirmed live against a real R2 unit —
+            // it just carries a 4th temperature probe.
+            STE2_R2: {
+                model: 'STE2 R2',
+                temperatureOid: '1.3.6.1.4.1.21796.4.9.3.1.4.2',
+                humidityOid: '1.3.6.1.4.1.21796.4.9.3.1.4.1',
+                extraChannels: [
+                    { channel_type: 'temperature', label: 'Temp #2', value_oid: '1.3.6.1.4.1.21796.4.9.3.1.4.3', value_divisor: '1' },
+                    { channel_type: 'temperature', label: 'Temp #3', value_oid: '1.3.6.1.4.1.21796.4.9.3.1.4.4', value_divisor: '1' },
+                    { channel_type: 'temperature', label: 'Temp #4', value_oid: '1.3.6.1.4.1.21796.4.9.3.1.4.5', value_divisor: '1' },
+                ],
+            },
             // HWg-PWR reports dry-contact inputs (grid/generator presence,
             // etc.), not temperature/humidity — clears those OID fields
             // rather than leaving a stale preset from the previous

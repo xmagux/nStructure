@@ -8,6 +8,7 @@
     <option value="HWG_STE">HWg-STE</option>
     <option value="STE2_LITE">STE2 Lite</option>
     <option value="STE2">STE2 (3× temp. + wilg.)</option>
+    <option value="STE2_R2">STE2 R2 (4× temp. + wilg.)</option>
     <option value="HWG_PWR">HWg-PWR</option>
     <option value="OTHER">{{ t('sensors.other_model') }}</option>
 </select></label>
@@ -95,7 +96,7 @@
         <small class="sensor-tile-channels" data-sensor-channels-values>
             {% for channel in sensor.channels %}
             {% set channel_breach = channel.last_value is not null and ((channel.channel_type == 'temperature' and ((sensor.temperature_min is not null and channel.last_value < sensor.temperature_min) or (sensor.temperature_max is not null and channel.last_value > sensor.temperature_max))) or (channel.channel_type == 'humidity' and ((sensor.humidity_min is not null and channel.last_value < sensor.humidity_min) or (sensor.humidity_max is not null and channel.last_value > sensor.humidity_max)))) %}
-            <span class="{{ channel_breach ? 'value-alarm' : '' }}" title="{{ channel.label }}">{{ channel.label }}: {{ channel.last_value is not null ? channel.last_value|number_format(1) ~ (channel.channel_type == 'humidity' ? '%' : '°C') : '—' }}</span>
+            <span class="{{ channel_breach ? 'value-alarm' : '' }}" title="{{ channel.label }}">{{ channel.last_value is not null ? channel.last_value|number_format(1) ~ (channel.channel_type == 'humidity' ? '%' : '°C') : '—' }}</span>
             {% endfor %}
         </small>
         {% endif %}

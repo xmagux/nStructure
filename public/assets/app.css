@@ -1987,7 +1987,8 @@ body.sidebar-collapsed .user-avatar { width: 40px; height: 40px; }
 /* Extra analog probes beyond the primary temperature/humidity pair
    (e.g. a multi-probe STE2) — small secondary readout line under the
    main values. */
-.sensor-tile-channels { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 6px; width: 100%; color: var(--text-muted); font-size: 9px; }
+.sensor-tile-channels { display: flex; flex-wrap: nowrap; overflow: hidden; justify-content: center; gap: 0 6px; width: 100%; min-height: 11px; color: var(--text-muted); font-size: 9px; white-space: nowrap; }
+.sensor-tile-channels span { overflow: hidden; text-overflow: ellipsis; }
 
 /* Extra channels editor (sensor create/edit forms) */
 .sensor-channels-field { gap: 8px; }
