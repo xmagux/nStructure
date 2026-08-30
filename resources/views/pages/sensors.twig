@@ -286,7 +286,7 @@
 
 <dialog class="modal entity-modal" id="sensor-inputs-modal" data-input-ok-label="{{ t('sensors.input_ok') }}" data-input-alarm-label="{{ t('sensors.input_alarm') }}" data-input-unknown-label="{{ t('sensors.input_unknown') }}">
     <div class="modal-card">
-        <div class="modal-head"><div><span class="eyebrow">{{ t('modal.sensor_inputs_title') }}</span><h2 data-sensor-inputs-name></h2></div><button class="icon-button" type="button" data-sensor-inputs-close aria-label="{{ t('action.close') }}">{{ icons.icon('close') }}</button></div>
+        <div class="modal-head"><div><span class="eyebrow">{{ t('modal.sensor_inputs_title') }}</span><h2 data-sensor-inputs-name></h2></div><div class="modal-head-actions"><button class="icon-button" type="button" data-sensor-inputs-history aria-label="{{ t('sensors.view_history') }}" title="{{ t('sensors.view_history') }}">{{ icons.icon('activity', 14) }}</button><button class="icon-button" type="button" data-sensor-inputs-close aria-label="{{ t('action.close') }}">{{ icons.icon('close') }}</button></div></div>
         <div class="sensor-inputs-table" data-sensor-inputs-body></div>
     </div>
 </dialog>

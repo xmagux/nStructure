@@ -571,6 +571,7 @@ return [
     'sensors.open_device' => 'Otwórz stronę czujnika',
     'sensors.ping_latency' => 'Ping — czas odpowiedzi',
     'sensors.power_status' => 'Stan zasilania',
+    'sensors.view_history' => 'Zobacz historię',
     'sensors.power_ok' => 'OK',
     'sensors.power_alarm' => 'ALARM',
     'sensors.alarm_ping' => 'Brak połączenia',

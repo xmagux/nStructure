@@ -571,6 +571,7 @@ return [
     'sensors.open_device' => 'Open device page',
     'sensors.ping_latency' => 'Ping response time',
     'sensors.power_status' => 'Power status',
+    'sensors.view_history' => 'View history',
     'sensors.power_ok' => 'OK',
     'sensors.power_alarm' => 'ALARM',
     'sensors.alarm_ping' => 'Not reachable',

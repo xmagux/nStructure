@@ -45,6 +45,27 @@
         if (document.hidden) stopSessionCheck(); else { checkSession(); startSessionCheck(); }
     });
 
+    // A <dialog> opened via showModal() lives in its own top-layer slot,
+    // separate from the Fullscreen API's — if it isn't a DOM descendant of
+    // whatever element is currently fullscreened (true for every dialog on
+    // this site; the fullscreen targets are deliberately narrow, e.g. just
+    // the sensor tile grid), most browsers leave the entire page inert —
+    // nothing clickable, no tab switching, nothing — until fullscreen is
+    // exited by hand. Patching showModal() itself, once, covers every
+    // dialog on every page rather than special-casing each call site.
+    if (typeof HTMLDialogElement !== 'undefined') {
+        const nativeShowModal = HTMLDialogElement.prototype.showModal;
+        HTMLDialogElement.prototype.showModal = function (...args) {
+            if (document.fullscreenElement) {
+                const dialog = this;
+                const openAfterExit = () => nativeShowModal.apply(dialog, args);
+                document.exitFullscreen().then(openAfterExit, openAfterExit);
+                return undefined;
+            }
+            return nativeShowModal.apply(this, args);
+        };
+    }
+
     const graphInstances = [];
     let selectedPort = null;
     let selectPanelCanvasPort = null;
@@ -2460,6 +2481,15 @@
         const activateSensorTab = (target) => {
             const tabButton = document.querySelector(`[data-sensor-tab="${target}"]`);
             if (!tabButton) return;
+            // The grid is the fullscreen target for the "just the tiles"
+            // kiosk view — hiding it via the panel-toggle below while it's
+            // still the active fullscreen element leaves the browser in a
+            // broken, unresponsive state on some engines. Dropping
+            // fullscreen ourselves first keeps the tab switch itself
+            // working normally instead of relying on that implicit exit.
+            if (target !== 'list' && document.fullscreenElement === sensorGrid) {
+                document.exitFullscreen().catch(() => {});
+            }
             document.querySelectorAll('[data-sensor-tab]').forEach((btn) => btn.classList.toggle('active', btn === tabButton));
             document.querySelectorAll('[data-sensor-panel]').forEach((panel) => {
                 panel.hidden = panel.dataset.sensorPanel !== target;
@@ -2567,8 +2597,10 @@
                 body.appendChild(row);
             });
         };
+        let sensorInputsModalSensorId = null;
         const openSensorInputsModal = async (sensorId, sensorName) => {
             if (!sensorInputsModal) return;
+            sensorInputsModalSensorId = sensorId;
             const nameEl = sensorInputsModal.querySelector('[data-sensor-inputs-name]');
             if (nameEl) nameEl.textContent = sensorName;
             renderSensorInputs([]);
@@ -2582,6 +2614,17 @@
                 // modal stays open with an empty list; nothing more useful to show
             }
         };
+        // This live snapshot has no sense of "when did it change" — the
+        // Wykresy tab's power-status chart is where that history actually
+        // lives, so this is the bridge from "here's the current state" to
+        // "here's when it last flipped."
+        document.querySelector('[data-sensor-inputs-history]')?.addEventListener('click', () => {
+            const sensorId = sensorInputsModalSensorId;
+            sensorInputsModal?.close();
+            if (!sensorId) return;
+            document.querySelector('[data-sensor-tab="charts"]')?.click();
+            if (chartsController) chartsController.selectSensor(sensorId);
+        });
 
         document.querySelectorAll('[data-sensor-card]').forEach((card) => {
             card.addEventListener('click', (event) => {
