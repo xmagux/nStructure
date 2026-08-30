@@ -2781,6 +2781,33 @@
             });
         });
 
+        const alertRecipientEditModal = document.querySelector('#alert-recipient-edit-modal');
+        bindModal(alertRecipientEditModal, '[data-alert-recipient-edit-open]', '[data-alert-recipient-edit-close]', (button) => {
+            const form = alertRecipientEditModal?.querySelector('[data-alert-recipient-edit-form]');
+            if (!form) return;
+            form.elements.recipient_id.value = button.dataset.recipientId || '';
+            form.elements.email.value = button.dataset.recipientEmail || '';
+            form.elements.name.value = button.dataset.recipientName || '';
+        });
+        document.querySelector('[data-alert-recipient-edit-form]')?.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const form = event.currentTarget;
+            submitEntityForm(form, `/api/v1/alerts/recipients/${form.elements.recipient_id.value}`, alertRecipientEditModal);
+        });
+
+        const alertGroupEditModal = document.querySelector('#alert-group-edit-modal');
+        bindModal(alertGroupEditModal, '[data-alert-group-edit-open]', '[data-alert-group-edit-close]', (button) => {
+            const form = alertGroupEditModal?.querySelector('[data-alert-group-edit-form]');
+            if (!form) return;
+            form.elements.group_id.value = button.dataset.groupId || '';
+            form.elements.name.value = button.dataset.groupName || '';
+        });
+        document.querySelector('[data-alert-group-edit-form]')?.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const form = event.currentTarget;
+            submitEntityForm(form, `/api/v1/alerts/groups/${form.elements.group_id.value}`, alertGroupEditModal);
+        });
+
         window.addEventListener('beforeunload', () => chartsController?.pause());
     }
 

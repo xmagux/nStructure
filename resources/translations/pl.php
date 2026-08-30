@@ -572,6 +572,7 @@ return [
     'sensors.ping_latency' => 'Ping — czas odpowiedzi',
     'sensors.power_status' => 'Stan zasilania',
     'sensors.view_history' => 'Zobacz historię',
+    'sensors.matrix_sensor_col' => 'Czujnik',
     'sensors.power_ok' => 'OK',
     'sensors.power_alarm' => 'ALARM',
     'sensors.alarm_ping' => 'Brak połączenia',

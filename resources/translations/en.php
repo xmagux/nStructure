@@ -572,6 +572,7 @@ return [
     'sensors.ping_latency' => 'Ping response time',
     'sensors.power_status' => 'Power status',
     'sensors.view_history' => 'View history',
+    'sensors.matrix_sensor_col' => 'Sensor',
     'sensors.power_ok' => 'OK',
     'sensors.power_alarm' => 'ALARM',
     'sensors.alarm_ping' => 'Not reachable',

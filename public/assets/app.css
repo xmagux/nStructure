@@ -2012,6 +2012,7 @@ body.sidebar-collapsed .user-avatar { width: 40px; height: 40px; }
 .alert-inline-form input[type="text"], .alert-inline-form input[type="email"], .alert-inline-form input[type="number"] { min-height: 34px; padding: 0 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); color: var(--text); font-size: 12px; }
 .alert-list { display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow-y: auto; }
 .alert-list-row { padding: 6px 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); font-size: 12px; }
+.alert-list-row-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
 .alert-empty { color: var(--text-muted); font-size: 12px; }
 .alert-groups-list { display: flex; flex-direction: column; gap: 10px; max-height: 320px; overflow-y: auto; }
 .alert-group-row { padding: 10px; display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); }
@@ -2020,10 +2021,21 @@ body.sidebar-collapsed .user-avatar { width: 40px; height: 40px; }
 .alert-checkbox { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 999px; background: var(--surface); font-size: 12px; color: var(--text-muted); }
 .alert-checkbox input { accent-color: var(--blue); }
 .alert-checkbox:has(input:checked) { color: var(--text); background: color-mix(in srgb, var(--blue) 14%, var(--surface)); font-weight: 600; }
-.alert-sensor-list { display: flex; flex-direction: column; gap: 8px; }
-.alert-sensor-row { padding: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); }
-.alert-sensor-name { min-width: 140px; font-weight: 600; }
-.alert-sensor-targets-picker { flex: 1; display: flex; flex-wrap: wrap; gap: 6px 14px; }
+/* Sensor x recipient/group assignment as an actual matrix instead of a
+   pill-per-cell list — with dozens of sensors and several recipients, a
+   wrapping row of same-looking checkboxes per sensor never lined up
+   column-to-column and became unreadable. A sticky header row + sticky
+   name column keeps both axes legible while scrolling either direction. */
+.alert-matrix-wrapper { max-height: 560px; overflow: auto; border: 1px solid var(--line); border-radius: 10px; }
+.alert-matrix { width: 100%; border-collapse: collapse; font-size: 12px; }
+.alert-matrix th, .alert-matrix td { padding: 8px 10px; border-bottom: 1px solid var(--line); background: var(--surface); text-align: center; white-space: nowrap; }
+.alert-matrix thead th { position: sticky; top: 0; z-index: 2; background: var(--surface-solid); color: var(--text-muted); font-weight: 600; font-size: 11px; }
+.alert-matrix tbody tr:nth-child(even) td { background: var(--surface-2); }
+.alert-matrix-sensor-col { position: sticky; left: 0; z-index: 1; text-align: left; font-weight: 600; }
+.alert-matrix thead .alert-matrix-sensor-col { z-index: 3; }
+.alert-matrix-col-label { display: inline-flex; align-items: center; gap: 4px; max-width: 110px; overflow: hidden; text-overflow: ellipsis; }
+.alert-matrix input[type="checkbox"] { accent-color: var(--blue); cursor: pointer; }
+.alert-matrix-save-col { text-align: right; }
 
 /* Digital-inputs detail modal */
 .sensor-inputs-table { margin-top: 16px; display: flex; flex-direction: column; gap: 6px; max-height: 60vh; overflow-y: auto; }

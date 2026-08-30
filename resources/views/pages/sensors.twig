@@ -160,7 +160,10 @@
                 {% for recipient in alert_recipients %}
                 <div class="alert-list-row" data-recipient-id="{{ recipient.id }}">
                     <span>{{ recipient.name ? recipient.name ~ ' · ' ~ recipient.email : recipient.email }}</span>
-                    <button class="icon-button danger" type="button" aria-label="{{ t('action.delete') }}" data-delete-open data-delete-url="/api/v1/alerts/recipients/{{ recipient.id }}" data-delete-name="{{ recipient.email }}">{{ icons.icon('trash', 12) }}</button>
+                    <div class="alert-list-row-actions">
+                        <button class="icon-button" type="button" aria-label="{{ t('action.edit') }}" title="{{ t('action.edit') }}" data-alert-recipient-edit-open data-recipient-id="{{ recipient.id }}" data-recipient-email="{{ recipient.email }}" data-recipient-name="{{ recipient.name }}">{{ icons.icon('edit', 12) }}</button>
+                        <button class="icon-button danger" type="button" aria-label="{{ t('action.delete') }}" data-delete-open data-delete-url="/api/v1/alerts/recipients/{{ recipient.id }}" data-delete-name="{{ recipient.email }}">{{ icons.icon('trash', 12) }}</button>
+                    </div>
                 </div>
                 {% else %}
                 <p class="alert-empty">{{ t('alerts.no_recipients') }}</p>
@@ -182,7 +185,10 @@
                 <div class="alert-group-row" data-group-id="{{ group.id }}">
                     <div class="alert-group-head">
                         <strong>{{ group.name }}</strong>
-                        <button class="icon-button danger" type="button" aria-label="{{ t('action.delete') }}" data-delete-open data-delete-url="/api/v1/alerts/groups/{{ group.id }}" data-delete-name="{{ group.name }}">{{ icons.icon('trash', 12) }}</button>
+                        <div class="alert-list-row-actions">
+                            <button class="icon-button" type="button" aria-label="{{ t('action.edit') }}" title="{{ t('action.edit') }}" data-alert-group-edit-open data-group-id="{{ group.id }}" data-group-name="{{ group.name }}">{{ icons.icon('edit', 12) }}</button>
+                            <button class="icon-button danger" type="button" aria-label="{{ t('action.delete') }}" data-delete-open data-delete-url="/api/v1/alerts/groups/{{ group.id }}" data-delete-name="{{ group.name }}">{{ icons.icon('trash', 12) }}</button>
+                        </div>
                     </div>
                     <div class="alert-group-members">
                         {% for recipient in alert_recipients %}
@@ -207,28 +213,43 @@
 
     <article class="card alert-card">
         <h3>{{ t('alerts.sensor_targets_title') }}</h3>
-        <div class="alert-sensor-list">
-            {% for sensor in sensors %}
-            {% set targets = alert_targets[sensor.id] ?? {'recipient_ids': [], 'group_ids': []} %}
-            <div class="alert-sensor-row" data-sensor-id="{{ sensor.id }}">
-                <span class="alert-sensor-name">{{ sensor.name }}</span>
-                <div class="alert-sensor-targets-picker">
-                    {% for group in alert_groups %}
-                    <label class="alert-checkbox"><input type="checkbox" data-target-group value="{{ group.id }}" {{ group.id in targets.group_ids ? 'checked' : '' }}><span>👥 {{ group.name }}</span></label>
+        {% if alert_groups|length == 0 and alert_recipients|length == 0 %}
+        <p class="alert-empty">{{ t('alerts.no_recipients') }}</p>
+        {% else %}
+        <div class="alert-matrix-wrapper">
+            <table class="alert-matrix">
+                <thead>
+                    <tr>
+                        <th class="alert-matrix-sensor-col">{{ t('sensors.matrix_sensor_col') }}</th>
+                        {% for group in alert_groups %}
+                        <th><span class="alert-matrix-col-label" title="{{ group.name }}">{{ icons.icon('users', 12) }}{{ group.name }}</span></th>
+                        {% endfor %}
+                        {% for recipient in alert_recipients %}
+                        <th><span class="alert-matrix-col-label" title="{{ recipient.email }}">{{ recipient.name ?: recipient.email }}</span></th>
+                        {% endfor %}
+                        <th class="alert-matrix-save-col"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sensor in sensors %}
+                    {% set targets = alert_targets[sensor.id] ?? {'recipient_ids': [], 'group_ids': []} %}
+                    <tr data-sensor-id="{{ sensor.id }}">
+                        <td class="alert-matrix-sensor-col">{{ sensor.name }}</td>
+                        {% for group in alert_groups %}
+                        <td><input type="checkbox" data-target-group value="{{ group.id }}" {{ group.id in targets.group_ids ? 'checked' : '' }}></td>
+                        {% endfor %}
+                        {% for recipient in alert_recipients %}
+                        <td><input type="checkbox" data-target-recipient value="{{ recipient.id }}" {{ recipient.id in targets.recipient_ids ? 'checked' : '' }}></td>
+                        {% endfor %}
+                        <td class="alert-matrix-save-col"><button class="button button-ghost button-small" type="button" data-alert-sensor-save>{{ t('action.save') }}</button></td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="{{ 2 + alert_groups|length + alert_recipients|length }}"><p class="alert-empty">{{ t('sensors.empty') }}</p></td></tr>
                     {% endfor %}
-                    {% for recipient in alert_recipients %}
-                    <label class="alert-checkbox"><input type="checkbox" data-target-recipient value="{{ recipient.id }}" {{ recipient.id in targets.recipient_ids ? 'checked' : '' }}><span>{{ recipient.email }}</span></label>
-                    {% endfor %}
-                    {% if alert_groups|length == 0 and alert_recipients|length == 0 %}
-                    <span class="alert-empty">{{ t('alerts.no_recipients') }}</span>
-                    {% endif %}
-                </div>
-                <button class="button button-ghost button-small" type="button" data-alert-sensor-save>{{ t('action.save') }}</button>
-            </div>
-            {% else %}
-            <p class="alert-empty">{{ t('sensors.empty') }}</p>
-            {% endfor %}
+                </tbody>
+            </table>
         </div>
+        {% endif %}
     </article>
 </section>
 
@@ -289,5 +310,26 @@
         <div class="modal-head"><div><span class="eyebrow">{{ t('modal.sensor_inputs_title') }}</span><h2 data-sensor-inputs-name></h2></div><div class="modal-head-actions"><button class="icon-button" type="button" data-sensor-inputs-history aria-label="{{ t('sensors.view_history') }}" title="{{ t('sensors.view_history') }}">{{ icons.icon('activity', 14) }}</button><button class="icon-button" type="button" data-sensor-inputs-close aria-label="{{ t('action.close') }}">{{ icons.icon('close') }}</button></div></div>
         <div class="sensor-inputs-table" data-sensor-inputs-body></div>
     </div>
+</dialog>
+
+<dialog class="modal entity-modal" id="alert-recipient-edit-modal">
+    <form class="modal-card" data-alert-recipient-edit-form>
+        <div class="modal-head"><div><span class="eyebrow">{{ t('alerts.recipients_title') }}</span><h2>{{ t('action.edit') }}</h2></div><button class="icon-button" type="button" data-alert-recipient-edit-close aria-label="{{ t('action.close') }}">{{ icons.icon('close') }}</button></div>
+        <input type="hidden" name="recipient_id">
+        <label class="field"><span>{{ t('form.email') }}</span><input name="email" type="email" maxlength="255" required></label>
+        <label class="field"><span>{{ t('form.name_optional') }}</span><input name="name" type="text" maxlength="160"></label>
+        <p class="form-error" data-form-error hidden></p>
+        <div class="modal-actions"><button class="button button-ghost" type="button" data-alert-recipient-edit-close>{{ t('action.cancel') }}</button><button class="button button-primary" type="submit">{{ icons.icon('save') }}{{ t('action.save') }}</button></div>
+    </form>
+</dialog>
+
+<dialog class="modal entity-modal" id="alert-group-edit-modal">
+    <form class="modal-card" data-alert-group-edit-form>
+        <div class="modal-head"><div><span class="eyebrow">{{ t('alerts.groups_title') }}</span><h2>{{ t('action.edit') }}</h2></div><button class="icon-button" type="button" data-alert-group-edit-close aria-label="{{ t('action.close') }}">{{ icons.icon('close') }}</button></div>
+        <input type="hidden" name="group_id">
+        <label class="field"><span>{{ t('alerts.group_name') }}</span><input name="name" type="text" maxlength="160" required></label>
+        <p class="form-error" data-form-error hidden></p>
+        <div class="modal-actions"><button class="button button-ghost" type="button" data-alert-group-edit-close>{{ t('action.cancel') }}</button><button class="button button-primary" type="submit">{{ icons.icon('save') }}{{ t('action.save') }}</button></div>
+    </form>
 </dialog>
 {% endblock %}
