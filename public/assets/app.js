@@ -2481,13 +2481,14 @@
         const activateSensorTab = (target) => {
             const tabButton = document.querySelector(`[data-sensor-tab="${target}"]`);
             if (!tabButton) return;
-            // The grid is the fullscreen target for the "just the tiles"
-            // kiosk view — hiding it via the panel-toggle below while it's
-            // still the active fullscreen element leaves the browser in a
-            // broken, unresponsive state on some engines. Dropping
-            // fullscreen ourselves first keeps the tab switch itself
-            // working normally instead of relying on that implicit exit.
-            if (target !== 'list' && document.fullscreenElement === sensorGrid) {
+            // Any sensor panel can be the fullscreen target now (grid,
+            // charts, or alerts) — hiding it via the panel-toggle below
+            // while it's still the active fullscreen element leaves the
+            // browser in a broken, unresponsive state on some engines.
+            // Dropping fullscreen ourselves first keeps the tab switch
+            // itself working normally instead of relying on that implicit
+            // exit.
+            if (document.fullscreenElement?.hasAttribute?.('data-sensor-panel') && document.fullscreenElement.dataset.sensorPanel !== target) {
                 document.exitFullscreen().catch(() => {});
             }
             document.querySelectorAll('[data-sensor-tab]').forEach((btn) => btn.classList.toggle('active', btn === tabButton));
@@ -2509,16 +2510,20 @@
         document.querySelectorAll('[data-sensor-tab]').forEach((tabButton) => {
             tabButton.addEventListener('click', () => activateSensorTab(tabButton.dataset.sensorTab));
         });
-        // Fullscreens the tile grid itself, not the page — the hero,
-        // tabs and sidebar are simply outside the fullscreened element,
-        // so a kiosk/monitor shows nothing but the sensor boxes.
+        // Fullscreens whichever tab's panel is currently open (the tile
+        // grid, the charts, or alerts) rather than always the tile grid —
+        // the hero, tabs and sidebar are simply outside the fullscreened
+        // element either way, so a kiosk/monitor shows nothing but that
+        // one panel's own content.
+        const activeSensorPanel = () => document.querySelector('[data-sensor-panel]:not([hidden])');
+        const isSensorPanelFullscreen = () => Boolean(document.fullscreenElement?.hasAttribute?.('data-sensor-panel'));
         const gridFullscreenButton = document.querySelector('[data-sensor-grid-fullscreen]');
         if (gridFullscreenButton && (document.fullscreenEnabled ?? true)) {
             const iconEnter = gridFullscreenButton.querySelector('[data-fullscreen-icon-enter]');
             const iconExit = gridFullscreenButton.querySelector('[data-fullscreen-icon-exit]');
             const gridFullscreenLabel = gridFullscreenButton.querySelector('[data-fullscreen-button-label]');
             const syncGridFullscreenButton = () => {
-                const isFullscreen = document.fullscreenElement === sensorGrid;
+                const isFullscreen = isSensorPanelFullscreen();
                 gridFullscreenButton.classList.toggle('active', isFullscreen);
                 const label = isFullscreen ? gridFullscreenButton.dataset.labelExit : gridFullscreenButton.dataset.labelEnter;
                 gridFullscreenButton.setAttribute('aria-label', label);
@@ -2528,15 +2533,14 @@
                 if (gridFullscreenLabel) gridFullscreenLabel.textContent = label;
             };
             gridFullscreenButton.addEventListener('click', () => {
-                if (document.fullscreenElement === sensorGrid) {
+                if (isSensorPanelFullscreen()) {
                     document.exitFullscreen();
                     return;
                 }
-                activateSensorTab('list');
-                sensorGrid.requestFullscreen?.();
+                activeSensorPanel()?.requestFullscreen?.();
             });
             document.addEventListener('fullscreenchange', () => {
-                if (document.fullscreenElement === sensorGrid || document.fullscreenElement === null) syncGridFullscreenButton();
+                if (isSensorPanelFullscreen() || document.fullscreenElement === null) syncGridFullscreenButton();
             });
         }
         // Every save in this page reloads the whole page (the shared submit
