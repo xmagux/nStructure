@@ -1946,7 +1946,7 @@ body.sidebar-collapsed .user-avatar { width: 40px; height: 40px; }
 .sensor-tile.dragging { opacity: .4; }
 .sensor-tile.drag-over { border-color: var(--blue); border-style: dashed; box-shadow: 0 0 0 2px color-mix(in srgb, var(--blue) 30%, transparent); }
 .sensor-tile.alarm .sensor-tile-visual { box-shadow: 0 0 0 2px var(--red); }
-.sensor-tile-badge { overflow: hidden; width: 100%; max-width: 100%; min-height: 13px; color: var(--text-muted); font-size: 9px; font-weight: 700; line-height: 13px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+.sensor-tile-badge { overflow: hidden; width: 100%; max-width: 100%; min-height: 17px; color: var(--text-muted); font-size: 13px; font-weight: 700; line-height: 17px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
 .sensor-tile-badge.down { border-radius: 5px; color: #fff; background: var(--red); }
 .sensor-tile-visual { width: 66px; height: 66px; display: grid; place-items: center; border-radius: 16px; color: var(--blue); background: var(--surface-2); }
 .sensor-tile-visual svg { width: 36px; height: 36px; }
@@ -1961,16 +1961,16 @@ body.sidebar-collapsed .user-avatar { width: 40px; height: 40px; }
 .sensor-tile.size-small .sensor-tile-visual { width: 42px; height: 42px; }
 .sensor-tile.size-small .sensor-tile-visual svg { width: 22px !important; height: 22px !important; }
 .sensor-tile.size-small .sensor-tile-name { font-size: 10.5px; }
-.sensor-tile.size-small .sensor-tile-badge,
 .sensor-tile.size-small .sensor-tile-status,
 .sensor-tile.size-small .sensor-tile-values,
 .sensor-tile.size-small .sensor-tile-input-group { font-size: 8px; }
+.sensor-tile.size-small .sensor-tile-badge { min-height: 14px; font-size: 10px; line-height: 14px; }
 .sensor-tile.size-large { grid-column: span 2; grid-row: span 2; padding: 20px 14px 18px; }
 .sensor-tile.size-large .sensor-tile-visual { width: 84px; height: 84px; border-radius: 18px; }
 .sensor-tile.size-large .sensor-tile-visual svg { width: 44px !important; height: 44px !important; }
 .sensor-tile.size-large .sensor-tile-name { font-size: 15px; }
-.sensor-tile.size-large .sensor-tile-badge,
 .sensor-tile.size-large .sensor-tile-status { font-size: 10px; }
+.sensor-tile.size-large .sensor-tile-badge { min-height: 20px; font-size: 15px; line-height: 20px; }
 .sensor-tile.size-large .sensor-tile-values,
 .sensor-tile.size-large .sensor-tile-input-group { font-size: 12px; }
 .sensor-tile-values { overflow: hidden; width: 100%; min-height: 13px; color: var(--text-muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
