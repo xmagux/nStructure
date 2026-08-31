@@ -7,14 +7,17 @@ namespace NStructure\Http\Controller;
 use InvalidArgumentException;
 use NStructure\Domain\Exception\ResourceInUseException;
 use NStructure\Domain\Repository\UserRepository;
+use NStructure\Domain\Repository\WorkspaceRepository;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Throwable;
 
 final readonly class UserController
 {
-    public function __construct(private UserRepository $users)
-    {
+    public function __construct(
+        private UserRepository $users,
+        private WorkspaceRepository $workspace,
+    ) {
     }
 
     public function create(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
@@ -97,6 +100,16 @@ final readonly class UserController
             return $this->json($response->withStatus(422), ['error' => $exception->getMessage()]);
         } catch (Throwable $exception) {
             return $this->json($response->withStatus(409), ['error' => $exception->getMessage() ?: 'Password could not be updated']);
+        }
+    }
+
+    public function updateWorkspace(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        try {
+            $input = (array) ($request->getParsedBody() ?? []);
+            return $this->json($response, ['data' => $this->workspace->update($input)]);
+        } catch (Throwable $exception) {
+            return $this->json($response->withStatus(409), ['error' => $exception->getMessage() ?: 'Workspace settings could not be saved']);
         }
     }
 

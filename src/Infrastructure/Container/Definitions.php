@@ -11,6 +11,7 @@ use NStructure\Domain\Repository\AlertRepository;
 use NStructure\Domain\Repository\NetworkRepository;
 use NStructure\Domain\Repository\SensorRepository;
 use NStructure\Domain\Repository\UserRepository;
+use NStructure\Domain\Repository\WorkspaceRepository;
 use NStructure\Http\Middleware\AuthMiddleware;
 use NStructure\Http\Middleware\LocaleMiddleware;
 use NStructure\Http\Middleware\SessionMiddleware;
@@ -22,10 +23,12 @@ use NStructure\Infrastructure\Network\FpingClient;
 use NStructure\Infrastructure\Repository\DemoAlertRepository;
 use NStructure\Infrastructure\Repository\DemoNetworkRepository;
 use NStructure\Infrastructure\Repository\DemoSensorRepository;
+use NStructure\Infrastructure\Repository\DemoWorkspaceRepository;
 use NStructure\Infrastructure\Repository\MySqlAlertRepository;
 use NStructure\Infrastructure\Repository\MySqlNetworkRepository;
 use NStructure\Infrastructure\Repository\MySqlSensorRepository;
 use NStructure\Infrastructure\Repository\MySqlUserRepository;
+use NStructure\Infrastructure\Repository\MySqlWorkspaceRepository;
 use NStructure\Infrastructure\Snmp\SnmpClient;
 use PDO;
 use Slim\Views\Twig;
@@ -51,9 +54,13 @@ final class Definitions
             $rootPath . '/resources/translations',
             $settings['app']['locale'],
         ));
+        $container->set(WorkspaceRepository::class, static fn (Container $container): WorkspaceRepository => $settings['app']['demo_mode']
+            ? new DemoWorkspaceRepository()
+            : new MySqlWorkspaceRepository($container->get(PDO::class)));
         $container->set(ViewContext::class, static fn (Container $container): ViewContext => new ViewContext(
             $settings,
             $container->get(Translator::class),
+            $container->get(WorkspaceRepository::class),
         ));
         $container->set(Twig::class, static function (Container $container) use ($settings): Twig {
             $translator = $container->get(Translator::class);

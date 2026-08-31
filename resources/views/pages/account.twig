@@ -13,6 +13,23 @@
     <div class="asset-glow"></div>
 </section>
 
+{% if not demo_mode %}
+<section class="section-block">
+    <div class="section-heading"><div><h2>{{ t('account.workspace_title') }}</h2><p>{{ t('account.workspace_subtitle') }}</p></div></div>
+    <article class="card settings-card">
+        <form data-workspace-form>
+            <div class="form-grid">
+                <label class="field"><span>{{ t('form.workspace_tier') }}</span><input name="tier" maxlength="160" value="{{ workspace_settings.tier }}" placeholder="{{ t('nav.workspace_tier') }}"></label>
+                <label class="field"><span>{{ t('form.workspace_region') }}</span><input name="region" maxlength="160" value="{{ workspace_settings.region }}" placeholder="{{ t('nav.workspace_region') }}"></label>
+                <label class="field field-wide"><span>{{ t('form.workspace_network_map_subtitle') }}</span><input name="network_map_subtitle" maxlength="255" value="{{ workspace_settings.network_map_subtitle }}" placeholder="{{ t('dashboard.network_map_subtitle') }}"></label>
+            </div>
+            <p class="form-error" data-form-error hidden></p>
+            <div class="modal-actions"><button class="button button-primary" type="submit">{{ icons.icon('save') }}{{ t('action.save') }}</button></div>
+        </form>
+    </article>
+</section>
+{% endif %}
+
 <section class="section-block">
     <div class="section-heading"><div><h2>{{ t('account.users_title') }}</h2><p>{{ t('account.users_subtitle') }}</p></div></div>
     <div class="port-table-shell">

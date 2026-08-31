@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace NStructure\Application\View;
 
 use NStructure\Application\Translation\Translator;
+use NStructure\Domain\Repository\WorkspaceRepository;
+use Throwable;
 
 final readonly class ViewContext
 {
     public function __construct(
         private array $settings,
         private Translator $translator,
+        private WorkspaceRepository $workspace,
     ) {
     }
 
@@ -33,6 +36,21 @@ final readonly class ViewContext
                 'name' => (string) ($_SESSION['user_name'] ?? ''),
                 'email' => (string) ($_SESSION['user_email'] ?? ''),
             ] : null,
+            'workspace' => $this->workspaceLabels(),
         ];
+    }
+
+    /**
+     * Rendered in the layout on every page, so a transient DB hiccup here
+     * shouldn't take the whole site down — falls back to "all defaults"
+     * the same way the demo repository already does.
+     */
+    private function workspaceLabels(): array
+    {
+        try {
+            return $this->workspace->get();
+        } catch (Throwable) {
+            return ['tier' => null, 'region' => null, 'network_map_subtitle' => null];
+        }
     }
 }

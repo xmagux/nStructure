@@ -53,6 +53,7 @@ return static function (App $app): void {
             $group->delete('/users/{id:[0-9]+}', [UserController::class, 'archive']);
             $group->post('/account/password', [UserController::class, 'changePassword']);
             $group->post('/account/profile', [UserController::class, 'updateProfile']);
+            $group->post('/account/workspace', [UserController::class, 'updateWorkspace']);
             $group->get('/sensors/poll', [SensorController::class, 'pollAll']);
             $group->get('/sensors/{id:[0-9]+}/poll', [SensorController::class, 'poll']);
             $group->get('/sensors/{id:[0-9]+}/history', [SensorController::class, 'history']);

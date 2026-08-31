@@ -660,6 +660,11 @@
         submitEntityForm(form, '/api/v1/account/password', passwordModal);
     });
 
+    document.querySelector('[data-workspace-form]')?.addEventListener('submit', (event) => {
+        event.preventDefault();
+        submitEntityForm(event.currentTarget, '/api/v1/account/workspace', null);
+    });
+
     const userModal = document.querySelector('#user-modal');
     bindModal(userModal, '[data-user-modal-open]', '[data-user-modal-close]');
     document.querySelector('[data-user-form]')?.addEventListener('submit', (event) => {

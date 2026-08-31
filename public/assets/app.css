@@ -2005,6 +2005,7 @@ body.sidebar-collapsed .user-avatar { width: 40px; height: 40px; }
 .sensor-alerts { display: flex; flex-direction: column; gap: 16px; }
 .alert-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
 .alert-card { padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+.settings-card { padding: 18px; }
 .alert-card h3 { margin: 0; font-size: 15px; }
 .alert-card > small { color: var(--text-muted); font-size: 11px; }
 .alert-test-result { margin: 0; color: var(--text-muted); font-size: 12px; }
