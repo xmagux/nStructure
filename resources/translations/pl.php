@@ -117,6 +117,7 @@ return [
     'action.edit_cable' => 'Edytuj kabel',
     'action.edit_ups' => 'Edytuj UPS',
     'action.delete' => 'Usuń',
+    'action.more_options' => 'Więcej opcji',
     'action.confirm_delete' => 'Usuń element',
     'action.cancel' => 'Anuluj',
     'action.create' => 'Utwórz lokalizację',

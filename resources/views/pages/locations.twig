@@ -11,7 +11,7 @@
 <section class="locations-grid" data-search-list>
     {% for location in locations %}
     <a class="location-tile tone-{{ location.accent }}" href="/locations/{{ location.id }}" data-search-item="{{ (location.code ~ ' ' ~ location.name ~ ' ' ~ location.address)|lower }}">
-        <div class="tile-head"><span class="location-symbol large">{{ icons.icon(location.icon_key, 25) }}</span><span class="status-badge status-{{ location.status }}"><i></i>{{ t('common.' ~ location.status) }}</span></div>
+        <div class="tile-head"><span class="location-symbol large">{{ icons.icon(location.icon_key, 25) }}</span><span class="status-badge status-{{ location.status }}" title="{{ t('common.' ~ location.status) }}"><i></i>{% if location.status != 'healthy' %}{{ t('common.' ~ location.status) }}{% endif %}</span></div>
         <div class="tile-body"><span class="code-label">{{ location.code }}</span><h2>{{ location.name }}</h2><p>{{ location.address ?: '—' }}</p></div>
         <div class="tile-stats"><div><strong>{{ location.rooms }}</strong><span>{{ t('common.rooms') }}</span></div><div><strong>{{ location.racks }}</strong><span>{{ t('common.racks') }}</span></div><div><strong>{{ location.panels }}</strong><span>{{ t('common.panels') }}</span></div><div><strong>{{ location.fibers }}J</strong><span>{{ t('common.capacity') }}</span></div></div>
         <div class="tile-progress"><div><span>{{ t('common.utilization') }}</span><strong>{{ location.utilization }}%</strong></div><div class="progress"><i style="width: {{ location.utilization }}%"></i></div></div>
