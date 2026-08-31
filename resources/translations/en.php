@@ -234,6 +234,7 @@ return [
     'locations.empty' => 'No locations found.',
     'location.infrastructure' => 'Infrastructure',
     'location.server_rooms' => 'Server rooms',
+    'location.search_rooms' => 'Search server rooms…',
     'location.capacity_overview' => 'Capacity overview',
     'location.floor' => 'Floor',
     'location.temperature' => 'Temperature',

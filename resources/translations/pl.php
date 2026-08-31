@@ -234,6 +234,7 @@ return [
     'locations.empty' => 'Nie znaleziono lokalizacji.',
     'location.infrastructure' => 'Infrastruktura',
     'location.server_rooms' => 'Serwerownie',
+    'location.search_rooms' => 'Szukaj serwerowni…',
     'location.capacity_overview' => 'Przegląd pojemności',
     'location.floor' => 'Piętro',
     'location.temperature' => 'Temperatura',
