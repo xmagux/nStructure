@@ -2480,6 +2480,7 @@
             const jsonField = form?.querySelector('[data-sensor-channels-json]');
             if (!jsonField) return;
             const channels = Array.from(form.querySelectorAll('[data-sensor-channel-row]')).map((row) => ({
+                id: row.querySelector('[data-channel-id]').value || null,
                 channel_type: row.querySelector('[data-channel-type]').value,
                 label: row.querySelector('[data-channel-label]').value.trim(),
                 value_oid: row.querySelector('[data-channel-oid]').value.trim(),
@@ -2492,6 +2493,7 @@
             const container = form?.querySelector('[data-sensor-channel-rows]');
             if (!template || !container) return;
             const row = template.content.firstElementChild.cloneNode(true);
+            row.querySelector('[data-channel-id]').value = values.id || '';
             row.querySelector('[data-channel-type]').value = values.channel_type || 'temperature';
             row.querySelector('[data-channel-label]').value = values.label || '';
             row.querySelector('[data-channel-oid]').value = values.value_oid || '';
@@ -2582,8 +2584,10 @@
             form.elements.humidity_divisor.value = button.dataset.sensorHumidityDivisor || '10';
             form.elements.temperature_min.value = button.dataset.sensorTemperatureMin || '';
             form.elements.temperature_max.value = button.dataset.sensorTemperatureMax || '';
+            form.elements.temperature_label.value = button.dataset.sensorTemperatureLabel || '';
             form.elements.humidity_min.value = button.dataset.sensorHumidityMin || '';
             form.elements.humidity_max.value = button.dataset.sensorHumidityMax || '';
+            form.elements.humidity_label.value = button.dataset.sensorHumidityLabel || '';
             form.elements.ping_enabled.checked = button.dataset.sensorPingEnabled === '1';
             form.elements.monitoring_enabled.checked = button.dataset.sensorMonitoringEnabled === '1';
             form.elements.notes.value = button.dataset.sensorNotes || '';
@@ -3109,7 +3113,13 @@
                     return [];
                 }
             }
-            const list = [{ key: 'primary', metric: instance.config.metric, label: instance.config.label, color: instance.config.color }];
+            // A sensor with several probes of the same type (see the STE2
+            // extra channels below) otherwise has no way to tell its own
+            // primary reading apart from the generic "Temperature"/
+            // "Humidity" chart title — an optional per-sensor label
+            // overrides that on its legend and tooltip.
+            const primaryLabel = sensorOption?.dataset[`${instance.config.metric}Label`] || instance.config.label;
+            const list = [{ key: 'primary', metric: instance.config.metric, label: primaryLabel, color: instance.config.color }];
             if (instance.config.channelType && sensorOption) {
                 try {
                     const channels = JSON.parse(sensorOption.dataset.channels || '[]');

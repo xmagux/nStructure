@@ -84,24 +84,36 @@ final class MySqlSensorRepository implements SensorRepository
     }
 
     /**
-     * Replaces the full set of extra channels for a sensor in one go —
-     * simplest correct behavior for a short, form-edited list: delete
-     * whatever was there and re-insert what the form submitted, rather than
-     * diffing row by row. Only called when the form actually included a
-     * `channels` field, so API callers that omit it leave existing channels
-     * untouched.
+     * Reconciles a sensor's extra channels against the form-submitted list —
+     * updating rows in place by id, inserting rows with no (or unknown) id,
+     * and deleting whatever existing id wasn't referenced. Only called when
+     * the form actually included a `channels` field, so API callers that
+     * omit it leave existing channels untouched.
+     *
+     * This used to be an unconditional delete-then-reinsert, which was
+     * simpler but gave every row a brand new id on every save — including a
+     * save that only renamed a channel. VictoriaMetrics history is tagged
+     * by channel id, so that silently orphaned every past reading the
+     * moment someone renamed a probe; updating in place keeps the id (and
+     * its history) stable across an edit.
      */
     private function replaceChannels(int $sensorId, array $channels): void
     {
-        $deleteStatement = $this->pdo->prepare('DELETE FROM environmental_sensor_channels WHERE sensor_id = :sensor_id');
-        $deleteStatement->execute(['sensor_id' => $sensorId]);
-        if ($channels === []) {
-            return;
-        }
+        $existingStatement = $this->pdo->prepare('SELECT id FROM environmental_sensor_channels WHERE sensor_id = :sensor_id');
+        $existingStatement->execute(['sensor_id' => $sensorId]);
+        $existingIds = array_map('intval', $existingStatement->fetchAll(PDO::FETCH_COLUMN));
+
+        $updateStatement = $this->pdo->prepare(
+            'UPDATE environmental_sensor_channels
+             SET position = :position, label = :label, channel_type = :channel_type, value_oid = :value_oid, value_divisor = :value_divisor
+             WHERE id = :id AND sensor_id = :sensor_id',
+        );
         $insertStatement = $this->pdo->prepare(
             'INSERT INTO environmental_sensor_channels (sensor_id, position, label, channel_type, value_oid, value_divisor)
              VALUES (:sensor_id, :position, :label, :channel_type, :value_oid, :value_divisor)',
         );
+
+        $keptIds = [];
         $position = 1;
         foreach ($channels as $channel) {
             $label = trim((string) ($channel['label'] ?? ''));
@@ -111,14 +123,27 @@ final class MySqlSensorRepository implements SensorRepository
                 continue;
             }
             $divisor = (float) ($channel['value_divisor'] ?? 1);
-            $insertStatement->execute([
+            $params = [
                 'sensor_id' => $sensorId,
                 'position' => $position++,
                 'label' => $label,
                 'channel_type' => $type,
                 'value_oid' => $oid,
                 'value_divisor' => $divisor > 0 ? $divisor : 1,
-            ]);
+            ];
+            $channelId = filter_var($channel['id'] ?? null, FILTER_VALIDATE_INT);
+            if ($channelId !== false && $channelId !== null && in_array($channelId, $existingIds, true)) {
+                $updateStatement->execute($params + ['id' => $channelId]);
+                $keptIds[] = $channelId;
+            } else {
+                $insertStatement->execute($params);
+            }
+        }
+
+        $removedIds = array_values(array_diff($existingIds, $keptIds));
+        if ($removedIds !== []) {
+            $placeholders = implode(',', array_fill(0, count($removedIds), '?'));
+            $this->pdo->prepare("DELETE FROM environmental_sensor_channels WHERE id IN ($placeholders)")->execute($removedIds);
         }
     }
 
@@ -215,13 +240,13 @@ final class MySqlSensorRepository implements SensorRepository
         $statement = $this->pdo->prepare(
             'INSERT INTO environmental_sensors (
                 name, model, icon, host, snmp_port, snmp_community,
-                temperature_oid, temperature_divisor, temperature_min, temperature_max,
-                humidity_oid, humidity_divisor, humidity_min, humidity_max,
+                temperature_oid, temperature_divisor, temperature_min, temperature_max, temperature_label,
+                humidity_oid, humidity_divisor, humidity_min, humidity_max, humidity_label,
                 ping_enabled, monitoring_enabled, notes
              ) VALUES (
                 :name, :model, :icon, :host, :snmp_port, :snmp_community,
-                :temperature_oid, :temperature_divisor, :temperature_min, :temperature_max,
-                :humidity_oid, :humidity_divisor, :humidity_min, :humidity_max,
+                :temperature_oid, :temperature_divisor, :temperature_min, :temperature_max, :temperature_label,
+                :humidity_oid, :humidity_divisor, :humidity_min, :humidity_max, :humidity_label,
                 :ping_enabled, :monitoring_enabled, :notes
              )',
         );
@@ -243,9 +268,9 @@ final class MySqlSensorRepository implements SensorRepository
             'UPDATE environmental_sensors SET
                 name = :name, model = :model, icon = :icon, host = :host, snmp_port = :snmp_port, snmp_community = :snmp_community,
                 temperature_oid = :temperature_oid, temperature_divisor = :temperature_divisor,
-                temperature_min = :temperature_min, temperature_max = :temperature_max,
+                temperature_min = :temperature_min, temperature_max = :temperature_max, temperature_label = :temperature_label,
                 humidity_oid = :humidity_oid, humidity_divisor = :humidity_divisor,
-                humidity_min = :humidity_min, humidity_max = :humidity_max,
+                humidity_min = :humidity_min, humidity_max = :humidity_max, humidity_label = :humidity_label,
                 ping_enabled = :ping_enabled, monitoring_enabled = :monitoring_enabled, notes = :notes
              WHERE id = :id AND archived_at IS NULL',
         );
@@ -583,10 +608,12 @@ final class MySqlSensorRepository implements SensorRepository
             'temperature_divisor' => (float) ($input['temperature_divisor'] ?? 10),
             'temperature_min' => $this->nullableFloat($input['temperature_min'] ?? null),
             'temperature_max' => $this->nullableFloat($input['temperature_max'] ?? null),
+            'temperature_label' => trim((string) ($input['temperature_label'] ?? '')) ?: null,
             'humidity_oid' => trim((string) ($input['humidity_oid'] ?? '')) ?: null,
             'humidity_divisor' => (float) ($input['humidity_divisor'] ?? 10),
             'humidity_min' => $this->nullableFloat($input['humidity_min'] ?? null),
             'humidity_max' => $this->nullableFloat($input['humidity_max'] ?? null),
+            'humidity_label' => trim((string) ($input['humidity_label'] ?? '')) ?: null,
             'ping_enabled' => !empty($input['ping_enabled']) ? 1 : 0,
             'monitoring_enabled' => !empty($input['monitoring_enabled']) ? 1 : 0,
             'notes' => trim((string) ($input['notes'] ?? '')) ?: null,
@@ -615,10 +642,12 @@ final class MySqlSensorRepository implements SensorRepository
             'temperature_divisor' => (float) $row['temperature_divisor'],
             'temperature_min' => $row['temperature_min'] !== null ? (float) $row['temperature_min'] : null,
             'temperature_max' => $row['temperature_max'] !== null ? (float) $row['temperature_max'] : null,
+            'temperature_label' => $row['temperature_label'],
             'humidity_oid' => $row['humidity_oid'],
             'humidity_divisor' => (float) $row['humidity_divisor'],
             'humidity_min' => $row['humidity_min'] !== null ? (float) $row['humidity_min'] : null,
             'humidity_max' => $row['humidity_max'] !== null ? (float) $row['humidity_max'] : null,
+            'humidity_label' => $row['humidity_label'],
             'ping_enabled' => (bool) $row['ping_enabled'],
             'monitoring_enabled' => (bool) $row['monitoring_enabled'],
             'last_temperature' => $row['last_temperature'] !== null ? (float) $row['last_temperature'] : null,

@@ -20,6 +20,10 @@
 <label class="field"><span>{{ t('form.sensor_humidity_min') }}</span><input name="humidity_min" type="number" step="0.01" placeholder="{{ t('form.sensor_no_limit') }}"></label>
 <label class="field"><span>{{ t('form.sensor_humidity_max') }}</span><input name="humidity_max" type="number" step="0.01" placeholder="{{ t('form.sensor_no_limit') }}"></label>
 {% endset %}
+{% set sensor_label_fields %}
+<label class="field"><span>{{ t('form.sensor_temperature_label') }}</span><input name="temperature_label" maxlength="80" placeholder="{{ t('sensors.temperature') }}"><small>{{ t('form.sensor_label_hint') }}</small></label>
+<label class="field"><span>{{ t('form.sensor_humidity_label') }}</span><input name="humidity_label" maxlength="80" placeholder="{{ t('sensors.humidity') }}"><small>{{ t('form.sensor_label_hint') }}</small></label>
+{% endset %}
 {% set sensor_channels_field %}
 <div class="field field-wide sensor-channels-field">
     <span>{{ t('form.sensor_channels') }}</span>
@@ -31,6 +35,7 @@
 {% endset %}
 <template data-sensor-channel-row-template>
     <div class="sensor-channel-row" data-sensor-channel-row>
+        <input type="hidden" data-channel-id>
         <select data-channel-type>
             <option value="temperature">{{ t('sensors.channel_temperature') }}</option>
             <option value="humidity">{{ t('sensors.channel_humidity') }}</option>
@@ -74,9 +79,9 @@
                 data-sensor-id="{{ sensor.id }}" data-sensor-name="{{ sensor.name }}" data-sensor-model="{{ sensor.model }}" data-sensor-icon="{{ sensor.icon ?: 'sensor-server' }}" data-sensor-host="{{ sensor.host }}"
                 data-sensor-port="{{ sensor.snmp_port }}" data-sensor-community="{{ sensor.snmp_community }}"
                 data-sensor-temperature-oid="{{ sensor.temperature_oid }}" data-sensor-temperature-divisor="{{ sensor.temperature_divisor }}"
-                data-sensor-temperature-min="{{ sensor.temperature_min }}" data-sensor-temperature-max="{{ sensor.temperature_max }}"
+                data-sensor-temperature-min="{{ sensor.temperature_min }}" data-sensor-temperature-max="{{ sensor.temperature_max }}" data-sensor-temperature-label="{{ sensor.temperature_label }}"
                 data-sensor-humidity-oid="{{ sensor.humidity_oid }}" data-sensor-humidity-divisor="{{ sensor.humidity_divisor }}"
-                data-sensor-humidity-min="{{ sensor.humidity_min }}" data-sensor-humidity-max="{{ sensor.humidity_max }}"
+                data-sensor-humidity-min="{{ sensor.humidity_min }}" data-sensor-humidity-max="{{ sensor.humidity_max }}" data-sensor-humidity-label="{{ sensor.humidity_label }}"
                 data-sensor-ping-enabled="{{ sensor.ping_enabled ? '1' : '0' }}" data-sensor-monitoring-enabled="{{ sensor.monitoring_enabled ? '1' : '0' }}" data-sensor-notes="{{ sensor.notes }}"
                 data-sensor-channels="{{ sensor.channels|json_encode }}">{{ icons.icon('edit', 12) }}</button>
             <button class="icon-button danger" type="button" aria-label="{{ t('action.delete') }}" title="{{ t('action.delete') }}" data-delete-open data-delete-url="/api/v1/sensors/{{ sensor.id }}" data-delete-name="{{ sensor.name }}">{{ icons.icon('trash', 12) }}</button>
@@ -110,7 +115,7 @@
 <section class="sensor-charts" data-sensor-charts data-sensor-panel="charts" hidden data-vm-unreachable-label="{{ t('sensors.vm_unreachable') }}" data-chart-temperature-label="{{ t('sensors.temperature') }}" data-chart-humidity-label="{{ t('sensors.humidity') }}" data-chart-ping-latency-label="{{ t('sensors.ping_latency') }}" data-chart-power-label="{{ t('sensors.power_status') }}" data-chart-power-ok-label="{{ t('sensors.power_ok') }}" data-chart-power-alarm-label="{{ t('sensors.power_alarm') }}">
     {% if sensors|length %}
     <div class="sensor-charts-controls">
-        <label class="field"><span>{{ t('sensors.chart_sensor') }}</span><select data-chart-sensor-select>{% for sensor in sensors %}<option value="{{ sensor.id }}" data-channels="{{ sensor.channels|json_encode }}" data-inputs="{{ sensor.inputs|json_encode }}">{{ sensor.name }}</option>{% endfor %}</select></label>
+        <label class="field"><span>{{ t('sensors.chart_sensor') }}</span><select data-chart-sensor-select>{% for sensor in sensors %}<option value="{{ sensor.id }}" data-channels="{{ sensor.channels|json_encode }}" data-inputs="{{ sensor.inputs|json_encode }}" data-temperature-label="{{ sensor.temperature_label }}" data-humidity-label="{{ sensor.humidity_label }}">{{ sensor.name }}</option>{% endfor %}</select></label>
         <div class="sensor-range-buttons" data-chart-range-buttons>
             <button class="sensor-range-btn" type="button" data-chart-range="5m">5m</button>
             <button class="sensor-range-btn" type="button" data-chart-range="1h">1h</button>
@@ -268,6 +273,7 @@
             <label class="field"><span>{{ t('form.sensor_humidity_oid') }}</span><input name="humidity_oid" maxlength="255" value="1.3.6.1.4.1.21796.4.1.3.1.4.2" placeholder="1.3.6.1.4.1.21796.4.1.3.1.4.2"><small>{{ t('form.sensor_oid_hint') }}</small></label>
             <label class="field"><span>{{ t('form.sensor_divisor') }}</span><input name="humidity_divisor" type="number" step="0.0001" value="1"></label>
             {{ sensor_threshold_fields }}
+            {{ sensor_label_fields }}
             {{ sensor_channels_field }}
             <label class="field field-wide checkbox-field"><input name="ping_enabled" type="checkbox" value="1" checked><span>{{ t('form.sensor_ping_enabled') }}</span></label>
             <label class="field field-wide checkbox-field"><input name="monitoring_enabled" type="checkbox" value="1" checked><span>{{ t('form.sensor_monitoring_enabled') }}</span></label>
@@ -295,6 +301,7 @@
             <label class="field"><span>{{ t('form.sensor_humidity_oid') }}</span><input name="humidity_oid" maxlength="255"><small>{{ t('form.sensor_oid_hint') }}</small></label>
             <label class="field"><span>{{ t('form.sensor_divisor') }}</span><input name="humidity_divisor" type="number" step="0.0001"></label>
             {{ sensor_threshold_fields }}
+            {{ sensor_label_fields }}
             {{ sensor_channels_field }}
             <label class="field field-wide checkbox-field"><input name="ping_enabled" type="checkbox" value="1"><span>{{ t('form.sensor_ping_enabled') }}</span></label>
             <label class="field field-wide checkbox-field"><input name="monitoring_enabled" type="checkbox" value="1"><span>{{ t('form.sensor_monitoring_enabled') }}</span></label>
