@@ -26,6 +26,7 @@ final readonly class AccountController
         $data = $this->context->make('page.account', 'account', [
             'users' => $this->users->all(),
             'audit_log' => $this->users->auditLog(100),
+            'owner_user_id' => $this->users->ownerId(),
             // The raw (possibly-null) override, for the form's own fields —
             // deliberately not the layout's "workspace" fallback-filled
             // values, so an unset field shows empty (with the default as

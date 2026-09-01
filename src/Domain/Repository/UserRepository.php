@@ -27,4 +27,11 @@ interface UserRepository
     public function countActive(): int;
 
     public function auditLog(int $limit = 100): array;
+
+    /**
+     * The account that owns this installation (its first-ever user) —
+     * protected from removal regardless of who's doing the removing, not
+     * just from removing themselves.
+     */
+    public function ownerId(): int;
 }

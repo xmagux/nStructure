@@ -101,6 +101,9 @@ final readonly class MySqlUserRepository implements UserRepository
         if ($user === null || $user['archived_at'] !== null) {
             throw new RuntimeException('User not found');
         }
+        if ($userId === $this->ownerId()) {
+            throw new RuntimeException('The owner account cannot be removed');
+        }
         if ($this->countActive() <= 1) {
             throw new ResourceInUseException('last_active_user');
         }
@@ -156,6 +159,11 @@ final readonly class MySqlUserRepository implements UserRepository
     public function countActive(): int
     {
         return (int) $this->pdo->query('SELECT COUNT(*) FROM users WHERE archived_at IS NULL')->fetchColumn();
+    }
+
+    public function ownerId(): int
+    {
+        return (int) $this->pdo->query('SELECT MIN(id) FROM users')->fetchColumn();
     }
 
     public function auditLog(int $limit = 100): array

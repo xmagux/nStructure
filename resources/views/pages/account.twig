@@ -43,7 +43,7 @@
                     <td><span class="port-secondary-value">{{ user.last_login_at ?: t('account.never_logged_in') }}</span></td>
                     <td>
                         <div class="port-row-actions">
-                            {% if user.id != current_user.id %}
+                            {% if user.id != owner_user_id %}
                             <button class="button button-danger-subtle button-small" type="button" data-delete-open data-delete-url="/api/v1/users/{{ user.id }}" data-delete-name="{{ user.name }} · {{ user.email }}">{{ icons.icon('trash', 15) }}{{ t('account.remove_user') }}</button>
                             {% endif %}
                         </div>
