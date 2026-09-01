@@ -442,7 +442,11 @@ final readonly class MySqlNetworkRepository implements NetworkRepository
             $kind = (string) $item['kind'];
             return [
                 'id' => (int) $item['id'],
-                'code' => $kind,
+                // Rack items have no short "code" of their own the way a
+                // panel does — the name the user actually typed is the
+                // only identifying text, so it belongs in the primary slot
+                // the canvas renders in bold (see addRackDevice in app.js).
+                'code' => $item['name'],
                 'name' => $item['name'],
                 'kind' => $kind,
                 'notes' => $item['notes'],

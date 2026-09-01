@@ -1076,7 +1076,7 @@ final class DemoNetworkRepository implements NetworkRepository
         }
         return array_map(static fn (array $item): array => [
             'id' => (int) $item['id'],
-            'code' => $item['kind'],
+            'code' => $item['name'],
             'name' => $item['name'],
             'kind' => $item['kind'],
             'notes' => $item['notes'] ?? null,

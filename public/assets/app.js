@@ -1966,12 +1966,21 @@
         const deviceWidth = rackWidth - 108;
         const colors = { violet: palette.indigo, cyan: palette.cyan, blue: palette.blue, amber: palette.amber, slate: palette.borderStrong };
         const accent = colors[device.tone] || palette.blue;
+        let rackItemKindLabels = {};
+        try { rackItemKindLabels = JSON.parse(labels.rackItemLabels || '{}'); } catch (error) { rackItemKindLabels = {}; }
         const group = new window.Konva.Group({ x: rackX + 54, y: top + 2 });
         const isFreeSpace = device.kind === 'FREE_SPACE';
         group.add(new window.Konva.Rect({ width: deviceWidth, height, cornerRadius: 7, fill: palette.surfaceRaised, stroke: accent, strokeWidth: 1.4, dash: isFreeSpace ? [6, 4] : undefined, shadowColor: palette.shadow, shadowBlur: 12, shadowOpacity: 0.28, shadowOffsetY: 4 }));
         group.add(new window.Konva.Rect({ width: 7, height, cornerRadius: [7, 0, 0, 7], fill: accent }));
-        group.add(new window.Konva.Text({ x: 26, y: Math.max(4, height / 2 - 9), width: 186, ellipsis: true, text: device.code, fontFamily: 'Inter, sans-serif', fontSize: Math.max(11, Math.min(17, height * 0.35)), fontStyle: 'bold', fill: palette.text }));
-        if (height > 32) group.add(new window.Konva.Text({ x: 26, y: height / 2 + 6, width: 186, ellipsis: true, text: device.name, fontFamily: 'Inter, sans-serif', fontSize: 10, fill: palette.muted }));
+        // A rack item (organizer, free space, active device, ...) has no
+        // short "code" of its own the way a panel does — its only
+        // user-given text is the name, so that goes in the bold primary
+        // slot instead of the raw KIND constant; the kind (translated)
+        // becomes the secondary line.
+        const primaryText = device.type === 'rack_item' ? device.name : device.code;
+        const secondaryText = device.type === 'rack_item' ? (rackItemKindLabels[device.kind] || device.kind) : device.name;
+        group.add(new window.Konva.Text({ x: 26, y: Math.max(4, height / 2 - 9), width: 186, ellipsis: true, text: primaryText, fontFamily: 'Inter, sans-serif', fontSize: Math.max(11, Math.min(17, height * 0.35)), fontStyle: 'bold', fill: palette.text }));
+        if (height > 32) group.add(new window.Konva.Text({ x: 26, y: height / 2 + 6, width: 186, ellipsis: true, text: secondaryText, fontFamily: 'Inter, sans-serif', fontSize: 10, fill: palette.muted }));
         if (device.type === 'rack_item') addKindGlyph(group, device, height, deviceWidth, accent, palette);
         if (device.ports) {
             group.add(new window.Konva.Text({ x: rackWidth - 300, y: Math.max(4, height / 2 - 8), width: 160, align: 'right', text: `${device.occupied}/${device.ports} PORTS`, fontFamily: 'JetBrains Mono, monospace', fontSize: 11, fontStyle: 'bold', fill: accent }));
