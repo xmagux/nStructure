@@ -48,7 +48,7 @@
         </nav>
         <div class="sidebar-bottom">
             {% if demo_mode %}<div class="demo-pill"><span></span>{{ t('demo.label') }}</div>{% endif %}
-            {% if not demo_mode %}<a class="nav-item {{ section == 'account' ? 'active' : '' }}" href="/account" data-nav-label="{{ t('nav.settings') }}" aria-label="{{ t('nav.settings') }}">{{ icons.icon('user') }}<span>{{ t('nav.settings') }}</span></a>{% endif %}
+            {% if not demo_mode %}<a class="nav-item {{ section == 'account' ? 'active' : '' }}" href="/account" data-nav-label="{{ t('nav.settings') }}" aria-label="{{ t('nav.settings') }}">{{ icons.icon('settings') }}<span>{{ t('nav.settings') }}</span></a>{% endif %}
             <div class="user-row"><span class="user-avatar">{{ (current_user.name ?? 'Demo user')|slice(0, 2)|upper }}</span><span><strong>{{ current_user.name ?? 'Demo user' }}</strong><small>{{ current_user.email ?? t('demo.label') }}</small></span>{% if current_user %}<form class="user-logout" method="post" action="/logout"><input type="hidden" name="_token" value="{{ csrf_token }}"><button class="icon-button" type="submit" aria-label="{{ t('auth.logout') }}" title="{{ t('auth.logout') }}">{{ icons.icon('logout', 15) }}</button></form>{% endif %}</div>
         </div>
     </aside>
