@@ -10,7 +10,7 @@
 </section>
 
 <section class="section-block">
-    <div class="section-heading"><div><h2>{{ t('location.server_rooms') }}</h2><p>{{ t('location.infrastructure') }}</p></div><label class="inline-search">{{ icons.icon('search') }}<input type="search" placeholder="{{ t('location.search_rooms') }}" data-list-search></label><button class="button button-ghost" type="button" data-room-modal-open>{{ icons.icon('plus') }}{{ t('action.add_room') }}</button></div>
+    <div class="section-heading"><div><h2>{{ t('location.server_rooms') }}</h2><p>{{ t('location.infrastructure') }}</p></div>{% if location.rooms_detail|length > 2 %}<label class="inline-search">{{ icons.icon('search') }}<input type="search" placeholder="{{ t('location.search_rooms') }}" data-list-search></label>{% endif %}<button class="button button-ghost" type="button" data-room-modal-open>{{ icons.icon('plus') }}{{ t('action.add_room') }}</button></div>
     <div class="room-list" data-search-list>
         {% for room in location.rooms_detail %}
         <article class="room-card" data-search-item="{{ (room.code ~ ' ' ~ room.name)|lower }}">
