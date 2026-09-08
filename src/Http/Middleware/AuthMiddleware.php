@@ -12,7 +12,7 @@ use Slim\Psr7\Response;
 
 final readonly class AuthMiddleware implements MiddlewareInterface
 {
-    private const PUBLIC_PATHS = ['/login', '/api/v1/health'];
+    private const PUBLIC_PATHS = ['/login', '/session-expired', '/api/v1/health'];
 
     public function __construct(private array $settings)
     {
@@ -40,6 +40,6 @@ final readonly class AuthMiddleware implements MiddlewareInterface
         }
 
         $redirect = $path === '/' ? '' : ('?redirect=' . rawurlencode($path));
-        return (new Response(302))->withHeader('Location', '/login' . $redirect);
+        return (new Response(302))->withHeader('Location', '/session-expired' . $redirect);
     }
 }

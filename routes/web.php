@@ -15,6 +15,7 @@ return static function (App $app): void {
     if (!$demoMode) {
         $app->get('/login', [AuthController::class, 'showLogin'])->setName('login');
         $app->post('/login', [AuthController::class, 'login']);
+        $app->get('/session-expired', [AuthController::class, 'sessionExpired'])->setName('session-expired');
         $app->post('/logout', [AuthController::class, 'logout'])->setName('logout');
         $app->get('/account', [AccountController::class, 'show'])->setName('account');
         // Intentionally not linked from the main nav — visit directly.

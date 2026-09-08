@@ -1,0 +1,9 @@
+{% extends 'layouts/auth.twig' %}
+
+{% block content %}
+<div class="auth-head"><span class="eyebrow">nStructure</span><h1>{{ t('auth.session_expired_title') }}</h1><p>{{ t('auth.session_expired_subtitle') }}</p></div>
+<div class="auth-form">
+    <p class="form-error">{{ t('auth.session_expired_body') }}</p>
+    <a class="button button-primary button-block" href="{{ login_url }}">{{ t('auth.session_expired_action') }}</a>
+</div>
+{% endblock %}

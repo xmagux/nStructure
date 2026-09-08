@@ -33,6 +33,24 @@ final readonly class AuthController
         return $this->renderLogin($response, $redirect, null);
     }
 
+    public function sessionExpired(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        if (!empty($_SESSION['user_id'])) {
+            return (new Response(302))->withHeader('Location', '/');
+        }
+
+        $redirect = (string) ($request->getQueryParams()['redirect'] ?? '');
+        $loginUrl = '/login';
+        if (str_starts_with($redirect, '/') && !str_starts_with($redirect, '//')) {
+            $loginUrl .= '?redirect=' . rawurlencode($redirect);
+        }
+
+        $data = $this->context->make('auth.session_expired_title', 'login', [
+            'login_url' => $loginUrl,
+        ]);
+        return $this->view->render($response, 'pages/session-expired.twig', $data);
+    }
+
     public function login(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
         $body = (array) ($request->getParsedBody() ?? []);
@@ -68,7 +86,7 @@ final readonly class AuthController
     {
         $_SESSION = [];
         session_regenerate_id(true);
-        return $response->withStatus(302)->withHeader('Location', '/login');
+        return $response->withStatus(302)->withHeader('Location', '/session-expired');
     }
 
     private function renderLogin(ResponseInterface $response, string $redirect, ?string $errorKey): ResponseInterface

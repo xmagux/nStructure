@@ -25,8 +25,8 @@ $app->setBasePath('');
 
 $app->addBodyParsingMiddleware();
 $app->addRoutingMiddleware();
-$app->add(LocaleMiddleware::class);
 $app->add(CsrfMiddleware::class);
+$app->add(LocaleMiddleware::class);
 $app->add(AuthMiddleware::class);
 $app->add(SessionMiddleware::class);
 $app->add(SecurityHeadersMiddleware::class);

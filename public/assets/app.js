@@ -10,7 +10,9 @@
     // (poll/refresh calls swallow the error) until the user happens to
     // navigate somewhere. Any fetch() call getting a 401 back means the
     // session is gone, so force a real page reload — the server-side auth
-    // middleware then does the actual redirect to /login.
+    // middleware then does the actual redirect to /session-expired (not
+    // straight to /login, so the reload doesn't hand the user a login form
+    // with a CSRF token that goes stale before they get back to the tab).
     const nativeFetch = window.fetch.bind(window);
     window.fetch = async (...args) => {
         const response = await nativeFetch(...args);
