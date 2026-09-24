@@ -5,8 +5,8 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=nstructure-deploy
-Group=nstructure-deploy
+User=www-data
+Group=www-data
 WorkingDirectory=/var/www/nstructure
 ExecStart=/usr/bin/php /var/www/nstructure/bin/sensors-daemon.php
 # The daemon exits(0) on purpose every SENSOR_DAEMON_MAX_ITERATIONS ticks
